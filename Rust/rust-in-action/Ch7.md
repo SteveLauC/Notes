@@ -359,4 +359,16 @@
    ```
  
 
-   
+3. btreemap和hashmap的一个典型区别就是，btree实现的可以对键值对进行局部地遍历
+   ```rust
+   use std::collections::BTreeMap;
+
+   fn main() {
+       let bm = BTreeMap::from([(1, 2), (2,4), (3,6)]);
+	   // for keys which are smaller than or equal to 2
+	   for (key, value) in bm.range(1..=2){ // similarly, you have range_mut() to get mutable refs
+	       println!("key: {} => value: {}", key, value);
+	   }
+   }
+   ```
+
