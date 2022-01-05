@@ -372,3 +372,29 @@
    }
    ```
 
+4. 将一个struct写入文件，像c语言那样直接写一块内存
+   ```c
+   ssize_t write(int fd, const void *buf, size_t count);
+   ```
+   ```rust
+   use std::io::Write;
+   use std::slice;
+   use std::mem;
+
+
+   struct Person {
+        name: String,
+   }
+
+   fn main() {
+       let p = Person { name: "ab".into() };
+	   let ptr = &p as *const Person as *const u8;
+	   let size = mem::size_of_val(&p);
+
+	   let mut f = std::fs::File::create("/home/steve/Desktop/abc").unwrap();
+	   unsafe {
+	       f.write(slice::from_raw_parts(ptr, size));
+	   }
+   }
+   ```
+
