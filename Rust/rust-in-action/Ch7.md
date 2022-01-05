@@ -310,6 +310,7 @@
 	     self.base.insert(k, v)
 	}
    ```
+
    函数的返回值是Option<V>，V是value的范型，当被插入的key之前不存在与hashmap中，None被返回；如果key之前存在，那么Some(old_value)被返
    回，old_value被更新为new_valuel
    ```rust
@@ -328,6 +329,7 @@
    ```
 
 ##### 7.7.8
+
 1. HashMap的快捷语法，Hashmap一直以来都没有像Vec那样的快捷的初始化语法，但在1.56后，它引入了。
    ```rust
    let v = vec![...];
@@ -345,8 +347,16 @@
        K: Eq + Hash, 
    ```
 
-2. hashmap的`[&key]`语法糖，是其get.unwrap的简写，如果key不存在的话，直接panic.
-
+2. hashmap的`[&key]`语法糖，可以看作get.unwrap的简写，如果key不存在的话，直接panic.
+   这个`[]`这种索引的方式，是`std::ops::Index`这个trait里的`index()`方法。
+   ```rust
+   use std::collections::HashMap;
+   use std::ops::Index;
+   fn main() {
+       let hm = HashMap::from([(1, 2)]);
+	   println!("{:?}", hm.index(&1)); // 和hm[&1]一样
+   }
+   ```
 
 
 
