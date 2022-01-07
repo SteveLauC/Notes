@@ -89,6 +89,11 @@
    3. `std::io::copy()`的功能是Copies the entire contents of a reader into a writer.
    4. 然后就是write trait中的函数要写的一般都是slice，代表字节流，如果要将&str的字面量直接转为slice，直接在前面加b变为u8的数组，可以
    隐式转为slice.
-
-
+   > 为什么array能变成slice
+   ```rust
+   impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N]
+   impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N]
+   ```
+   注意这个usize的trait，这是关键
+   rust中有4中类型转换，我该去看死灵书了
 
