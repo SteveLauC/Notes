@@ -110,4 +110,13 @@
    // NOTE: udp socket does NOT contain port number
    let localhost = UdpSocket::bind("0.0.0.0:0").expect("cannot bind to local socket");
    ```
+   > 0.0.0.0:0 意味着监听所有的地址，端口由OS选择一个随机端口
 
+3. `vec![0;512]`意味着生成一个vec，len和cap均为512，值全为0
+   > 以前只知道数组可以这样做，才发现vecy也可以
+   ```rust
+   fn main() {
+       let v = vec![0;3];
+	   println!("{:?}", v);
+   }
+   ```
