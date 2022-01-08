@@ -100,7 +100,13 @@
 
 ##### 8.4.1
 1. 端口号是虚拟的，仅仅是u16的一个数字
+
 2. DNS服务在进行查询域名时使用UDP协议，而在区域传输时使用TCP协议，端口号均为53.
 
-
+3. 在rust中发送UDP报文，同样需要用到`std::net::SocketAddr`这个enum，但是与TCP源/目的主机都是完整的IP:PORT不同，UDP只需要目的主机是完
+   整的Socket，源主机只需要IP
+   ```rust
+   // NOTE: udp socket does NOT contain port number
+   let localhost = UdpSocket::bind("0.0.0.0:0").expect("cannot bind to local socket");
+   ```
 
