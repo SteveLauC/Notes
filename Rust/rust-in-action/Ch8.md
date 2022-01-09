@@ -121,3 +121,13 @@
    }
    // 打印[0,0,0]
    ```
+   > 当你需要一个vec初始化时，length也需要有一定的值时，可以用这个。比如udp报文的返回函数
+   ```rust
+   pub fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr)>
+   ```
+   The function must be called with valid byte array buf of sufficient size to hold the message bytes. If a message is too long 
+   to fit in the supplied buffer, excess bytes may be discarded.
+
+4. 在使用UDP的DNS报文中，请求dns的主机和dns server分别充当client和server两次
+   client -> dns server
+   dns server -> client
