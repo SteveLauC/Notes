@@ -131,3 +131,44 @@
 4. 在使用UDP的DNS报文中，请求dns的主机和dns server分别充当client和server两次
    client -> dns server
    dns server -> client
+
+
+#####8.5
+1. 当你的一个函数里在做错误处理时，需要返回多种error类型，这时就需要使用trait obj了
+   ```rust
+   fn foo() -> Result<(), Box<dyn std::error::Error{
+       // code here
+   }
+   ```
+2. 一个好玩的trait， `std::process::Termination`
+  这个trait是用来约束main函数的返回值的，只有实现了这个trait的类型才可以被返回
+
+3. main函数如果返回error的话，会被打印到stderr，即使你在main函数里面没有打印出来
+   ```rust
+   use std::fs::File;
+
+   fn main() -> Result<(), std::io::Error> {
+       let f = File::open("in")?;
+	   Ok(())
+   }
+   // Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+   ```
+4. 错误处理中的`?`其实是`try!`这个宏的语法糖
+   ```rust
+   #[macro_export]
+   #[stable(feature = "rust1", since = "1.0.0")]
+   #[rustc_deprecated(since = "1.39.0", reason = "use the `?` operator instead")]
+   #[doc(alias = "?")]
+   macro_rules! r#try {
+       ($expr:expr $(,)?) => {
+           match $expr {
+               $crate::result::Result::Ok(val) => val,
+               $crate::result::Result::Err(err) => {
+                   return $crate::result::Result::Err($crate::convert::From::from(err));
+               }
+           }
+        };
+    }
+   ```
+   这个`?`的功能早就知道了，注意看下当其为`Err`的情况，调用了`std::convert::From`这个trait，将具体的函数中的错误类型转换为函数返回值
+   中的错误类型
