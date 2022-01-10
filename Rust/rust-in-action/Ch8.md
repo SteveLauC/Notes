@@ -172,3 +172,56 @@
    ```
    这个`?`的功能早就知道了，注意看下当其为`Err`的情况，调用了`std::convert::From`这个trait，将具体的函数中的错误类型转换为函数返回值
    中的错误类型
+
+5. 使用trait obj是可以把多种error返回出去，但是在返回多种error的同时，我们也抹去了具体的error类型，全部变成了trait obj。
+   所以如果想不抹去上游的错误的类型的话，可以这样做：
+   1. 定义一个枚举体，包含上游的error类型
+   2. 给此枚举体derive debug
+   3. 给此枚举体实现display的trait 
+   4. 给此枚举体实现Error的trait Error这个trait并没有required method
+   5. 使用`map_err()`函数将上游的错误类型变为你的错误类型
+   ```rust
+   use std::fmt::Formatter;
+   use std::fs::File;
+   
+   #[derive(Debug)]
+   enum UpStreamError{
+       File(std::io::Error)
+	   }
+
+   impl std::fmt::Display for UpStreamError {
+      fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+          write!(f, "{:?}", self)
+       }
+  }
+
+   impl std::error::Error for UpStreamError {
+      // blank implementation
+   }
+
+   fn main() -> Result<(), UpStreamError> {
+       let f = File::open("in").map_err(UpStreamError::File)?; // 很奇怪的是，map_err的参数要求的是闭包，却可以传枚举的某个子类型
+       Ok(())
+   }
+   ```
+
+6. `std::error::Error`这个trait需要你先实现debug和display这两个trait
+   ```rust
+   pub trait Error: Debug + Display {
+       fn source(&self) -> Option<&(dyn Error + 'static)> { ... }
+	   fn backtrace(&self) -> Option<&Backtrace> { ... }
+	   fn description(&self) -> &str { ... }
+	   fn cause(&self) -> Option<&dyn Error> { ... }
+   }
+   ```
+
+7. 在给类型实现`Display`时，可以利用其`Debug`trait
+   ```rust
+   impl std::fmt::Display for Type {
+       fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	       write!(f, "{:?}", self) // 使用{:?}来调用Debug的接口
+	   }
+   }
+   ```
+8. `std::result::Result`这个enum里的Err(E)中的`E`必须是实现了`std::error::Error`的类型
+
