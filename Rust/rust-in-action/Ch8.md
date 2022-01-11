@@ -172,6 +172,11 @@
    ```
    这个`?`的功能早就知道了，注意看下当其为`Err`的情况，调用了`std::convert::From`这个trait，将具体的函数中的错误类型转换为函数返回值
    中的错误类型
+   > 所以当函数里多个不同的error类型时，想要在函数的返回处统一他们，需要实现这个From的trait
+   ```rust
+   impl std::convert::From<具体的多种error> for 函数的统一error{
+   }
+   ```
 
 5. 使用trait obj是可以把多种error返回出去，但是在返回多种error的同时，我们也抹去了具体的error类型，全部变成了trait obj。
    所以如果想不抹去上游的错误的类型的话，可以这样做：
@@ -224,4 +229,27 @@
    }
    ```
 8. `std::result::Result`这个enum里的Err(E)中的`E`必须是实现了`std::error::Error`的类型
+
+9. 前面说了，`?`是调用的`std::convert::From`里的from函数，所以我们的错误处理也可以不使用`map_err`函数，只要我们为自己定义错误类型
+   枚举实现了`std::convert::From`的trait
+   ```rust
+   // 给我们自己定义的错误类型实现From的trait，使上游的错误类型可以转换为我们自己的错误类型
+   impl convert::From<std::io::Error> for UpStreamError{
+       fn from(e: Error) -> Self {
+	       UpStreamError::File(e)
+	   }
+   }
+   fn main() -> Result<(), UpStreamError> {
+       let f = File::open("in")?; // 这样就不用使用map_err函数了
+       Ok(())
+   }
+   ```
+
+10. rust的match语句支持guard，它可以在match的基础上进一步过滤
+    ```rust
+	match sth {
+	    instance if some_logical_exp => {},
+	}
+    ```
+    // 只有当sth符合instance并且some_logical_exp为真时，才会进入这个分支
 
