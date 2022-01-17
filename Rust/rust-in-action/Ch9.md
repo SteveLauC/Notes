@@ -35,7 +35,16 @@
        let now: DateTime<_> = Local::now();  // get current time
 	   let timestamp: i64 = now.timestamp(); // convert current time to UNIX timestamp
    ```
+   ```rust
+   // 给一个仅使用标准库的代码
+   use std::time::{SystemTime, Duration, UNIX_EPOCH};
 
+   fn main(){
+       let now: SystemTime = SystemTime::now();
+	   let timestamp: Duration = now.during_since(UNIX_EPOCH).expect("oops...");
+	   let seconds: u64 = timestamp.as_secs();
+   }
+   ```
 10. 时间的格式
     * UNIX timestamp: 即从1970年1月1日0点0时0分的秒数
 	* rfc2822: 这个格式是电子邮件使用的时间格式
@@ -61,3 +70,13 @@
     libc的命令方式时需要使用lint `#![allow(non_camel_case_types)]`来开启这个功能
 
 15. 在vim中有时按到了`ctrl+s`，vim会卡死，然而并不是，这是shell用来冻住输出的快捷键，`ctrl+q`即可消除这个
+
+16. `std::mem::zeroed()`
+    ```rust
+	pub unsafe fn zeroed<T>() -> T
+	```
+	这个函数可以返回任何类型的值，但是它的内部表示都是0。
+	> 由于可以初始化任何的类型，所以并不能保证全0对要生成的类型来说是合法的值。
+
+17. 1 second = 1000 milliseconds = 1000 000 microseconds = 1000 000 000 nanoseconds
+
