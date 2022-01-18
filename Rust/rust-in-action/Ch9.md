@@ -80,3 +80,4 @@
 
 17. 1 second = 1000 milliseconds = 1000 000 microseconds = 1000 000 000 nanoseconds
 
+18. NTP是基于UDP报文的，server的常知端口号是123
