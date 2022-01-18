@@ -8,7 +8,7 @@
    的中缀表达式。
    > 现在的bc貌似独立于dc了
 
-4.fgets() reads  in  at  most one less than size characters from stream and stores them into the buffer
+4. fgets() reads  in  at  most one less than size characters from stream and stores them into the buffer
   pointed to by s.  Reading stops after an EOF or a newline.  If a newline is read, it  is  stored  into
   the buffer.  A terminating null byte ('\0') is stored after the last character in the buffer.
   ```C
@@ -18,3 +18,13 @@
   been read.
   这个函数，最多读取size-1个char到buffer里，然后最后给buffer追加一个'\0'来表示字符串的结束。如果SIZE-1个
   char没有读到就遇到了EOF或者'\n'则会提前终止。如果buffer不够大，放不下SIZE个char，程序会崩溃。
+
+5. 如果你写的命令支持从stdin读入输入，那么这个程序就可以使用管道来接受别的程序的输出，将其作为自己的输入。
+   但是如果你的程序在运行时还需要从stdin读取指令，那么此时就行不通了，因为指令要从stdin读取，而stdin已经
+   变成了另一个程序的输出，这时没有办法去读指令。
+   其解决办法是`直接从键盘读取指令`，而从重定向的stdin读入数据。
+
+6. `/dev/tty`设备，是一个字符型设备文件，是当前进程的controling terminal，向这个文件写会被直接写道stdout，而   读则会从键盘读取输入。
+
+7. 在C中，和FILE*相关的IO函数是Buffered，而使用fd的则是unbuffered。在Rust中，除非用`Bufreader`包起来，都是
+   unbuffered的IO
