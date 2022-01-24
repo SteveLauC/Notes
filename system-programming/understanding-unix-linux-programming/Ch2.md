@@ -110,4 +110,17 @@
 	````
 	以上这两个函数都是返回bool的。
 
+11. 有时在模拟c的连续内存buffer时，可以使用这个内存存放的类型的数组，栈上还更快一些
+    在进行IO，比如使用`std::io::Read/Write`这两个trait中的函数，需要用到slice，可以
+	使用`use std::slice::from_raw_parts;`这个函数来创建slice，这个函数还用兄弟版本
+	可以，创建mut的slice。
+	```rust
+	pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
+	pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T]
+	```
+	一般用的slice都是字节(u8)的slice，在指针那个形参进行cast就可以。
+	> 写了这么多IO的代码了，如果想读一个东西，模式就是先要准备好内存，然后准备slice
+	  slice更像是内存的代理。
+
+
 
