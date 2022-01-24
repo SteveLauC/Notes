@@ -122,5 +122,37 @@
 	> 写了这么多IO的代码了，如果想读一个东西，模式就是先要准备好内存，然后准备slice
 	  slice更像是内存的代理。
 
+12. 内核缓冲技术，内核和外设进行IO操作，为了提高效率，内核在内核态也使用了内核缓冲区。
+    记得我大致看过一个文章，一个用户写的内容，是流经多级缓冲区，才到外设上的。
+    有用户程序的缓冲，内核缓冲，然后才到外设，貌似是这样的，不太记得了啊哈哈。
+
+13. 在GNU的`man 2 lseek`中的Notes这部分有这样一段话
+    If the O_APPEND file status flag is set on the open file description, 
+	then a write(2) always moves the file offset to the end of the file, 
+	regardless of the use of lseek().
+	在rust中写代码验证一下: 
+    ```rust
+	use std::fs::{File, OpenOptions};                                                           
+	use std::io::Seek;
+    use std::io::SeekFrom;
+    use std::io::Write;
+
+    fn main() {
+        let mut f: File = OpenOptions::new()
+            .append(true)
+            .open("/Users/steve/Documents/workspace/Proj/rs_proj/t/src/main.rs")
+            .unwrap();
+        let init_off: u64 = f.seek(SeekFrom::Current(0)).unwrap();
+        println!("{:?}", init_off);  // 0 刚打开文件offset是0
+        f.write(b"hello");
+        let after_off: u64 = f.seek(SeekFrom::Current(0)).unwrap();
+        println!("{:?}", after_off); // 642 因为有append的标记，所以每次write都会seek到末尾
+                                     // 然后再写，来到新的末尾
+        f.seek(SeekFrom::Start(0));
+        f.write(b"hello");
+        let after_off: u64 = f.seek(SeekFrom::Current(0)).unwrap();
+        println!("{:?}", after_off); // 647
+	}
+	```
 
 
