@@ -101,4 +101,13 @@
 9. posix里的`creat(2)`函数其实是`open(2)`的语法糖:
    是open("path", OWRONLY|O_CREAT|O_TRUNC, mode)的封装。
 
+10. 如何在rust中判断给定的一个路径是文件还是文件夹:
+    ````rust
+	use std::fs;
+
+	fs::metadata(p).unwrap().is_dir()
+	fs::metadata(p).unwrap().is_file()
+	````
+	以上这两个函数都是返回bool的。
+
 
