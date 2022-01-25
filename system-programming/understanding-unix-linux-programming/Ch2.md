@@ -155,4 +155,55 @@
 	}
 	```
 
+14. c语言的错误处理，是靠errno这个全局变量的，`number of last number`。当syscall
+    或者一些库出错时，会修改这个变量的值，如果想要使用这个变量，需要`#include 
+	<errno.h>`
+	在Linux上，有一个命令行工具，就叫`errno`(sudo apt install errno)，然后使用
+	`errno -l`就可以查看不同的值所代表的不同意思。
+
+	```c
+	#include <stdio.h>
+	#include <errno.h>
+	#include <fcntl.h>
+
+	int main(){
+	    int fd;
+	    fd = open("/home/steve/Desktop/sc", O_WRONLY);
+
+		if (fd == -1){
+	   	    printf("can not open file: \n");
+
+			if (errno == ENOENT) {
+	            printf("There is no such file\n");
+			}
+
+			if (errno == EINTR) {
+			    printf("Interrupted\n");
+			}
+					        
+    		if (errno == EACCES) {
+	            printf("do not have permission\n");
+			}
+		}
+	}
+	```
+
+	perror函数，这个函数就是一个封装好的函数，`void perror(const char *s)`
+	如果s不是NULL，或者*s不是'\0'那么，s首先被打印，然后是一个冒号，然后一
+	个空格，然后是根据errno值的描述信息。所以可以大概猜一下里面的实现。
+	
+	```c
+	void perror(const char *s) {
+		if (s || *s != '\0') {
+			printf("%s: ", s);
+		}
+		switch (errno) {
+			case EPERM:  
+				printf("Operation not permitted\n");
+				break;	
+			case ...  :
+				... 
+		}
+	}
+	```
 
