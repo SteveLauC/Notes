@@ -1,0 +1,17 @@
+1. ls命令，如果给了参数，并且给的参数是文件夹，那么它会列出文件夹里面的文件及文
+   件夹；如果给的参数是文件名，那么会给出此文件的信息；如果给出一些模糊搜索，那
+   会将当前工作路径下复合模式匹配的文件或文件夹打印出来。
+
+2. 在vim中可以打开一个文件夹，`vim dir`
+   ```shell
+   " ============================================================================
+   " Netrw Directory Listing                                        (netrw v156)
+   "   /home/Goldname/myDirectory
+   "   Sorted by      name
+   "   Sort sequence: [\/]$,\<core\%(\.\d\+\)\=\>,\.h$,\.c$,\.cpp$,\~\=\*$,*,\.o$,\
+   "   Quick Help: <F1>:help  -:go up dir  D:delete  R:rename  s:sort-by  x:special
+   " ==============================================================================
+   ../
+   ./
+   <...list of sub-directories and files within the directory...>)"
+   ```
