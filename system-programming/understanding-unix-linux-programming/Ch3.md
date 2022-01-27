@@ -26,4 +26,20 @@
    ，此时再让人去触碰目录的raw bytes就是很危险的事了。内核有必要负起责任，提供一种统
    一的接口，将不同文件系统的实现细节隐藏起来，就有了后来`readdir`之类的syscall。虽
    然有了统一的接口，但有的UNIX，其read函数仍然可以读取目录，这是这种UNIX的历史遗留
-   问题
+   问题，而linux比较晚，没有这个历史问题，所以其read不可以读文件夹。
+
+4. `opendir(const char * name)`用来打开文件夹，其参数是一个字符串，也就是文件夹的名
+   字。除了使用文件夹的名字；还可以使用文件描述符，`fdopendir(int fd)`，如果使用这
+   个函数的话，就需要先使用`open`来获取文件描述符。
+
+   > 不知道用`fdopendir`时，后面关闭文件夹还用不用`closedir`，还是仅使用`close`.
+
+   > 在GNU/Linux的man上，`After a successful call to fdopendir(), fd is used inter-
+     nally by the implementation, and should not otherwise be used by the application.`
+	 不让你用，自然也就不能用close去关闭这个fd了
+
+   > 在Open Group的man上，Upon successful return from fdopendir(), the file descriptor
+     is under the control of the system, and if any attempt is made to close the file 
+     descriptor, or to modify the state of the associated description, other than by means 
+   	 of closedir(), readdir(), readdir_r(), rewinddir(), or seekdir(), the behavior is 
+	 undefined. Upon calling closedir() the file descriptor shall be closed.
