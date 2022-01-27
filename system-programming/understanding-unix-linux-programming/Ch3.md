@@ -136,7 +136,30 @@
 	  }
 	  ```
 
-	> 可以发现，rust标准库中的这个元数据是考虑了跨平台特性的，对于UNIX的特殊特性，使
-	  用trait进行了补丁。
+	> 可以发现，rust标准库中的这个元数据是考虑了跨平台特性的，对于UNIX的特殊特性
+	  ，使用trait进行了补丁。
 	
+	```rust
+	pub trait MetadataExt {
+	    fn dev(&self) -> u64;
+	    fn ino(&self) -> u64;
+	    fn mode(&self) -> u32;   // mode
+	    fn nlink(&self) -> u64;  // 连接数
+	    fn uid(&self) -> u32;    // owner
+	    fn gid(&self) -> u32;    // group
+	    fn rdev(&self) -> u64;
+	    fn size(&self) -> u64;   // size
+	    fn atime(&self) -> i64;  // atime
+	    fn atime_nsec(&self) -> i64;
+	    fn mtime(&self) -> i64;  // mtime
+	    fn mtime_nsec(&self) -> i64;
+	    fn ctime(&self) -> i64;  // ctime
+	    fn ctime_nsec(&self) -> i64;
+	    fn blksize(&self) -> u64;
+	    fn blocks(&self) -> u64;
+	}
+	```
+	> 这个trait，或许才是stat结构体的相对应的东西
 
+	> `std::os::unix::fs`中的trait，已经见到3个了，`OpenoOptionExt`，`Permissio-
+	  nsExt`，`MetadataExt`
