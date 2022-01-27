@@ -109,4 +109,34 @@
 	}; 
 	```
 
+11. `stat`函数的使用方法：
+    ```c
+	int stat(const char *pathname, struct stat *statbuf);
+	```
+	传入一个路径，以及事先准备好的buffer。
+
+12. 在rust中，关于文件的元数据需要使用`std::fs::metadata()`拿到`std::fs::Metadata`
+	来获取。`Metadata`这个结构体有一些方法用来或许元数据: 
+	* pub fn accessed(&self) -> Result<SystemTime> 返回atime
+	* pub fn modified(&self) -> Result<SystemTime> 返回mtime
+	* pub fn created(&self) -> Result<SystemTime>  返回btime/birthtime 文件的创建时间
+	* pub fn file_type(&self) -> FileType  用来判断文件的类型，但是返回的FileType结构
+	  体目前也要调用函数来判断具体的文件类型，而且只能判断dir/file/symbollink
+	* pub fn is_dir(&self) -> bool 判断是不是dir
+	* pub fn is_file(&self) -> bool判断是不是常规的文件，排除dir/软连接
+	* pub fn len(&self) -> u64 返回文件的大小
+	* pub fn permissions(&self) -> Permissions 返回一个Permission的结构体，但这个结构
+	  体的方法，只有`readonly`和`setreadonly`，对于UNIX来说用处不大。但是，这个结构体
+	  实现了`std::os::unix::fs::PermissionsExt`这个trait
+	  ```rust
+	  pub trait PermissionsExt {
+	      fn mode(&self) -> u32;           // 这是我们想要的
+	      fn set_mode(&mut self, mode: u32);
+	      fn from_mode(mode: u32) -> Self;
+	  }
+	  ```
+
+	  > 可以发现，rust标准库中的这个元数据是考虑了跨平台特性的，对于UNIX的特殊特性，使
+	    用trait进行了补丁。
+	
 
