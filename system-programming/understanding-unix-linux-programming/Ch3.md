@@ -163,3 +163,40 @@
 
 	> `std::os::unix::fs`中的trait，已经见到3个了，`OpenoOptionExt`，`Permissio-
 	  nsExt`，`MetadataExt`
+
+13. 在rust中，如何利用Result这个结构:
+    * 如果你`Ok<T>`和`Err<E>`中的T/E都要用到，那么就需要使用
+	  ```rust
+	  match res {
+	  	  Ok(t) => {
+		      // do something with t
+	      },
+		  Err(e) => {
+		  	  // do something with e
+		  }
+	  }
+	  ```
+	* 如果只需要用到一个
+	  ```rust
+	  if let Ok(t) = res {
+	      // do something with t
+	  }
+	  ```
+
+	  ```rust
+	  if let Err(e) = res {
+	      // do something with e
+	   }
+	  ```
+    * 如果什么也不用到，仅仅是查看一下这个res是ok还是err
+	  ```rust
+	  if res.is_ok() {
+	      // do something
+	  }
+	  ``` 
+
+	  ```rust
+	  if res.is_err() {
+	      // do something
+	  }
+	  ```
