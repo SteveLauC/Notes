@@ -265,4 +265,29 @@
 15. 掩码的概念，在一串二进制流中，将不需要的位置0，需要的置1，这就是掩码。上面的
     这些宏都是掩码。
 
-16. 
+16. stat这个文件中除了上述的掩码宏，还有直接给你准给好的用来判断的函数宏。
+    ```c
+	/* Test macros for file types.	*/
+
+	#define	__S_ISTYPE(mode, mask)	(((mode) & __S_IFMT) == (mask))
+
+	#define	S_ISDIR(mode)	 __S_ISTYPE((mode), __S_IFDIR)
+	#define	S_ISCHR(mode)	 __S_ISTYPE((mode), __S_IFCHR)
+	#define	S_ISBLK(mode)	 __S_ISTYPE((mode), __S_IFBLK)
+	#define	S_ISREG(mode)	 __S_ISTYPE((mode), __S_IFREG)
+	#ifdef __S_IFIFO
+	# define S_ISFIFO(mode)	 __S_ISTYPE((mode), __S_IFIFO)
+	#endif
+	#ifdef __S_IFLNK
+	# define S_ISLNK(mode)	 __S_ISTYPE((mode), __S_IFLNK)
+	#endif
+	```
+
+	所以在写判断一个文件是不是文件夹时，使用如下代码:
+	```c
+	if (S_ISDIR(mode)) {
+		printf("is a dir\n");
+	}
+	```
+
+17. 
