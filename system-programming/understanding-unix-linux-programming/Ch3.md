@@ -214,11 +214,22 @@
 	, 32-bit values might be processed more efficiently by the CPU, which is much
 	more important than space these days.
 
+	文件类型
 	/* File types.  */
-	#define	__S_IFDIR	0040000	/* Directory.  */
-	#define	__S_IFCHR	0020000	/* Character device.  */
-	#define	__S_IFBLK	0060000	/* Block device.  */
-	#define	__S_IFREG	0100000	/* Regular file.  */
-	#define	__S_IFIFO	0010000	/* FIFO.  */
-	#define	__S_IFLNK	0120000	/* Symbolic link.  */
-	#define	__S_IFSOCK	0140000	/* Socket.  */
+	#define	__S_IFDIR	0040000	/* Directory.  */          // (00)0 100
+	#define	__S_IFCHR	0020000	/* Character device.  */   // (00)0 010
+	#define	__S_IFBLK	0060000	/* Block device.  */       // (00)0 110
+	#define	__S_IFREG	0100000	/* Regular file.  */       // (00)1 000
+	#define	__S_IFIFO	0010000	/* FIFO.  */               // (00)0 001
+	#define	__S_IFLNK	0120000	/* Symbolic link.  */      // (00)1 010
+	#define	__S_IFSOCK	0140000	/* Socket.  */             // (00)1 100 
+
+	特殊位
+	#define	__S_ISUID	04000	/* Set user ID on execution.  */            // 100
+	#define	__S_ISGID	02000	/* Set group ID on execution.  */           // 010
+	#define	__S_ISVTX	01000	/* Save swapped text after use (sticky).  */// 001
+
+	owner的权限
+	#define	__S_IREAD	0400	/* Read by owner.  */       // 100
+	#define	__S_IWRITE	0200	/* Write by owner.  */      // 010
+	#define	__S_IEXEC	0100	/* Execute by owner.  */    // 001
