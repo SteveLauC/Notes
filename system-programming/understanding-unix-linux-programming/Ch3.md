@@ -290,4 +290,33 @@
 	}
 	```
 
-17. 
+17. 拿到了UID/GID，怎么拿到用户名和组名呢
+    ```c
+	// 通过UID就可以拿到下面的结构体
+	struct passwd *getpwuid(uid_t uid);
+	``` 
+	```c
+	struct passwd {
+	    char   *pw_name;       /* username */ // 我们要的用户名
+	    char   *pw_passwd;     /* user password */
+	    uid_t   pw_uid;        /* user ID */
+	    gid_t   pw_gid;        /* group ID */
+	    char   *pw_gecos;      /* user information */
+	    char   *pw_dir;        /* home directory */
+	    char   *pw_shell;      /* shell program */
+	};
+	```
+
+	```c
+	struct group *getgrgid(gid_t gid);
+	```
+
+	```c
+	struct group {
+	    char   *gr_name;        /* group name */
+	    char   *gr_passwd;      /* group password */
+	    gid_t   gr_gid;         /* group ID */
+	    char  **gr_mem;         /* NULL-terminated array of pointers
+	                               to names of group members */
+	};
+	```
