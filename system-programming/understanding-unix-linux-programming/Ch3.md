@@ -217,6 +217,7 @@
 	
 	文件类型 <br>
 	/* File types.  */
+	```c
 	// 注意，不同的文件类型是不可以同时出现了，所以是2^4=16种
 	// 而不是4种。在判断时，不可以直接用
 	// ```c
@@ -230,6 +231,7 @@
 	//     printf("is a dir\n");
 	// }
 	// ```
+	```
 
 	```c
 	#define	__S_IFMT	0170000	/* These bits determine file type.  */ // 总的掩码
