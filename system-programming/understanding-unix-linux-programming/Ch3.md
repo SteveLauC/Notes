@@ -214,8 +214,27 @@
 	, 32-bit values might be processed more efficiently by the CPU, which is much
 	more important than space these days.
 
+	
 	文件类型 <br>
 	/* File types.  */
+	// 注意，不同的文件类型是不可以同时出现了，所以是2^4=16种
+	// 而不是4种。在判断时，不可以直接用
+	// ```c
+	// if (st_mode & __S_IFDIR) {
+	//     printf("is a dir\n");
+	// }
+	// ```
+	// 而应该用
+	// ```c
+	// if ((st_mode & __S_IFMT) == __S_IFDIR) {
+	//     printf("is a dir\n");
+	// }
+	// ```
+
+	```c
+	#define	__S_IFMT	0170000	/* These bits determine file type.  */ // 总的掩码
+	```
+
 	```c
 	* #define	__S_IFDIR	0040000	/* Directory.  */           (00)0 100 
 	* #define	__S_IFCHR	0020000	/* Character device.  */    (00)0 010
@@ -227,17 +246,21 @@
 	```
 
 	特殊位 <br>
+	// 其他的12位都是可以同时出现的，故可以直接用下面的宏进行`&`来查看权限的有无
 	```c
 	* #define	__S_ISUID	04000	/* Set user ID on execution.  */             100 
-	* #define	__S_ISGID	02000	/* Set group ID on execution.  */          010
-	* #define	__S_ISVTX	01000	/* Save swapped text after use (sticky).  * 001 
+	* #define	__S_ISGID	02000	/* Set group ID on execution.  */            010
+	* #define	__S_ISVTX	01000	/* Save swapped text after use (sticky).  */ 001 
 	```
 
 	owner的权限 <br>
 	```c
 	* #define	__S_IREAD	0400	/* Read by owner.  */        100 
-	* #define	__S_IWRITE	0200	/* Write by owner.  */     010
-	* #define	__S_IEXEC	0100	/* Execute by owner.  */   001
+	* #define	__S_IWRITE	0200	/* Write by owner.  */       010
+	* #define	__S_IEXEC	0100	/* Execute by owner.  */     001
 	```
 
-15. 
+15. 掩码的概念，在一串二进制流中，将不需要的位置0，需要的置1，这就是掩码。上面的
+    这些宏都是掩码。
+
+16. 
