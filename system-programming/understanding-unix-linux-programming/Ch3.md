@@ -200,3 +200,25 @@
 	      // do something
 	  }
 	  ```
+
+14. `mode_t`是`stat`结构体中`st_mode`的类型，是`unsigned int/u32`的别名，但其实
+    其中只用到了16个bit，4个用来标识文件的类型，2^4可以标识16种文件类型，目前已
+	经用了7种，3个是特殊位，9个用来标识权限。
+
+	[link](https://stackoverflow.com/questions/9602685/why-does-mode-t-use-4-byte)
+
+	但为什么要32bit呢？the reason is that using a 16-bit value here would have 
+	no benefit at all. Data structures on x86 are 32-bit aligned, so wherever 
+	this 16-bit value would be stored (inside a struct, on the stack, on the 
+	heap, in a register), it would take up 32-bits anyway in most cases. However
+	, 32-bit values might be processed more efficiently by the CPU, which is much
+	more important than space these days.
+
+	/* File types.  */
+	#define	__S_IFDIR	0040000	/* Directory.  */
+	#define	__S_IFCHR	0020000	/* Character device.  */
+	#define	__S_IFBLK	0060000	/* Block device.  */
+	#define	__S_IFREG	0100000	/* Regular file.  */
+	#define	__S_IFIFO	0010000	/* FIFO.  */
+	#define	__S_IFLNK	0120000	/* Symbolic link.  */
+	#define	__S_IFSOCK	0140000	/* Socket.  */
