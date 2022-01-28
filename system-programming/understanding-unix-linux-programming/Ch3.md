@@ -320,3 +320,8 @@
 	                               to names of group members */
 	};
 	```
+
+18. `stdio.h`中的`sprintf()`函数
+    可以将任何东西拼成字符串，和rust中的`format!()`有点类似。
+
+19. 
