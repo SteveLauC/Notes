@@ -324,4 +324,62 @@
 18. `stdio.h`中的`sprintf()`函数
     可以将任何东西拼成字符串，和rust中的`format!()`有点类似。
 
-19. 
+19. set user id bit and set group id bit
+
+    The Unix access rights flags setuid and setgid (short for "set user ID" and 
+	"set group ID")[1] allow users to run an executable with the file system 
+	permissions of the executable's owner or group respectively and to change 
+	behaviour in directories. They are often used to allow users on a computer 
+	system to run programs with temporarily elevated privileges in order to 
+	perform a specific task. While the assumed user id or group id privileges 
+	provided are not always elevated, at a minimum they are specific.
+
+	The flags setuid and setgid are needed for tasks that require different 
+	privileges than what the user is normally granted, such as the ability 
+	to alter system files or databases to change their login password.[2] 
+	Some of the tasks that require additional privileges may not immediately be 
+	obvious, though, such as the ping command, which must send and listen for 
+	control packets on a network interface.
+
+	这两个bit的作用是为了给用户临时的更高的权限.如果一个程序的这个bit设置的话，
+	运行它的人如果不是文件的所有人或者所属组中的人，可以临时地变成所有人或者所
+	属组。
+
+	典型用例就是`passwd`这个用来修改用户密码的程序
+
+	```shell
+	➜  /etc l|grep passwd
+	-rw-r--r--   1 root root   2.8K Jan 21 12:56 passwd
+	```
+
+	存储密码的数据库只有root才可以写，那么一般用户如何修改自己的密码的，passwd程序
+	的set user id就是被设置的，可以使一般用户短暂地变为root
+
+	```shell
+	➜  bin l|grep passwd
+	-rwsr-xr-x  1 root root      67K Jul 15  2021 passwd
+	```
+
+	```c
+	// 检测SUID是否被设置
+	#include <sys/stat.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+
+	int main(){
+	    struct stat buf;
+		if (stat("/usr/bin/passwd", &buf) == -1) {
+	        perror(NULL);
+	        exit(-1);
+		}
+
+		if (buf.st_mode & S_ISUID) {
+		    printf("SUID bit is set\n");
+		}
+		return 0;
+	}
+	```
+
+	在linux上，确实被设置了；但在macOS上，没有被设置。macos这是什么鬼。
+
+
