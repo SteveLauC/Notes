@@ -382,4 +382,20 @@
 
 	在linux上，确实被设置了；但在macOS上，没有被设置。macos这是什么鬼。
 
+20. 当SUID被设置时，owner中的执行权限变为了's'；当SGID被设置时，group的执行权限变
+    为了's'；当sticky bit别设置时，other的执行权限变为了't';
+
+21. 文件一旦被创建，其文件类型就不可以被更改。
+
+22. 当使用`int creat(const char *pathname, mode_t mode)`来创建文件时，可以请求将
+    新文件的文件权限设置为mode。不过只是请求，而不是命令，最后新文件的文件权限还
+	要看`新建文件掩码`这个变量。
+
+	在rust中，使用`std::fs::OpenoOption::open()`创建文件，默认的权限是`0x666`，如
+	果使用了`OpenoOptionExt'中的mode函数请求设置权限，这两种操作均会和umask相减，
+	得到最终的权限。
+
+	syscall中的`chmod(mode)`在rust中与之对应的是`std::os::unix::fs::PermissionsExt`
+	中的`fn set_mode(&mut self, mode: u32)`.
+
 
