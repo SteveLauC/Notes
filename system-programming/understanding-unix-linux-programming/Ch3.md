@@ -389,6 +389,8 @@
 	比如我们先使用`creat()`创建一个reg文件，然后调用`chmod`来修改它，在其文件类型
 	那4位上做一些改变。
 
+	感觉实验不用做了，chmod只能更改permission.
+
 	> creat的mode参数是必须提供的，The  mode  argument specifies the file mode 
       bits be applied when a new file is created.  This argument must be sup‐
       plied when O_CREAT or O_TMPFILE is specified in flags; if neither O_CREAT
@@ -414,7 +416,8 @@
 	----------  1 steve steve    0 Jan 30 15:19 test
 	```
 	我们创建的是一个普通文件，并没有成功创建目录。尝试使用了各种文件类型的编码，最
-	后创建的都是regualr file，看来creat只能用来创建reg file。
+	后创建的都是regualr file，看来creat只能用来创建reg file。创建其他类型的文件需要
+	使用其他的syscall
 
 	
 
@@ -439,4 +442,45 @@
 	syscall中的`chmod(mode)`在rust中与之对应的是`std::os::unix::fs::PermissionsExt`
 	中的`fn set_mode(&mut self, mode: u32)`.
 
+23. 通过不同的系统调用创建不同类型的文件，在创建时指定3个特殊位，和9个权限位。随后
+    可以通过chmod来修改这12位。
 
+24. 通过使用`(2)umask`系统调用来修改当前进程的`umask`这个变量。有意思的是，这个函数
+    不会失败。
+
+25. The umask is used by open(2), mkdir(2), and other system calls that create
+    files to modify the permissions placed on newly created files or directories.  
+	Specifically, permissions in the umask are turned off from the mode argument 
+	to open(2) and mkdir(2).
+
+	> chmod不会受umask影响
+
+26. 文件所有者，一般情况下，一个调用了creat的程序，谁运行这个程序，创建的文件的owner
+	就是谁。 但当文件的SUID被set时，这个程序的所有者是谁，新建的文件的owner就是谁。
+
+	```c
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <fcntl.h>
+
+
+	int main(){
+		int fd = creat("/home/steve/Desktop/test", 0777);
+		if (fd == -1) {
+			perror(NULL);
+			exit(-1);
+		}
+	}
+	```
+	比如这个代码，编译后的程序如果所有人是root，并且编译后的程序的SUID被设置，
+	尽管是steve去运行这个程序，但新建文件的所有人却是root。
+
+	```shell
+	# SUID is set owner is root
+	-rwsrwsr-x 1 root  steve  17K Jan 30 15:50 main 
+	```
+
+	```shell
+	# steve运行这个程序，得到的新文件的owner是root
+	-rwxrwxr-x  1 root  steve    0 Jan 30 16:36 test
+	```
