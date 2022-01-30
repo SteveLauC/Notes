@@ -395,14 +395,46 @@
 	  nor O_TMPFILE is specified, then mode is ignored.
 	  因为我们使用的creat函数就是open加了O_CREAT|O_WRONLY|O_TRUNC这3个flag罢了。
 
+	```c
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <fcntl.h>
+
+
+	int main(){
+    	int fd = creat("/home/steve/Desktop/test", 0040000);
+		if (fd == -1) {
+	        perror(NULL);
+	        exit(-1);
+		}
+	}
+	```
+	`0040000`是dir，但是没有任何的权限和特殊位，结果是:
+	```shell
+	----------  1 steve steve    0 Jan 30 15:19 test
+	```
+	我们创建的是一个普通文件，并没有成功创建目录。尝试使用了各种文件类型的编码，最
+	后创建的都是regualr file，看来creat只能用来创建reg file。
+
+	
+
 
 22. 当使用`int creat(const char *pathname, mode_t mode)`来创建文件时，可以请求将
     新文件的文件权限设置为mode。不过只是请求，而不是命令，最后新文件的文件权限还
-	要看`新建文件掩码`这个变量。
+	要看`新建文件掩码`这个变量，从请求权限中去掉umask才是最后得到的权限
 
 	在rust中，使用`std::fs::OpenoOption::open()`创建文件，默认的权限是`0x666`，如
 	果使用了`OpenoOptionExt'中的mode函数请求设置权限，这两种操作均会和umask相减，
 	得到最终的权限。
+
+	```shell
+	# Linux 上默认的啊掩码
+	# 使用umask命令来查看umask
+	➜  Desktop umask
+	002
+	```
+
+	在macOS上试了下，发现umask默认是022
 
 	syscall中的`chmod(mode)`在rust中与之对应的是`std::os::unix::fs::PermissionsExt`
 	中的`fn set_mode(&mut self, mode: u32)`.
