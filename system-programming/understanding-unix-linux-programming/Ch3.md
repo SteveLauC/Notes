@@ -386,6 +386,15 @@
     为了's'；当sticky bit别设置时，other的执行权限变为了't';
 
 21. 文件一旦被创建，其文件类型就不可以被更改。
+	比如我们先使用`creat()`创建一个reg文件，然后调用`chmod`来修改它，在其文件类型
+	那4位上做一些改变。
+
+	> creat的mode参数是必须提供的，The  mode  argument specifies the file mode 
+      bits be applied when a new file is created.  This argument must be sup‐
+      plied when O_CREAT or O_TMPFILE is specified in flags; if neither O_CREAT
+	  nor O_TMPFILE is specified, then mode is ignored.
+	  因为我们使用的creat函数就是open加了O_CREAT|O_WRONLY|O_TRUNC这3个flag罢了。
+
 
 22. 当使用`int creat(const char *pathname, mode_t mode)`来创建文件时，可以请求将
     新文件的文件权限设置为mode。不过只是请求，而不是命令，最后新文件的文件权限还
