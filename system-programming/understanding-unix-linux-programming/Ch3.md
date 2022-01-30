@@ -499,3 +499,22 @@
 	而在macos的`man 2 open`中写道: When a new file is created, it is given the 
 	group of the directory which contains it.
 
+28. 修改文件的所有者或所属组
+    使用`int chown(const char *pathname, uid_t owner, gid_t group)`来修改文件的所
+	有者或者所属组。当其中的字段不想修改时，传入`-1`即可。
+	
+29. 修改mtime和atime
+    系统调用`int utime(const char *filename, const struct utimbuf *times)`来修改。
+	当times这个参数被传入`NULL`时，时间时间会被设置为当前时间。
+
+	```c
+	/* Structure describing file times.  */
+	struct utimbuf
+	{
+	    __time_t actime;		/* Access time.  */
+	    __time_t modtime;		/* Modification time.  */
+	};
+	```
+
+30. 系统调用`int rename(const char *oldpath, const char *newpath)`可以用来改变文
+    件名，也可以用来移动，其实就是`mv`使用的syscall。
