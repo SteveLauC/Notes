@@ -27,11 +27,47 @@
    必要保存长度了大概？
 
 2. 关于变量
-   作者认为随着对rust理解的逐渐深入，会对变量的理解有更好的理解，并在心中形成mental
+   作者认为随着对rust理解的逐渐深入，会对变量有更好的理解，并在心中形成mental
    model，这种model可以大概分为两类: 
    1. high-level model: 更高的视角，不那么具体，更关心代码的总体结构。对变量而言，就
       是lifetime和borrows。
    2. low-level model: 更加具体，更加底层，注重实现的细节，在处理unsafe code和raw ptr
       时，这个model大有裨益。
 
+3. high-level model
+   在这个model中，我们不把变量看作字节的容器，仅仅把它看作是一种被赋值的名字。当一个
+   value被给了一个variable，这个value就由这个variable命名了。
 
+   当访问一个变量时，可以想想着，绘制一条线，这条线的起点是上次的访问代码语句，终点是
+   当前访问变量的代码。在rust中，一个变量如果被move掉，就不可以再被访问了，在这种画线
+   的思考方式中，就意味着没有线可以从move掉的变量画出了。
+
+   在这种模型中，一个变量只有具有合法的值后，它才"存在"，才可以从它画出线。当一个变量
+   未初始化或被move掉，它就不"存在"。
+
+   使用这种模型或者叫思考方式，整个程序就由各种各样的线组成了，称这种线为flow(感觉中文
+   译作生命线更好哈哈哈)，每一条线都是一个变量的生命历程。编译器会检查各条flow，确保在
+   同一时间各条flow是compatible的(其实就是borrow checker的工作)。比如，对同一个变量，
+   同一时间，不能存在2条flow均对这个变量有写的权限；或者，不能有一条flow借用了一个变量，
+   而没有一个flow拥有这个变量(dangling ptr)。
+
+   ```rust
+   fn main() {
+       let mux x;
+	   x = 42;
+	   let y = &x;
+	   x = 43;
+	   assert_eq!(*y, 42);
+   }
+   ```
+   比如上面这个代码，在第57行x被初始化，那么就可以从这里开始画线，从57行到59行，这条flow
+   拥有这个变量。57-58-60，这条flow共享借用了变量。borrow checker会在每条flow的每个顶点
+   进行判断，是否出现了incompatible的flow，在行59这个顶点处，borrow checker发现，有两条
+   flow，一条拥有变量，一条共享借用了变量，并且borrwo checker知道对于变量x，具有写权限的
+   flow出现时，其他flow应该都不存在，所以borrow checker发现这里是incompatible的flow，拒绝
+   编译。
+
+   varable shawing: 在rust中，如果一个变量已经存在，而在随后的代码中，又使用`let`关键字对
+   这个变量进行重新的binding，这称之为variable shawing。老旧的变量并不会立即调用drop函数，
+   但已经不可以再访问老旧变量。在high-level model的思维方式中，如果一个变量被shadow，那么
+   两者的flow应该是一前一后的两条。
