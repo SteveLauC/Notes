@@ -484,3 +484,18 @@
 	# steve运行这个程序，得到的新文件的owner是root
 	-rwxrwxr-x  1 root  steve    0 Jan 30 16:36 test
 	```
+
+27. 文件所属组
+    The group ownership (group ID) of the new file is set either to the effective 
+	group ID of the process (System V semantics) or to the group ID of the parent 
+	directory (BSD semantics).  On Linux, the behavior depends on whether the 
+	set-group-ID mode bit is set on the parent directory: if that bit is set, 
+	then BSD semantics apply; otherwise, System V semantics apply.  For some 
+	filesystems, the behavior also depends on the bsdgroups and sysvgroups  
+	mount  options described in mount(8)).
+
+	上面这段摘自linux的`man 2 creat`
+
+	而在macos的`man 2 open`中写道: When a new file is created, it is given the 
+	group of the directory which contains it.
+
