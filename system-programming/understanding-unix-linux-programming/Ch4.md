@@ -47,4 +47,28 @@
    的次数。
 
 
+9. hard link 和 symbolic link
+
+   A hardlink isn't a pointer to a file, it's a directory entry (a file) pointing 
+   to the same inode. Even if you change the name of the other file, a hardlink 
+   still points to the file. If you replace the other file with a new version (by 
+   copying it), a hardlink will not point to the new file. You can only have 
+   hardlinks within the same filesystem. With hardlinks you don't have concept of 
+   the original files and links, all are equal (think of it as a reference to an 
+   object). It's a very low level concept.
+
+   On the other hand, a symlink is actually pointing to another path (a file name); 
+   it resolves the name of the file each time you access it through the symlink. 
+   If you move the file, the symlink will not follow. If you replace the file with 
+   another one, keeping the name, the symlink will point to the new file. Symlinks 
+   can span filesystems. With symlinks you have very clear distinction between the 
+   actual file and symlink, which stores no info beside the path about the file 
+   it points to.
+   
+   硬链接是目录表项，是inode级别的链接；而symbolic link则只是文件名层面的链接，如果
+   原文件的文件名改了，slink也就失效了。
+
+   [link](https://askubuntu.com/questions/108771/what-is-the-difference-between-a-hard-link-and-a-symbolic-link/43599#43599)
+   这个问题的回答中的讲解的图片蛮好的。
+
 
