@@ -150,6 +150,8 @@
 11. rust中drop的顺序
 	规则很简单，在变量(包含函数参数)是倒序析构，嵌套的类型是按照源代码的顺序析构
 
+    > 为什么嵌套的类型的析构顺序是正序，因为safe的rust不允许self-reference
+
 	> 变量的倒序是因为在栈上，FILO的特点。书上没有说原因是这个，而是后面的变量可
 	能会引用前面的变量，如果这时前面的析构了，后面的引用就无效了。
 
@@ -196,7 +198,14 @@
             name: Name{
                 inner: "steve".into(),
             },
+    test_nested();
         };
     }
     ```
+
+12. references are pointers that come with an additional contract for how they 
+    can be used, such as whether the refercnce provides exclusive access to the
+    referenced value, or whether the referenced value may also have other references
+    point to it.
+
 
