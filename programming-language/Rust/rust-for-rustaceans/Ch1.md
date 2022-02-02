@@ -78,4 +78,40 @@
 
    > `将变量看作具名的内存块`，这一说法不是很准确，忽略了寄存器。
 
+5. heap
+   在rust中使用堆上的内存，最常见的是使用Box手动显式地将要使用的东西放到堆上，返回一个栈上
+   的指针，8B。
+   
+   ```rust
+   fn main(){
+       let b: Box<i32> = Box::new(1);
+	   println!("{}", std::mem::size_of_val(&b));
+	   // 8
+   }
+   ```
 
+6. `'static`用作trait bound
+   As a trait bound, it means the type does not contain any non-static references. Eg. the 
+   receiver can hold on to the type for as long as they want and it will never become 
+   invalid until they drop it.  
+
+   It's important to understand this means that any *owned* data always passes a 'static 
+   lifetime bound, but a reference to that owned data generally does not:'
+
+   ```rust
+   use std::fmt::Debug;
+
+   fn print_it( input: impl Debug + 'static ) {
+       println!( "'static value passed in is: {:?}", input );
+   }
+
+   fn main() {
+	   // i is owned and contains no references, thus it's 'static:
+	   let i = 5;
+	   print_it(i);
+
+	   // oops, &i only has the lifetime defined by the scope of
+	  // main(), so it's not 'static:
+	   print_it(&i);
+   }
+   ```
