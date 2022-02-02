@@ -100,4 +100,11 @@
 
 12. 每一个进程都有一个当前工作路径，但进程里保存的不是文件名，而是inode号
 
+13. 使用`readdir`和`stat`在mount point拿到的inode不一致，这是因为`readdir`是遍历
+    目录的，拿到的信息并不全面，而`stat`拿到的信息更加全面。在mount point上前者拿
+    到的是总的文件系统上的inode编号，而后者则是mount上去的新文件系统上的inode编号。
+    
+    使用`ls -ali`可以正确地辨别出mount point，拿到另一个fs的inode号。我们在前面自
+    己写的`ls`仅使用了`readdir`，在这里应该是没那么合理的。
+
 
