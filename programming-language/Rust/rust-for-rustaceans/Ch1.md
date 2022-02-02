@@ -155,48 +155,48 @@
 
 	测试代码:
 	```rust
-	use std::ops::Drop;
+    use std::ops::Drop;
 
-	struct Name{
-	    inner: String,
-	}
+    struct Name{
+        inner: String,
+    }
 
-	struct Person{
-		name: Name,
-	}
+    struct Person{
+        name: Name,
+    }
 
-	impl Drop for Name{
-		fn drop(&mut self) {
-			println!("dropping Name: {}", self.inner);
-		}
-	}
+    impl Drop for Name{
+        fn drop(&mut self) {
+            println!("dropping Name: {}", self.inner);
+        }
+    }
 
-	impl Drop for Person{
-		fn drop(&mut self) {
-			println!("dropping Person")
-		}
-	}
+    impl Drop for Person{
+        fn drop(&mut self) {
+            println!("dropping Person")
+        }
+    }
 
-	fn main(){
-		test_variables();
-		test_nested();
-	}
+    fn main(){
+        test_variables();
+        test_nested();
+    }
 
-	fn test_variables(){
-		let n1: Name = Name {
-			inner: "first".into(),
-		};
-		let n2: Name = Name {
-			inner: "second".into(),
-		};
-	}
+    fn test_variables(){
+        let n1: Name = Name {
+            inner: "first".into(),
+        };
+        let n2: Name = Name {
+            inner: "second".into(),
+        };
+    }
 
-	fn test_nested(){
-		let p: Person = Person {
-			name: Name{
-				inner: "steve".into(),
-			},
-		};
-	}
-	```
+    fn test_nested(){
+        let p: Person = Person {
+            name: Name{
+                inner: "steve".into(),
+            },
+        };
+    }
+    ```
 
