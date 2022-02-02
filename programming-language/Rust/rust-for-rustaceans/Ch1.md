@@ -124,13 +124,79 @@
        F: Send + 'static,
        T: Send + 'static, 
 	```
-	因为新的thread可能outlive当前的线程，所以这个闭包必须自给自足(owned)，或者说借用的都
-	是在整个程序的生命周期都合法的东西。
+	因为新的thread可能outlive当前的线程，所以这个闭包必须自给自足(owned)，或者
+	说借用的都是在整个程序的生命周期都合法的东西。
 
 8. rust中的`const`函数是可以给`const/static`的变量赋值的函数
 
-9. 在rust中的static标记的东西并不一定是在static memory里的东西，例如owned的东西自己自足。
+9. 在rust中的static标记的东西并不一定是在static memory里的东西，例如owned的东西
+   自己自足。
+
+10. 试想一下在rust中，`Box`类型是Copy的会怎样
+    ```rust
+	fn main(){
+		let b: Box<i32> = Box::new(1);
+		let cpy_b: Box<i32> = b;
+	}
+	```
+
+	`b`和`cpy_b`是两个具有相同值的指针，他们都对堆上这块存储着`1`的内存负责，当
+	main函数要执行完，这两个指针都会尝试去释放堆上的内存。也就是出现那种double
+	free的问题
+	写cpp的时候，如果是一个class含指针，实现浅拷贝，最后的析构函数如果对指针直接
+	delete/free可能会出现这个问题。
 
 
+11. rust中drop的顺序
+	规则很简单，在变量(包含函数参数)是倒序析构，嵌套的类型是按照源代码的顺序析构
 
+	> 变量的倒序是因为在栈上，FILO的特点。书上没有说原因是这个，而是后面的变量可
+	能会引用前面的变量，如果这时前面的析构了，后面的引用就无效了。
+
+	测试代码:
+	```rust
+	use std::ops::Drop;
+
+	struct Name{
+		inner: String,
+	}
+
+	struct Person{
+		name: Name,
+	}
+
+	impl Drop for Name{
+		fn drop(&mut self) {
+			println!("dropping Name: {}", self.inner);
+		}
+	}
+
+	impl Drop for Person{
+		fn drop(&mut self) {
+			println!("dropping Person")
+		}
+	}
+
+	fn main(){
+		test_variables();
+		test_nested();
+	}
+
+	fn test_variables(){
+		let n1: Name = Name {
+			inner: "first".into(),
+		};
+		let n2: Name = Name {
+			inner: "second".into(),
+		};
+	}
+
+	fn test_nested(){
+		let p: Person = Person {
+			name: Name{
+				inner: "steve".into(),
+			},
+		};
+	}
+	```
 
