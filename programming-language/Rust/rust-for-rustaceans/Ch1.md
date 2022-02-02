@@ -158,7 +158,7 @@
 	use std::ops::Drop;
 
 	struct Name{
-		inner: String,
+	    inner: String,
 	}
 
 	struct Person{
