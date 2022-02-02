@@ -115,3 +115,22 @@
 	   print_it(&i);
    }
    ```
+
+7. `'static`做trait bound的一个典型用法就是`std::thread::spawn`
+   ```rust
+   pub fn spawn<F, T>(f: F) -> JoinHandle<T> 
+   where
+       F: FnOnce() -> T,
+       F: Send + 'static,
+       T: Send + 'static, 
+	```
+	因为新的thread可能outlive当前的线程，所以这个闭包必须自给自足(owned)，或者说借用的都
+	是在整个程序的生命周期都合法的东西。
+
+8. rust中的`const`函数是可以给`const/static`的变量赋值的函数
+
+9. 在rust中的static标记的东西并不一定是在static memory里的东西，例如owned的东西自己自足。
+
+
+
+
