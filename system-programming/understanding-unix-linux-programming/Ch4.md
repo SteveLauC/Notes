@@ -65,10 +65,39 @@
    actual file and symlink, which stores no info beside the path about the file 
    it points to.
    
-   硬链接是目录表项，是inode级别的链接；而symbolic link则只是文件名层面的链接，如果
-   原文件的文件名改了，slink也就失效了。
+   硬链接是目录表项，是inode级别的链接；而symbolic link则只是文件名层面的链接，
+   如果原文件的文件名改了，slink也就失效了。
+   
+   如回答所说，inode是不可以跨文件系统的，不同的文件系统的inode是不同编址的。
 
    [link](https://askubuntu.com/questions/108771/what-is-the-difference-between-a-hard-link-and-a-symbolic-link/43599#43599)
    这个问题的回答中的讲解的图片蛮好的。
+
+10. 删除文件`rm`使用的系统调用是`unlink`，本身就存在`(1)unlink`用来删除文件
+
+    ```c
+    int unlink(const char *pathname);
+    ```
+
+11. `mv`命令使用的系统调用是`rename`
+    
+    ```c
+    int rename(const char *oldpath, const char *newpath);
+    ```
+
+    它的工作流程是: 
+    1. 在新的目录中添加新entry
+    2. 在旧的目录中删除entry
+
+    > 在以前是没有`rename`这个系统调用的，有的仅是`unlink`和`link`，先`link`，也
+    就是在新的目录中添加一项，然后再`unlink`删去旧目录项。
+
+    ```c
+    if (link("old", "new") != -1) {
+        unlink("old");
+    }
+    ```
+
+12. 每一个进程都有一个当前工作路径，但进程里保存的不是文件名，而是inode号
 
 
