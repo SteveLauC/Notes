@@ -258,3 +258,50 @@
     而如果`input`和`output`可以指向同一个值的话，其指向的值又是1的话，那么最后其值
     会变成3；不会指向同一个值而input是1的话，output会是2.
 
+15. `mut ref`的可变形只能是改变最近的那一层指针，也就是只能改变它指向的东西。如果这
+    个`mut ref`是很多级指针，更高层的可变形，要看更高层的ref是不是mut的了。
+
+    ```rust
+    let x = 42;
+    let y: &i32 = &x;
+    let z: &mut &i32 = &mut y;
+    ```
+    这段代码，z可以修改`y`，但不能间接地修改`x`，因为中间人`y`是不可变的借用。
+
+16. 在rust里，`mut ref`和`onwer`的区别就在于:
+    1. `owner`需要负责析构。
+    2. 当你将一个`mut ref`后面的值move走以后，需要给一个新的，因为`owner`要析构
+    ，不能没有值给它去析构。
+    
+    > 在safe的rust中貌似不能通过ref move掉背后的值，error[E0507]: cannot move 
+    out of `*r` which is behind a mutable reference，`r`是一个`mut ref`。不可以
+    直接move，只能间接换
+
+    ```rust
+    // Replaces dest with the default value of T, returning the previous dest 
+    // value.
+    std::mem::take 
+    pub fn take<T>(dest: &mut T) -> T 
+    where
+        T: Default, 
+
+    // Swaps the values at two mutable locations, without deinitializing either 
+    // one.
+    std::mem::swap
+    pub fn swap<T>(x: &mut T, y: &mut T)
+    ```
+
+17. 当被borrow时就不能重新赋值了，无论是怎样的borrow。 
+    ```rust
+    fn main(){
+        let mut x: i32 = 42;
+        let r: &mut i32 = &mut x;
+        x = 8;
+        println!("{}", r);
+    }
+    // mut ref 出现时，同样不能赋值
+    error[E0506]: cannot assign to `x` because it is borrowed
+    ```
+
+18. `std::mem::take`是`std::mem::replace(&mut value, Default::dafalutl())`的一种
+    语法糖
