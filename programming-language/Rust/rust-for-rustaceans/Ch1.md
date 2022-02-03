@@ -208,4 +208,53 @@
     referenced value, or whether the referenced value may also have other references
     point to it.
 
+13. 当有`shared reference`时，rust编译器会保证在`reference`背后的值不会发生改变。
+    以下代码的断言应该永远成立:
+    ```rust
+    fn cache(input: &i32, sum: &mut i32) {
+        *sum = *input + *input;
+        assert_eq!(*sum, *input * 2);
+    }
+    ```
+     
+    `shared ref`没有权限去更改ref后面的值，并且，当`shared ref`存在时，mut的原变量
+    也没有更新值的权利。`shared ref`就像是把一个东西借给别人看一看，当你借出去后，
+    不能动小手脚，借给人家时什么样人家在借用期间就得是什么样。
+    ```rust
+    fn main()
+        let mut x: i32 = 1;
+        let shared_ref: &i32 = &x;
+        x = 5;
+        println!("{}", shared_ref);
+    }
+    // 上段代码编译不过。
+    ```
+14. `mutable ref`是独占的，所以rustc在某些代码中可以给出特殊的优化:
+    ```rust
+    fn noalias(input: &i32, output: &mut i32) {
+        if *input == 1 {
+            *output = 2;
+        }
+        if *input != 1 {
+            *output = 3;
+        }
+    }
+    ```
+    
+    比如这段代码，由于`output`是`mutable ref`，是独占的，所以rustc可以确定input和
+    output不是一个东西，第一个if的赋值不会影响第二个if的判断，不需要去再执行第二
+    个分支两个if可以合并为一个.
+
+    ```rust
+    fn noalias(input: &i32, output: &mut i32) {
+        if *input == 1 {
+            *output = 2;
+        }else{
+            *output = 3;
+        }
+    }
+    ```
+
+    而如果`input`和`output`可以指向同一个值的话，其指向的值又是1的话，那么最后其值
+    会变成3；不会指向同一个值而input是1的话，output会是2.
 
