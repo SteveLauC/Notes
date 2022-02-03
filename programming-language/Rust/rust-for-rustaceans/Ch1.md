@@ -305,3 +305,56 @@
 
 18. `std::mem::take`是`std::mem::replace(&mut value, Default::dafalutl())`的一种
     语法糖
+ 
+19. 看代码
+
+    ```rust
+    fn main(){
+        let str: String = String::from("old string");
+        let p: &mut String = &mut str;
+
+        *p = String::from("new string");
+        // `old string` is dropped immediately
+    }
+    ```
+    当老旧的值被替换掉，老旧的值立即被drop
+
+20. interior mutability
+    some types provide interior mutabilitym, meaning they allow you to mutate a
+    value through a shared reference.
+
+    在rust中的`interior mutability`的类型可以按照实现方式分为两类:
+    1. 真的通过`shared ref`给你`mutable ref`，比如`Mutex`或者`RefCell`
+    2. 一个萝卜一个坑，不给你`shared ref`但是给你替换它内部数据的能力，直接换掉。
+    比如`atomic`或者是`Cell`。
+
+21. 下面这段代码挺不可思议
+
+    ```rust
+    fn main(){
+        let mut x = Box::new(4);
+        let r = &x;
+        *x = 8;
+        println!("{}", r);
+    }
+    ```
+
+    这段代码无法通过编译，会报:
+
+    ```rust
+    error[E0506]: cannot assign to `*x` because it is borrowed
+     --> src/main.rs:4:5
+       |
+     3 |     let r = &x;
+       |             -- borrow of `*x` occurs here
+     4 |     *x = 8;
+       |     ^^^^^^ assignment to borrowed `*x` occurs here
+     5 |     println!("{}", r);
+             |                    - borrow later used here
+
+     For more information about this error, try `rustc --explain E0506`.
+     ```
+     按照逻辑，被借用的是`x`，这是一个栈上的指针，里面的值是堆上的地址，我借用的是
+     `x`而修改的是堆上的值，这两码事啊
+
+     怎么说，借用的是`x`，但是`r`的操作还是对堆上的值进行操作的。
