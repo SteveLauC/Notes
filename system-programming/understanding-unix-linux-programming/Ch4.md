@@ -108,3 +108,22 @@
     己写的`ls`仅使用了`readdir`，在这里应该是没那么合理的。
 
 
+14. UNIX的文件系统树:
+    每个分区都有自己的文件系统树，有一个是主分区，主分区的文件树的根是真的整个文件
+    的根。而其他分区，需要将其根挂到主分区树的叶子上，这就是mount操作。
+
+15. 可以使用`mount`命令查看目前系统中有哪些挂载点
+
+16. 同一个inode编号，可以出现在不同的文件系统上，也就是说inode号无法标识一个具体的
+    文件。设备号+inode可以唯一地标识具体的文件。
+
+    正是由于这个特性，`link`命令拒绝用来创建跨越文件系统的硬链接。
+
+    > 在`(2)link`的手册中可以看到这样的错误信息，link是ln命令的内部系统调用
+    EXDEV  oldpath and newpath are not on the same mounted filesystem.  
+    (Linux permits a filesystem to be mounted at multiple points, but link() does 
+    not work across different mount  points, even if the same filesystem is mounted 
+    on both.) 
+
+    硬链接是靠inode实现的，不可以跨文件系统，而软链接则是靠文件名链接起来的，是可以跨
+    文件系统的。
