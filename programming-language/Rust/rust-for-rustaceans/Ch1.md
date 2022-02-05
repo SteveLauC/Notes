@@ -402,3 +402,62 @@
     2. 一个类型可以有都很多个生命周期参数，但是通常1个就够了。只有当你的类型实现的某
     一个函数需要返回一个引用，而这个引用只依赖于你类型中的某一个引用，这时可以给多个
     生命周期参数。如果只给一个，可能类型中不被依赖的引用会连累函数的返回引用。
+
+    比如下面这个代码就有必要使用两个生命周期参数，不能被delimiter连累了返回值
+
+    ```rust
+    struct StrSplit<'s, 'p>{
+        delimiter: &'p str,
+        document: &'s str,
+    }
+
+    impl<'s, 'p> Iterator for StrSplit<'s, 'p> {
+        type Item = &'s str;
+
+        fn next(&mut self)->Option<Self::Item>{
+            todo!()
+        }
+    }
+
+    // 函数签名应用了生命周期缺省规则 规定s outlives 返回值
+    // 在函数内部的实现中，我们也遵循了函数签名的要求
+    // document outlives next的返回值
+    // 刚好s就是document next返回值是函数的返回值
+    fn str_before(s: &str, c: char) -> Option<&str>{
+        StrSplit{
+            delimiter: &c.to_string(),
+            document: s,
+        }.next()
+    }
+
+    fn main(){}
+    ```
+
+    如果`StrSplit`中的范型都改为一个，那么就无法通过编译
+
+    ```rust
+    error[E0515]: cannot return value referencing temporary value
+      --> src/main.rs:19:5
+         |
+      19 | /     StrSplit{
+      20 | |         delimiter: &c.to_string(),
+         | |                     ------------- temporary value created here
+      21 | |         document: s,
+      22 | |     
+         }.next()
+            | |____________^ returns a value referencing data owned by the current function
+
+    For more information about this error, try `rustc --explain E0515`.
+    error: could not compile `t` due to previous error
+    // 因为你的delimiter和document有相同的生命周期标记，next返回的值的生命周期
+    // 标记也是这个
+    // 那么就要求: document的实例 >= 's >= 返回值(1)
+    //             delimiter的实例>= 's >= 返回值(2)
+    // 然而delimiter的实例是一个局部变量，所以按照(2)要求返回值的生命周期也在这
+    // 个函数内，但next将其传出了函数体，在rustc眼里就不行了，它感觉出现了悬垂指针
+    // 但其实不是悬垂指针，我们知道按照next的实现，next传出的东西不依赖于delimiter
+    // 只依赖document，都怪在类型定义时给了相同的生命周期标记，连累了document
+    ```
+
+25. 在思考结构体的生命周期范型参数时，对于结构体判断两个方面，1是其实例的构造，想
+    象一个构造函数，2是其具体的函数应用，在结合impl块中的函数签名来判断。
