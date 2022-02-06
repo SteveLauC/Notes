@@ -451,8 +451,8 @@
     error: could not compile `t` due to previous error
     // 因为你的delimiter和document有相同的生命周期标记，next返回的值的生命周期
     // 标记也是这个
-    // 那么就要求: document的实例 >= 's >= 返回值(1)
-    //             delimiter的实例>= 's >= 返回值(2)
+    // 那么就要求: document的实例 >= 's >= 返回值 (1)
+    //             delimiter的实例>= 's >= 返回值 (2)
     // 然而delimiter的实例是一个局部变量，所以按照(2)要求返回值的生命周期也在这
     // 个函数内，但next将其传出了函数体，在rustc眼里就不行了，它感觉出现了悬垂指针
     // 但其实不是悬垂指针，我们知道按照next的实现，next传出的东西不依赖于delimiter
