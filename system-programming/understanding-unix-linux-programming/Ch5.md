@@ -17,4 +17,19 @@
    从设备号，主设备号确定处理该设备的子程序(驱动程序)，而从设备号是参数，需要传
    递到子程序中。如上面代码中的`136,x`就是这样的`主设备号,从设备号`
 
+2. c中的`char *fgets(char *s, int size, FILE *stream);`函数，如果代码中这样写:
 
+   ```c
+   while(fgets(buf, BUFSIZE, stdin) != NULL) {
+       // some code...
+   }
+   ```
+
+   > fgets() returns s on success, and NULL on error or when end of file occurs 
+   while no characters have been read. 
+
+   那说明这是一直读，直到遇到EOF。
+
+   >  Reading stops after an EOF or a newline
+
+   虽然遇到换行函数会返回，但不会返回NULL
