@@ -36,10 +36,10 @@
 
    |contents|return value|
    |--------|------------|
-   |xxx<NEWLINE>| valid ptr|
-   |xxx<EOF>|valid ptr|
-   |<NEWLINE>|valid ptr|
-   |<EOF>|NULL|
+   |xxx`NEWLINE`| valid ptr|
+   |xxx`EOF`|valid ptr|
+   |`NEWLINE`|valid ptr|
+   |`EOF`|NULL|
 
 
 3. 原来rust里的`raw string`中的`#`可以不限数量的，只要双引号前后的`#`数量是一样的
