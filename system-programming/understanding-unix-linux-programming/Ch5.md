@@ -28,8 +28,21 @@
    > fgets() returns s on success, and NULL on error or when end of file occurs 
    while no characters have been read. 
 
-   那说明这是一直读，直到遇到EOF。
-
    >  Reading stops after an EOF or a newline
 
-   虽然遇到换行函数会返回，但不会返回NULL
+   这个函数当遇到`EOF`或者`newline`时都会返回，但只有当遇到`EOF`时才返回`NULL`。
+   所以上面的代码片段中的这种写法，是loop until EOF.
+
+
+3. 原来rust里的`raw string`中的`#`可以不限数量的，只要双引号前后的`#`数量是一样的
+   就可以。
+
+   ```rust
+   let s1 = r"raw string";
+   let s2 = r#"raw string"#;
+   let s3 = r##"raw string"##;
+   let s4 = r###"raw string"###;
+   ```
+
+4. 发现`std::io::Read`里的函数都没有处理`newline`，如果想要遇到`newline`就使函数返回
+   只能使用`std::io::BufRead`里的函数了。
