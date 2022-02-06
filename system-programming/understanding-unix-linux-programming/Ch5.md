@@ -54,3 +54,18 @@
 
 4. 发现`std::io::Read`里的函数都没有处理`newline`，如果想要遇到`newline`就使函数返回
    只能使用`std::io::BufRead`里的函数了。
+
+5. 如果要在rust中模拟c函数`fgets`的行为，可以使用`std::io::BufRead::read_until`，并
+   将`delimiter`设为`newline`。理论上和`fgets`的行为应该是一致的。
+
+   |input|return value|
+   |-----|------------|
+   |xx`newline`|Ok(3)|
+   |xx`EOF`|Ok(2)|
+   |`newline`|Ok(1)|
+   |`EOF`|Ok(0)|
+
+   和`2`中的图表对比，发现蛮一致的。
+
+
+
