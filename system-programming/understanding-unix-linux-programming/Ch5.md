@@ -67,5 +67,45 @@
 
    和`2`中的图表对比，发现蛮一致的。
 
+6. 目录并不知道一个文件是设备文件还是磁盘文件，因为目录仅仅是文件名和inode的映射。但是
+   inode节点知道，磁盘文件的inode节点中存储了数据块的编号，设备文件的inode节点中存储的
+   是驱动程序的地址。在`stat`结构体中的`st_mode`字段可以区别是什么文件。
 
+7. 磁盘文件与设备文件具有相似之处，可以进行读写(如果有权限的话)。他们也有不同之处，比如
+   都具有各自独有的属性。
+
+8. 磁盘连接的属性: (介绍2点)
+   1. 缓冲
+   2. 自动添加模式
+
+   与磁盘文件有关的属性被编码在`int`变量中，可以使用`fcntl`函数进行抓取。注意属性是与连接
+   相关的，每一个连接都是一个文件描述符，也就是和`fd`相关的。
+
+   下面给出关闭缓冲的代码:
+   ```c
+   #include <stdio.h>
+   #include <fcntl.h>
+   #include <stdlib.h>
+
+   int main(){
+       // get file descriptor
+       int fd = open("./main.c", O_WRONLY); 
+       if (fd == 0) {
+            fprintf(stderr, "cannot open file");
+            perror(NULL);
+            exit(-1);
+       }
+
+       // fetch configuration
+       int cfg = fcntl(fd, F_GETFD);
+       // change configuration
+       cfg|=O_SYNC;
+       // send it back
+       int res = fcntl(fd, F_SETFD, cfg);
+
+       if (res == 1) {
+            perror("setting sync");
+       }
+    }
+    ```
 
