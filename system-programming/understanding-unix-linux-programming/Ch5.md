@@ -26,12 +26,20 @@
    ```
 
    > fgets() returns s on success, and NULL on error or when end of file occurs 
-   while no characters have been read. 
+   *while no characters have been read.*这句话的很半句很关键，只有当`仅有EOF`时
+   才返回NULL。
 
    >  Reading stops after an EOF or a newline
 
-   这个函数当遇到`EOF`或者`newline`时都会返回，但只有当遇到`EOF`时才返回`NULL`。
+   这个函数当遇到`EOF`或者`newline`时都会返回，但只有当遇到`仅EOF`时才返回`NULL`。
    所以上面的代码片段中的这种写法，是loop until EOF.
+
+   |contents|return value|
+   |--------|------------|
+   |xxx<NEWLINE>| valid ptr|
+   |xxx<EOF>|valid ptr|
+   |<NEWLINE>|valid ptr|
+   |<EOF>|NULL|
 
 
 3. 原来rust里的`raw string`中的`#`可以不限数量的，只要双引号前后的`#`数量是一样的
