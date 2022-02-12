@@ -74,9 +74,19 @@
 7. 磁盘文件与设备文件具有相似之处，可以进行读写(如果有权限的话)。他们也有不同之处，比如
    都具有各自独有的属性。
 
-8. 磁盘连接的属性: (介绍2点)
+8. 文件(磁盘)连接的属性: (介绍2点)
    1. 缓冲
-   2. 自动添加模式
+   2. 自动添加模式: 自动添加模式指的是，`O_APPEND`这个参数，即对文件的写是追加，需要注意
+   的是，追加是由两部组成的，先lseek指针到文件尾，然后再写，当`O_APPEND`被开启时，这两个
+   子步骤会变为一个原子操作，由此可以免疫当不同文件都追加时可能会造成的race condition.
+
+   > The file is opened in append mode.  Before each write(2), the file offset is 
+   positioned at the end of the file, as if with lseek(2).  The modification of 
+   the file offset and the write operation are performed as a single atomic step.
+
+   > 在rust的`pub fn append(&mut self, append: bool) -> &mut Self`也写到了For most 
+   filesystems, the operating system guarantees that all writes are atomic: no 
+   writes get mangled because another process writes at the same time.
 
    与磁盘文件有关的属性被编码在`int`变量中，可以使用`fcntl`函数进行抓取。注意属性是与连接
    相关的，每一个连接都是一个文件描述符，也就是和`fd`相关的。
@@ -97,9 +107,9 @@
        }
 
        // fetch configuration
-       int cfg = fcntl(fd, F_GETFD);
+       int cfg = fcntl(fd, F_GETFD); 
        // change configuration
-       cfg|=O_SYNC;
+       cfg|=O_SYNC;                                // set O_APPEND cfg|=O_APPEND
        // send it back
        int res = fcntl(fd, F_SETFD, cfg);
 
@@ -108,4 +118,15 @@
        }
     }
     ```
+   > 上面给出的代码是使用`fcntl`来操纵文件描述符的，我们也可以在使用`open`打来文
+   件时就对文件描述符进行操作。
 
+9. `O_EXCL`，这个flag用于避免不同进程同时创建相同名字的文件。一般来说，在创建文件
+   时会先使用`stat`查看文件是否存在，不存在则调用`open`创建。但当两个进程都在这样
+   做，且`stat`和`open`没有构成原子操作时，就会出问题，`O_EXCL`会令两个函数成为原
+   子操作。
+
+10. 打开文件的一些`flag`在rust中独立成为了构造函数`OpenOption`，其他的没有的可以使
+   用`std::os::unix::fs::OpenOptionsExt`里面的`fn custom_flags(&mut self, flags: 
+   i32) -> &mut Self;`来配置，flags的类型是i32，rust并没有给你这些配置的数字宏，需
+   要引入`libc`
