@@ -127,6 +127,9 @@
    子操作。
 
 10. 打开文件的一些`flag`在rust中独立成为了构造函数`OpenOption`，其他的没有的可以使
-   用`std::os::unix::fs::OpenOptionsExt`里面的`fn custom_flags(&mut self, flags: 
+    用`std::os::unix::fs::OpenOptionsExt`里面的`fn custom_flags(&mut self, flags: 
    i32) -> &mut Self;`来配置，flags的类型是i32，rust并没有给你这些配置的数字宏，需
    要引入`libc`
+
+11. 回车(carriage return: ascii 13)和换行(new line: ascii 10)
+    在一起拿 
