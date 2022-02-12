@@ -121,15 +121,23 @@
    > 上面给出的代码是使用`fcntl`来操纵文件描述符的，我们也可以在使用`open`打来文
    件时就对文件描述符进行操作。
 
-9. `O_EXCL`，这个flag用于避免不同进程同时创建相同名字的文件。一般来说，在创建文件>
-   时会先使用`stat`查看文件是否存在，不存在则调用`open`创建。但当两个进程都在这样>
-   做，且`stat`和`open`没有构成原子操作时，就会出问题，`O_EXCL`会令两个函数成为原>
-   子操作。
+9. `O_EXCL`，这个flag用于避免不同进程同时创建相同名字的文件。一般来说，在创建文件
+    时会先使用`stat`查看文件是否存在，不存在则调用`open`创建。但当两个进程都在这样
+    做，且`stat`和`open`没有构成原子操作时，就会出问题，`O_EXCL`会令两个函数成为原
+    子操作。
 
 10. 打开文件的一些`flag`在rust中独立成为了构造函数`OpenOption`，其他的没有的可以使
-   用`std::os::unix::fs::OpenOptionsExt`里面的`fn custom_flags(&mut self, flags: 
-   i32) -> &mut Self;`来配置，flags的类型是i32，rust并没有给你这些配置的数字宏，需
-   要引入`libc`
+    用`std::os::unix::fs::OpenOptionsExt`里面的`fn custom_flags(&mut self, flags: 
+    i32) -> &mut Self;`来配置，flags的类型是i32，rust并没有给你这些配置的数字宏，需
+    要引入`libc`
 
-11. 回车(carriage return: ascii 13)和换行(new line: ascii 10)
-   在一起拿 
+11. 回车(carriage return `\r`: ascii 13)和换行(new line`\n`: ascii 10)的区别  
+
+    在历史上，那种打字机器，光标可以左右移动，也可以上下移动(纸固定)，回车就是将光
+    标移动到最左边，而换行则是移动到下一行(无左右移动)。  
+    
+    到了现在的计算机，`\n`则是既有回车又有换行，所以在UNIX系统中，标志文件的一行结
+    束使用的是`\n`，`\r`则什么都不是。在c语言中(后来语言大多受他影响也是这样)，`\r`
+    仍然是将光标移动到最左边的功能，而`\n`则是回车加换行。
+
+12. 如果是连续地从`stdin`读取字节，可以使用`std::io::Read`中的`bytes()`函数
