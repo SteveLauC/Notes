@@ -141,3 +141,45 @@
     仍然是将光标移动到最左边的功能，而`\n`则是回车加换行。
 
 12. 如果是连续地从`stdin`读取字节，可以使用`std::io::Read`中的`bytes()`函数
+
+13. listchar这个程序说明了几件事:
+    1. 我们输入的字符，只有在摁下回车后才发送给了listchar程序，说明终端的输入是
+    缓冲的
+    2. 我们摁下的return键是回车(ascii 13)，而listchar接受到的则是ascii 10
+    3. 当listchar程序向终端发送ascii 10时，终端的光标做出的反应则是既回车又换行
+    (和11点中记录的一致。)
+
+    > 这些东西都是由终端驱动程序完成的，对普通用户来说是透明的。
+
+14. stty - change and print terminal line settings 
+    stty程序可以用来查看或者修改终端驱动程序的行为。
+
+    比如使用`stty -a`命令来查看所有关于终端驱动程序的设置:
+
+    ```shell
+    ➜  02.listchars git:(main) stty -a
+    speed 38400 baud; rows 44; columns 198; line = 0; 
+    intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>; eol2 = <undef>; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; discard = ^O;
+    min = 1; time = 0;
+    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
+    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff -iuclc -ixany -imaxbel -iutf8
+    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+    isig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke -flusho -extproc
+    ```
+
+    比如在上面，`^C`是中断，`^D`是EOF，这些是控制字符。
+
+    `echo`是个布尔值，代表回显的打开与否，布尔值的变量，前面有`-`则表示布尔值为
+    假，相应功能关闭，没有`-`则表示布尔真，相应功能打开。
+
+    除了可以从配置变量类型的角度区分(控制字符是char类型，有的是布尔类型)，还可以
+    从功能上，有的控制输入，有的控制输出。比如`icrnl`指的是在输入中，将回车改为换
+    行，`olcuc`指的是在输出中，将所有小写字符变为大写字符(lc to uc)。
+
+    使用`stty`修改终端驱动程序配置的命令示例:
+
+    ```shell
+    stty -echo # 关闭回显，zsh不适用，切换bash测试
+    stty olcuc # 使输出全部转为大写字母
+    ```
+    
