@@ -202,14 +202,36 @@
     }
     ```
 
-    这是结构体的完整样子，使用`man termios`并没有给出结构体的定义，所以我直接从libc
-    这个crate那里拿过来了。
+    这是结构体的完整样子，使用`man termios`并没有给出结构体的定义，所以我直接从
+    libc这个crate那里拿过来了。
 
-    我们估计用不到这么多的字段，我们会用到前4个字段，`i/o/c/l`分别意味着`input/outpu
-    t/control/local`，是stty设置属性的4种分类。其类型`tcflag_t`是`unsigned int`的别名。
+    我们估计用不到这么多的字段，我们会用到前4个字段，`i/o/c/l`分别意味着`input/
+    output/control/local`，是stty设置属性的4种分类。其类型`tcflag_t`是`unsigned
+    int`的别名。
 
     所以写`stty`的过程蛮清晰，我们先准备好一个结构体buffer，然后调用`int tcgetattr(
-    int fd, struct termios *termios_p);`拿到这个配置，放到我们的buffer中，然后对buffer
-    的字段进行修改，再使用`int tcsetattr(int fd, int optional_actions, const struct 
-    termios *termios_p);`将其送回内核。注意看这2个函数的参数，都有一个参数是`fd`，和文
-    件连接一样，都是面向`fd`的。
+    int fd, struct termios *termios_p);`拿到这个配置，放到我们的buffer中，然后要知道你
+    要修改的设置属于4类中的哪类，然后对其相应的字段进行修改，再使用`int tcsetattr(int 
+    fd, int optional_actions, const struct termios *termios_p);`将其送回内核。注意看这
+    2个函数的参数，都有一个参数是`fd`，和文件连接一样，都是面向`fd`的。
+
+    > 蛮有意思的是，这个get和set的系统调用就像是搬运工一样，从内核态搬运到用户态然后再
+    搬运回去。
+
+    `tcsetattr`里的`optional_actions`参数用来设置，你做出的更改何时生效：
+    * TCSANOW the change occurs immediately.立刻生效
+
+    * TCSADRAIN the change occurs after all output written to fd has been 
+    transmitted. This option should be used when changing parameters that 
+    affect output.
+    等待直到驱动程序队列中的所有输出都被传送到终端，然后进行驱动程序的更新
+
+    * TCSAFLUSH the change occurs after all output written to the object referr
+    ed by fd has been transmitted, and all input that has been received but not 
+    read will be discarded before the change is made.
+    等到直到驱动程序队列中的所有输出都被传送出去，然后释放所有队列中的输入数据，
+    并进行一定的变化。
+
+    > 没有搞懂后面两个选项，什么是fd以及object referred by fd？
+
+
