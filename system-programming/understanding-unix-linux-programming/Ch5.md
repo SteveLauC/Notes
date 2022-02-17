@@ -183,3 +183,33 @@
     stty olcuc # 使输出全部转为大写字母
     ```
     
+15. 编写stty程序
+    编写控制tty驱动程序的程序和编写控制文件连接设置是类似的，都是先拿到这个设置，
+    然后对设置进行修改，再将设置送回去。在文件连接设置那里，我们拿到的设置是一个
+    `int`，而stty的设置我们拿到的，则是一个结构体。
+
+    ```rust
+    #[repr(C)]
+    pub struct termios {
+        pub c_iflag: tcflag_t,
+        pub c_oflag: tcflag_t,
+        pub c_cflag: tcflag_t,
+        pub c_lflag: tcflag_t,
+        pub c_line: cc_t,
+        pub c_cc: [cc_t; 32],
+        pub c_ispeed: speed_t,
+    r   pub c_ospeed: speed_t,
+    }
+    ```
+
+    这是结构体的完整样子，使用`man termios`并没有给出结构体的定义，所以我直接从libc
+    这个crate那里拿过来了。
+
+    我们估计用不到这么多的字段，我们会用到前4个字段，`i/o/c/l`分别意味着`input/outpu
+    t/control/local`，是stty设置属性的4种分类。其类型`tcflag_t`是`unsigned int`的别名。
+
+    所以写`stty`的过程蛮清晰，我们先准备好一个结构体buffer，然后调用`int tcgetattr(
+    int fd, struct termios *termios_p);`拿到这个配置，放到我们的buffer中，然后对buffer
+    的字段进行修改，再使用`int tcsetattr(int fd, int optional_actions, const struct 
+    termios *termios_p);`将其送回内核。注意看这2个函数的参数，都有一个参数是`fd`，和文
+    件连接一样，都是面向`fd`的。
