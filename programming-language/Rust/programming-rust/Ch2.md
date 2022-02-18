@@ -49,3 +49,17 @@
    `slice`中的`Iter`结构体(迭代器)，而有的类型就是自己的module中的`iter`和`Iter`(类型于
    `IntoIter`).
 
+8. pub fn trim(&self) -> &str
+   这个函数返回参数的substring，和C中自己控制指针移动相似，是reslice。
+
+9. 将字符串变小写，如果仅仅是ascii的字符串，可以使用`pub fn make_ascii_lowercase
+   (&mut self)`，这个可以不需要额外的空间分配，是在原内存处直接修改，将小写字母变为
+   大写字幕。如果是UNICODE的小写变大写，由于:
+
+   > ‘Lowercase’ is defined according to the terms of the Unicode Derived Core 
+   Property Lowercase. Since some characters can expand into multiple characters 
+   when changing the case, this function returns a String instead of modifying 
+   the parameter in-place.
+
+   所以需要使用额外的空间，其函数签名是这样的`pub fn to_lowercase(&self) -> String`
+   在堆上进行了额外的内存分配。
