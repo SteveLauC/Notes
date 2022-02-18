@@ -63,3 +63,24 @@
 
    所以需要使用额外的空间，其函数签名是这样的`pub fn to_lowercase(&self) -> String`
    在堆上进行了额外的内存分配。
+
+10. 字符串的寻找
+    str提供了`find`和`rfind`两种方法，可以返回子串在母串的最左和最右的第一个字符
+    的索引值.
+
+    ```rust
+    pub fn rfind<'a, P>(&'a self, pat: P) -> Option<usize>
+    where
+        P: Pattern<'a>,
+        <P as Pattern<'a>>::Searcher: ReverseSearcher<'a>,
+    ```
+
+    ```rust
+    pub fn find<'a, P>(&'a self, pat: P) -> Option<usize>
+    where
+        P: Pattern<'a>,
+    ```
+11. 当我们在`cargo.toml`中指明版本是`1`时，cargo会自动帮我们选出在`2`之前的最新版本
+    因为`2`的主版本号变动了，所以crate作者可以引入不兼容的API。
+
+12. 在终端实现彩色的输出，有一个`text-colorizer`的crate可以帮忙做到。
