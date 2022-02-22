@@ -1,4 +1,5 @@
-1. 想要使用`gdb`进行调试时，`gcc`需要给出`-g`的参数，来让它在编译时产生一些`gdb`可以进行使用的信息。
+1. 想要使用`gdb`进行调试时，`gcc`需要给出`-g`的参数，来让它在编译时产生一些`gdb`
+   可以进行使用的信息。
    
    > Produce debugging information in the operating system's native format 
    (stabs, COFF, XCOFF, or DWARF).  GDB can work with this debugging information.
