@@ -62,3 +62,13 @@
    来解除core file文件大小的限制。然后关闭apport，因为ubuntu上的core file是被piped  
    给apport来统一处理的，关掉它可以让我们在当前执行二进制的工作路径中拿到core file.  
    可能关掉它是不好的，目前还不是很了解。
+
+13. debug正在运行的进程
+   可以使用:
+   * gdb program port_num
+   * gdb -p port_num
+  
+   > 在ubuntu20.04LTS上测试发现即使是自己的进程，也是无法attch给gdb的，这是由于  
+   ubuntu做的系统保护，KernelHardening，一个解决办法是给gdb二进制程序设置为sticky
+   bit，使运行程序的人变为root，或者使用`sudo`。但这个办法不是永久性的，在reboot
+   后会失效，可以参见这里[link](https://blog.mellenthin.de/archives/2010/10/18/gdb-attach-fails-with-ptrace-operation-not-permitted/#comment-141535)来永久解决这个问题，但我并没有设置。
