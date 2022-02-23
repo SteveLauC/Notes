@@ -38,3 +38,12 @@
 8. `print expresssion`指令，展示`expression`的值。
 
 9. 当`step into`一个函数时，想要`step out`使用`finish`命令。
+
+10. `gdb`调试时获得的输出是可以保存到文件中的，这是`gdb`的日志功能。
+   
+   * `set logging on`: 将日志功能打开
+   * `set logging off`: 关闭日志功能
+   * `set logging file file_name`: `gdb`默认追加到当前路径的`gdb.text`中，如果不  
+     想输出到这个文件可以指定其他的文件。
+   * `set logging overwrite on/off`: 设置是否覆盖，默认是`off`即追加，使用`on`可  
+     以做到覆盖。
