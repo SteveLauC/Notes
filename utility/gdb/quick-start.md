@@ -69,6 +69,6 @@
    * gdb -p port_num
   
    > 在ubuntu20.04LTS上测试发现即使是自己的进程，也是无法attch给gdb的，这是由于  
-   ubuntu做的系统保护，KernelHardening，一个解决办法是给gdb二进制程序设置为sticky
-   bit，使运行程序的人变为root，或者使用`sudo`。但这个办法不是永久性的，在reboot
+   ubuntu做的系统保护，KernelHardening，一个解决办法是给gdb二进制程序设置为sticky  
+   bit，使运行程序的人变为root，或者使用`sudo`。但这个办法不是永久性的，在reboot  
    后会失效，可以参见这里[link](https://blog.mellenthin.de/archives/2010/10/18/gdb-attach-fails-with-ptrace-operation-not-permitted/#comment-141535)来永久解决这个问题，但我并没有设置。
