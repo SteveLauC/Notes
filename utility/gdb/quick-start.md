@@ -47,3 +47,18 @@
      想输出到这个文件可以指定其他的文件。
    * `set logging overwrite on/off`: 设置是否覆盖，默认是`off`即追加，使用`on`可  
      以做到覆盖。
+
+11. watchpoint
+   可以用来观察某个位置的值是否会变化，当变化时就会将其打印出来。
+
+12. debug core file
+   `gdb`除了debug编译好的二进制，还可以就是当程序崩溃时，debug core file。 
+
+   ```shell
+   # 使用方法
+   gdb binary_file core_file
+   ```
+   > 在ubuntu上开启core dump，首先需要解除`ulimit`限制，使用`ulimit -c unlimited`  
+   来解除core file文件大小的限制。然后关闭apport，因为ubuntu上的core file是被piped  
+   给apport来统一处理的，关掉它可以让我们在当前执行二进制的工作路径中拿到core file.  
+   可能关掉它是不好的，目前还不是很了解。
