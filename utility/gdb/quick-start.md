@@ -72,3 +72,13 @@
    ubuntu做的系统保护，KernelHardening，一个解决办法是给gdb二进制程序设置为sticky  
    bit，使运行程序的人变为root，或者使用`sudo`。但这个办法不是永久性的，在reboot  
    后会失效，可以参见这里[link](https://blog.mellenthin.de/archives/2010/10/18/gdb-attach-fails-with-ptrace-operation-not-permitted/#comment-141535)来永久解决这个问题，但我并没有设置。
+
+14. 让程序从`main`函数开始执行，使用`start`指令。让程序从第一条指令开始执行，使用  
+   `starti`指令。
+
+15. 使用`x`命令以特定形式，展示给定地址的内存内容，比如`x/i $rip`将`rip`寄存器  
+   (PC指针)中的内容以指令(i instruments)的形式打印出来
+
+16. info inferiors: this lists information (inferior ID, PID, program) on each 
+    inferior currently being debugged by the active gdb
+    > 其中的一个重要信息是我们可以拿到进程的PID
