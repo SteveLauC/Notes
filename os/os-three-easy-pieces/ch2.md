@@ -135,3 +135,37 @@
    我们同时跑两个程序，每个程序都申请一块内存，然后打印申请到的内存的地址，惊人  
    的结果是两个程序申请的内存的地址居然是相同的，这就是os对内存的虚拟化，使得每  
    个进程都具有自己的独立的独占的完整内存。
+
+11. c中被`volatile`标记的变量是用来阻止编译器进行优化的，在多线程中常用
+
+12. c中的字符串转数字，3种函数
+
+    ```c
+    #include <stdlib.h>
+
+    int atoi(const char *nptr);        // to int
+    long atol(const char *nptr);       // to long int
+    long long atoll(const char *nptr); // to long long int
+    ```
+
+13. POSIX的方式创建新的线程
+    
+    ```c
+    int pthread_create(pthread_t *thread, const pthread_attr_t *attr, 
+                       void *(*start_routine) (void *), void *arg);
+    ```
+    
+    首先你需要准备一个`pthread_t`(u64)的变量，用来存放新得到的进程的PID，这是第  
+    一个参数。第二个是这个union用来配置优先级什么的，我们不管这个传入NULL，第三  
+    个参数是这个新的进程要执行的函数，这个函数的签名定义得很死，必须返回值是`void *`  
+    ，函数参数也是`void *`，第四个参数是传给第三个参数(这个函数)的参数的。
+
+    ```c
+    union pthread_attr_t
+    {
+      char __size[__SIZEOF_PTHREAD_ATTR_T];
+      long int __align;
+
+    };
+    ```
+    > 用到`pthread.h`的话，用`gcc`编译需要使用`-pthread`这个选项。
