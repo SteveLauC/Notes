@@ -82,3 +82,20 @@
 16. info inferiors: this lists information (inferior ID, PID, program) on each 
     inferior currently being debugged by the active gdb
     > 其中的一个重要信息是我们可以拿到进程的PID
+
+17. `x`命令，以特定形式打印出某个内存内容的值，用法是`x address`，比如:   
+    * `x/i $rip`打印当前pc指针指向的内存，以指令形式打印出。
+    
+    形式:  
+    ```
+    o - octal
+    x - hexadecimal
+    d - decimal
+    u - unsigned decimal
+    t - binary
+    f - floating point
+    a - address
+    c - char
+    s - string
+    i - instruction
+    ```
