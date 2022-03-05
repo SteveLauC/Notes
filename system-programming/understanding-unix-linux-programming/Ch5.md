@@ -234,4 +234,71 @@
 
     > 没有搞懂后面两个选项，什么是fd以及object referred by fd？
 
+    最后的两个字段，`c_ispeed`和`c_ospeed`是输入和输出的波特率
 
+
+16. rust中的bitwise not是`!`，而c中的则是`~`
+
+17. `termios.h`中有这两个函数可以用来查看输入输出的波特率
+
+    ‵‵`c
+    speed_t cfgetispeed(const struct termios *termios_p);
+    speed_t cfgetospeed(const struct termios *termios_p);
+    ```
+    其实就是直接访问了后两个字段。
+    
+    > The speed values are stored in the struct termios structure, but don’t try 
+      to access them in the struct termios structure directly. Instead, you should 
+      use the following functions to read and store them: 
+      
+    文档中说不要去直接访问这两个speed_t变量，而是调用wrapper函数
+
+    > The functions cfsetospeed and cfsetispeed report errors only for speed values 
+    that the system simply cannot handle. If you specify a speed value that is 
+    basically acceptable, then those functions will succeed. But they do not check 
+    that a particular hardware device can actually support the specified speeds—in 
+    fact, they don’t know which device you plan to set the speed for. If you use 
+    tcsetattr to set the speed of a particular device to a value that it cannot 
+    handle, tcsetattr returns -1.
+
+18. gnu对bsd是有一定的兼容性的，比如波特率的文档中写道``
+    > Portability note: In the GNU C Library, the functions above accept speeds 
+    measured in bits per second as input, and return speed values measured in 
+    bits per second. Other libraries require speeds to be indicated by special 
+    codes. For POSIX.1 portability, you must use one of the following symbols 
+    to represent the speed; their precise numeric values are system-dependent, 
+    but each name has a fixed meaning: B110 stands for 110 bps, B300 for 300 bps, 
+    and so on. There is no portable way to represent any speed but these, but 
+    these are the only speeds that typical serial lines can support.
+    B0  B50  B75  B110  B134  B150  B200
+    B300  B600  B1200  B1800  B2400  B4800
+    B9600  B19200  B38400  B57600  B115200
+    B230400  B460800
+    BSD defines two additional speed symbols as aliases: EXTA is an alias for 
+    B19200 and EXTB is an alias for B38400. These aliases are obsolete. 
+ 
+    上面这句话，说`EXTB`和`EXTA`是两个过时的常量，但你在`termios.h`中还是可以找
+    到这两个常量:
+
+    ```c
+    /* c_cflag bit meaning */
+    #define  B0 0000000     /* hang up */
+    #define  B50    0000001
+    #define  B75    0000002
+    #define  B110   0000003
+    #define  B134   0000004
+    #define  B150   0000005
+    #define  B200   0000006
+    #define  B300   0000007
+    #define  B600   0000010
+    #define  B1200  0000011
+    #define  B1800  0000012
+    #define  B2400  0000013
+    #define  B4800  0000014
+    #define  B9600  0000015
+    #define  B19200 0000016
+    #define  B38400 0000017
+    #ifdef __USE_MISC
+    # define EXTA B19200
+    # define EXTB B38400
+    ```
