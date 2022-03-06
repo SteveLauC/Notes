@@ -302,3 +302,30 @@
     # define EXTA B19200
     # define EXTB B38400
     ```
+
+19. `termios`中`c_cc`数组是`unsigned char`的长为32的数组，正常是可以存放`ascii char`
+    但里面存储的并不是相应的`ascii char`的数值编码，而是相对于`A`的ascii编码的值的差+1。
+    比如，`intr`中断使用的字符是`C`，但里面存储的值是`3`，编码减掉`A`的编码再+1.
+    
+    > 那么你想要将这个char拿出来的话，就需要`termios.c_cc[INTR]+'A'-1`，再使用
+    `%c`格式控制符号打印出来
+
+20. 在rust中可以从`u8`转换为`char`，因为`char`实现了`From<u8>`
+    > impl From<u8> for char
+
+21. rust中的char是u32类型，所有的char都是`u32`，但反过来不是。所以`from_u32()`函
+    数返回的是`Option<char>`。但是`From<u8>`这个trait里面的`from`函数返回的直接 
+    就是char
+
+22. rust错误代码[E0116](https://doc.rust-lang.org/error-index.html#E0116)
+    不能给不在当前crate定义的类型实现`impl`块
+   
+    To fix this problem, you can either:
+    1. define a trait that has the desired associated functions/types/constants 
+    and implement the trait for the type in question 
+    2. define a new type wrapping the type and define an implementation on the 
+    new type
+
+    Note that using the type keyword does not work here because type only introduces a type alias:
+
+23. rust中如果要用函数来初始化一个常量，那么此函数必须是`const`的。[E0015]
