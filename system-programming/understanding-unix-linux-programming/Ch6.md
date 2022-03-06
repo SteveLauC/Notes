@@ -1,6 +1,6 @@
 1. 终端的输入模式，规范模式和非规范模式
    
-   > 17.3 Two Styles of Input: Canonical or Not
+   17.3 Two Styles of Input: Canonical or Not
    POSIX systems support two basic modes of input: canonical and noncanonical.
 
    In canonical input processing mode, terminal input is processed in lines 
