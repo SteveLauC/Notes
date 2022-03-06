@@ -329,3 +329,34 @@
     Note that using the type keyword does not work here because type only introduces a type alias:
 
 23. rust中如果要用函数来初始化一个常量，那么此函数必须是`const`的。[E0015]
+
+24. 第五章讲了和磁盘文件连接属性的设置，和终端连接属性的设置。其他的设备，我们
+    使用
+
+    ```c
+    #include <sys/ioctl.h>
+    int ioctl(int fd, unsigned long request, ...);
+    ```
+    
+    其实这个函数我早就用过了，上次读这本书，写课后习题，调整`ls`命令的输出格式，
+    需要根据终端的宽，来调整输出，拿到终端的宽这一步骤就使用的这一函数。
+    
+    ```c
+    #include <sys/ioctl.h>
+    #include <stdio.h>
+    #include <unistd.h>
+
+    int main (int argc, char **argv)
+    {
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); // 没做error handling
+
+        printf ("lines %d\n", w.ws_row);
+        printf ("columns %d\n", w.ws_col);
+        return 0;  // make sure your main returns int
+
+    }
+    ```
+
+    > 由于很多设备都使用这一系统调用来进行操作，所以其中的`request`参数是device
+    dependent的。
