@@ -43,12 +43,13 @@
    > 在写自己的UNIX程序的时候，应该考虑使用哪种模式
 
 2. 终端驱动程序的模式有3种:
+
    1. canonical mode/cooked mode: 就是平常用的
    2. non-canonical mode: 没有缓冲和编辑功能
    3. raw mode: 貌似是什么也没有的一种模式
 
    > * raw    same as -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr 
    -icrnl -ixon -ixoff -icanon -opost -isig -iuclc -ixany -imaxbel -xcase min 1 time 0
-    * -raw   same as cooked
-    上面这个摘自`man stty`，说明我们可以通过stty进入`raw mode`
+     * -raw   same as cooked
+     上面这个摘自`man stty`，说明我们可以通过stty进入`raw mode`
 
