@@ -328,7 +328,7 @@
 
     Note that using the type keyword does not work here because type only introduces a type alias:
 
-23. rust中如果要用函数来初始化一个常量，那么此函数必须是`const`的。[E0015]
+23. rust中如果要用函数来初始化一个常量或者静态变量，那么此函数必须是`const`的。[E0015]
 
 24. 第五章讲了和磁盘文件连接属性的设置，和终端连接属性的设置。其他的设备，我们
     使用
