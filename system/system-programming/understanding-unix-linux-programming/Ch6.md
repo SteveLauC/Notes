@@ -55,3 +55,22 @@
    上面这个摘自`man stty`，说明我们可以通过stty进入`raw mode`
    ```
 
+3. linux的`non-blocking IO`使用的是`O_NONBLOCK`这个标记，可以在使用`fcntl`函数
+   来对`fd`进行操作
+   
+   ```c
+   int terflags = fcntl(0, F_GETFD);
+   terflags |= O_NONBLOCK;
+   fcntl(0, F_SETFD, terflags);
+   ``` 
+
+4. 在c中检查某个字符串是否包含字符，可以使用`strchr/strrchr`
+
+   ```c
+   #include <string.h>
+
+   char *strchr(const char *s, int c);
+   char *strrchr(const char *s, int c);
+   ```
+   The strchr() function returns a pointer to the first occurrence of the character c in the string s.  
+   The strrchr() function returns a pointer to the last occurrence of the character c in the string s.
