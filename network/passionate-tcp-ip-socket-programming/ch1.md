@@ -102,3 +102,28 @@
    5. 准备好client的socket address和socket fd
    6. 调用accept函数，初始化client side的sock fd和sock address
    7. 对client fd 进行write之类的行为
+   
+   (2个fd，2个socket address)
+
+9. 在client这边，比较重要的函数是`int connect(int sockfd, const struct sockaddr 
+   *addr, socklen_t addrlen);`，我们需要准备待访问的server的address，然后将client
+   的fd，连接到serer address上
+   
+   client side的流程: 
+   1. 调用socket创建client fd
+   2. 初始化server address
+   3. 调用connect连接client fd到server address
+   (1个client fd，1个server address)
+   4. 然后从client fd读东西
+
+   > 这个client fd代表着一个socket文件，只有当client这边调用了connect，accept才
+   会拿到client的fd。就好像钓鱼一样，鱼上钩了，一抬竿，才能抓到鱼
+
+10. 将server和client的流程合起来看的话: 
+    1. server拿到socket
+    2. server bind
+    3. server listen
+    4. server accept
+    5. client connect 
+    6. server向client fd写
+    7. client从client fd读
