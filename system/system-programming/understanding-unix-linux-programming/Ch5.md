@@ -107,11 +107,15 @@
        }
 
        // fetch configuration
-       int cfg = fcntl(fd, F_GETFD); 
+       int cfg = fcntl(fd, F_GETFL); 
        // change configuration
        cfg|=O_SYNC;                                // set O_APPEND cfg|=O_APPEND
+
+       // 我刚才看了一眼文档，发现这个是无法更改的
+       // It is not possible to change the O_DSYNC and O_SYNC flags; see BUGS, below.
+
        // send it back
-       int res = fcntl(fd, F_SETFD, cfg);
+       int res = fcntl(fd, F_SETFL, cfg);
 
        if (res == 1) {
             perror("setting sync");

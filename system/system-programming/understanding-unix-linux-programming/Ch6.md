@@ -74,3 +74,42 @@
    ```
    The strchr() function returns a pointer to the first occurrence of the character c in the string s.  
    The strrchr() function returns a pointer to the last occurrence of the character c in the string s.
+    
+   如果`c`并未出现在`s`中，则返回`NULL`
+
+5. c中的char的大小写转换
+
+   ```c
+   #include <ctype.h>
+
+   int toupper(int c);
+   int tolower(int c);
+
+   int toupper_l(int c, locale_t locale);
+   int tolower_l(int c, locale_t locale);
+   ```
+   
+   标准规定`c`这个参数要么是`EOF`，要么是可以表示的字符。
+   If c is neither an unsigned char value nor EOF, the behavior of these 
+   functions is undefined.
+   这句话的意思是，如果`c`的值不是`-1..=255`的话，就是未定义行为吗? 
+   如果其参数是`EOF`，则直接返回，否则返回相应转换后的结果。
+
+   还有下面这点: 
+   If the argument c is of type char, it must be cast to unsigned char, as in 
+   the following example:
+
+   ```c
+   char c;
+   ...
+   res = toupper((unsigned char) c);
+   ```
+   This is necessary because char may be the equivalent signed char, in which 
+   case a byte where the top bit is set would be sign extended when converting 
+   to int, yielding a value  that  is  outside  the range of unsigned char.
+   `gcc`的`char`默认是`signed char`，这个说的我感觉防的是`signed char`的第一个
+   bit是1，并且后面7个比特不全为1的情况，也就是数值在`-128..-1`的情况，这种情况
+   转为`int`后，符号扩展，前面3个字节都是全`1`，自然是在`-1..=255`以外，发生UB。
+   先转换为`unsigned char`后，扩展到`int`发生的就是补0，其值就会在`0..=255`了。
+   那么就避免了UB。
+
