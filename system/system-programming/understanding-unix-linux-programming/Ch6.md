@@ -115,3 +115,93 @@
 
 6. 当开启`non-blocking IO`的时候，如果`read`没有拿到输入的话，就返回0. getchar()
    没有拿到数据则返回EOF
+
+7. rust中的`Optoin`和`Result`都是move语义的，`unwrap(self)`之类的函数会取走所有
+   权
+
+8. c中的`getchar()`在遇到EOF，返回EOF；non-blocking模式下没有遇到输入，返回EOF。
+   而rust中的`std::io::Read`中的`bytes()`函数在使用`for _ in _`遍历时，遇到EOF
+   遍历会自动停下来，但是non-blocking模式下没有输入，则会Error，其类型是`std::io
+   ::ErrorKind::WouldBlock`
+
+9. 修改tty的驱动配置使用的函数是: 
+
+   ```c
+   int tcgetattr(int fd, struct termios *termios_p);
+
+   int tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
+   ```
+
+   在rust中它有safe的binding crate，`termios` [link](https://crates.io/crates/termios)
+
+10. 使用`ctrl-c`中断程序，则会使当前进程停止，这个停止进程的信号的快捷键，有`termios`
+    中`c_cc[VINTR]`来决定
+  
+    > VINTR  (003, ETX, Ctrl-C, or also 0177, DEL, rubout) Interrupt character (INTR).
+    Send a SIGINT signal.  Recognized when ISIG is set, and then not passed as input.
+
+11. signal是一种有限形式的进程间通信。从最初的UNIX就有了这个东西，此信号的编码一般是2
+
+12. `ctrl-c`是如何工作的:
+    1. 用户输入`ctrl-c`
+    2. 终端驱动程序收到字符
+    3. 检查`c_lflag`中的`ISIG`被开启，并且查看`c_cc[VINTR]`中的字符是不是C
+    4. 驱动程序调用信号系统
+    5. 信号系统发送`SIGINT`到进程中
+    6. 进程收到`SIGINT`
+    7. 进程消亡
+
+13. 进程对信号的处理，分为3种策略:
+    1. 默认处理
+    2. 忽略
+    3. 遇到信号时，调用用户自定义的信号处理函数
+
+
+    > 默认的处理方法是`1`，如果要调用`2/3`需要在代码中使用`man 2 signal`进行指定
+   
+    ```c
+    #include <signal.h>
+ 
+    typedef void (*sighandler_t)(int);  // 这个函数指针指向的函数是需要一个int，返回void
+    // 第二个参数的int参数就是`signum`
+ 
+    sighandler_t signal(int signum, sighandler_t handler);
+    ``` 
+
+    ```
+    // 文档为了跨平台性，不建议你用这个syscall
+    The behavior of signal() varies across UNIX versions, and has also varied 
+    historically across different versions of Linux.  Avoid its use: use 
+    sigaction(2) instead.  See Portability below.
+
+    signal() sets the disposition of the signal signum to handler, which is 
+    either SIG_IGN(忽略), SIG_DFL(默认处理), or the address of a programmer-defined
+    function(用户自定义的处理函数)(a "signal handler").
+
+    If the signal signum is delivered to the process, then one of the following 
+    happens:
+
+       * If the disposition is set to SIG_IGN, then the signal is ignored.
+
+       * If the disposition is set to SIG_DFL, then the default action associated 
+         with the signal (see signal(7)) occurs.(使用man 7 signal查看进程对不同信号
+         的默认处理方式)
+
+       * If  the  disposition  is set to a function, then first either the
+         disposition is reset to SIG_DFL, or the signal is blocked (see 
+         Portability below), and then handler is called with argument signum.
+          If invocation of the handler caused the signal to be blocked, then the signal is unblocked upon return from the handler.
+
+   The signals SIGKILL and SIGSTOP cannot be caught or ignored.(这两个信号貌似是
+   没办法更改处理方式的)
+   ```
+
+   ```c
+   /* Fake signal functions.  */
+   // SIG_DFL和SIG_IGN都是fn ptr
+
+   #define SIG_ERR  ((__sighandler_t) -1)  /* Error return.  */
+   #define SIG_DFL  ((__sighandler_t)  0)  /* Default action.  */
+   #define SIG_IGN  ((__sighandler_t)  1)  /* Ignore signal.  */
+   ```
+14. 在rust中写c的函数，需要`extern "C" fn foo()`这样的函数签名
