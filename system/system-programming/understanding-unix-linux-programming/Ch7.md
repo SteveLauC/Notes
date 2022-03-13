@@ -39,3 +39,36 @@
    所消耗的时间。
    2. ITIMER_VIRTUAL: 指的是进程在用户态执行的时间。
    3. ITIMER_PROF: 用户态+内核态执行的时间
+  
+   > interval timer其实是为了提高精度才引入的，在之前精度只到秒的时候，进程就已
+   经有一个计时器了，所以算上3种interval timer，每个进程有4种计时器。
+
+8. c中的restrict关键字，修饰指针时，告诉编译器，这个指针是唯一可以访问这个变量
+   的入口
+
+9. 和interval timer相关的系统调用
+   
+   ```c
+   int getitimer(int which, struct itimerval *curr_value);  
+   int setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value);
+   ``` 
+   
+   `getitimer`用来取出其timer的值，setitimer用来设置。在取和设置的时候，都需要
+   指明你要取和设置的是哪一个timer，在which参数中指明(传入ITIMER_REAL等宏).
+
+   另外留意下结构体的定义:
+
+   ```c
+   struct itimerval {
+        // 第一次发送信号的时间距离现在的时间间隔
+        struct timeval it_interval; /* Interval for periodic timer */
+        // 在第一次响后，以后的发送信号的间隔
+        struct timeval it_value;    /* Time until next expiration */ 
+   };
+
+   struct timeval {
+        // 64位机 time_t 和 suseconds_t 都是64bit i.e. long
+        time_t      tv_sec;         /* seconds */
+        suseconds_t tv_usec;        /* microseconds */
+   };
+   ``` 
