@@ -127,3 +127,14 @@
     5. client connect 
     6. server向client fd写
     7. client从client fd读
+
+11. 我们在写server的代码的时候，向client写东西使用的就直接就是`write`系统调用，
+    因为是在向socket文件写，client在读的时候调用`read`，这是UNIX一切阶文件的好处
+
+12. 文件只有被打开后才会被分配fd，而`stdin/stdout/stderr`这3个东西由于使用得太频
+    繁，所以被直接编死为`0/1/2`
+
+13. 当使用`open`系统调用时，flag中给了`O_CREAT`，那么mode参数*必须*给出
+
+14. 使用`read`读到buf中后，如果想把buf以字符串的形式打印出去，记得根据`read`的返
+    回值在追加NUL，`buf[return_val_of_read]='\0'`.
