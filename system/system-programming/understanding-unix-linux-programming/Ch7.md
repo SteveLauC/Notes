@@ -56,6 +56,10 @@
    `getitimer`用来取出其timer的值，setitimer用来设置。在取和设置的时候，都需要
    指明你要取和设置的是哪一个timer，在which参数中指明(传入ITIMER_REAL等宏).
 
+   `setitimer`在使用时需要传入1，2个参数，第3个参数是用来获取以前的设置的。如果
+   不需要拿到以前的设置，传入NULL就好。如果需要的话，则传入你准备好的buffer的指
+   针。
+
    另外留意下结构体的定义:
 
    ```c
@@ -72,3 +76,5 @@
         suseconds_t tv_usec;        /* microseconds */
    };
    ``` 
+
+10. 虽然每个
