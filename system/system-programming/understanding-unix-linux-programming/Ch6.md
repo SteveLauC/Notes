@@ -147,7 +147,7 @@
     2. 终端驱动程序收到字符
     3. 检查`c_lflag`中的`ISIG`被开启，并且查看`c_cc[VINTR]`中的字符是不是C
     4. 驱动程序调用信号系统
-    5. 信号系统发送`SIGINT`到进程中
+    5. 信号系统发送`SIGINT`到进程中(interrupt signal)
     6. 进程收到`SIGINT`
     7. 进程消亡
 

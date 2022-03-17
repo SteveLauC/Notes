@@ -77,6 +77,68 @@
    };
    ``` 
 
-10. 虽然每个进程都有自己的时钟，但是os却只维护一个时钟，进程只维护一个数字。
-    每当os的时种过一个单位时间后，os就会对进程的数字进行减法操作，减去这个
-    单位时间。等进程中的这个时间到0了，再对进程发送信号。
+10. 虽然每个进程都有自己的时钟，但是os却只维护一个真正的时钟，进程只维护一个计数
+    时间。每当os的时种过一个时间片后，内核收到一个时种脉冲，os就会对所有进程的计
+    数时间做递减。当进程中的这个时间到0了，再对进程发送`SIGALRM`信号。
+
+11. `man 2 signal`中写道这个函数是在不同的UNIX中的行为是不同的，并不能跨平台。
+  
+    > The only portable use of signal() is to set a signal's disposition to 
+      SIG_DFL or SIG_IGN.  The semantics when using signal() to establish a 
+      signal handler vary across systems (and POSIX.1 explicitly permits this 
+      variation); do not use it for this purpose.这个函数可以跨平台的就只有设
+      置默认处理或者忽略的时候，当设置`interrupt handler`时，在不同的系统中是
+      不一样的，POSIX也允许这一点。
+ 
+12. POSIX推荐的设置信号处理的函数，`sigaction()`  
+    其中的action结构体
+     
+    ```c
+    struct sigaction
+    {
+        /* Signal handler.  */
+    #if defined __USE_POSIX199309 || defined __USE_XOPEN_EXTENDED
+        union
+        {
+        /* Used if SA_SIGINFO is not set.  */
+        __sighandler_t sa_handler;
+        /* Used if SA_SIGINFO is set.  */
+        void (*sa_sigaction) (int, siginfo_t *, void *);
+          
+        }
+        __sigaction_handler;
+    # define sa_handler __sigaction_handler.sa_handler
+    # define sa_sigaction   __sigaction_handler.sa_sigaction
+    #else
+        __sighandler_t sa_handler;
+    #endif
+
+        /* Additional set of signals to be blocked.  */
+        __sigset_t sa_mask;
+
+        /* Special flags.  */
+        int sa_flags;
+
+        /* Restore handler.  */
+        void (*sa_restorer) (void);
+    }
+    ```
+   
+    ```c
+    // 来自GNU文档的更加简洁的结构体定义
+    struct sigaction {
+        void     (*sa_handler)(int);                        // 处理函数
+        void     (*sa_sigaction)(int, siginfo_t *, void *);
+        sigset_t   sa_mask;    // unsigned long
+        int        sa_flags;
+        void     (*sa_restorer)(void);
+    };
+    ```
+    
+    `man 2 sigaction`中写道，在一些平台上，使用了union，所以`sa_handler`和
+    `sa_sigaction`不能同时被赋值。最后一个字段`sa_restorer`并非应用程序可
+    以用的，且POSIX并没有指定这个字段。
+  
+    `sa_mask`和`sa_flags`字段是用来对信号的行为进行一些配置，暂时先不用管。
+    只需要给`sa_handler`以及`sa_mask`和`sa_flags`赋值0就可以了
+    
