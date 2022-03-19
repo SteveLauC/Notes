@@ -100,7 +100,7 @@
     #if defined __USE_POSIX199309 || defined __USE_XOPEN_EXTENDED
         union
         {
-        /* Used if SA_SIGINFO is not set.  */
+        /* Used if SA_SIGINFO is not set.  */  // 这里有些新旧的处理函数的模式
         __sighandler_t sa_handler;
         /* Used if SA_SIGINFO is set.  */
         void (*sa_sigaction) (int, siginfo_t *, void *);
@@ -136,11 +136,60 @@
     ```
     
     `man 2 sigaction`中写道，在一些平台上，使用了union，所以`sa_handler`和
-    `sa_sigaction`不能同时被赋值。最后一个字段`sa_restorer`并非应用程序可
-    以用的，且POSIX并没有指定这个字段。
-  
-    `sa_mask`和`sa_flags`字段是用来对信号的行为进行一些配置，暂时先不用管。
-    只需要给`sa_handler`以及`sa_mask`和`sa_flags`赋值0就可以了
+    `sa_sigaction`不能同时被赋值。如果你只需要和`man 2 signal`相同的功能，设置处
+    理行为为`SIG_IGN/SIG_DFL/自定义函数`，传给`sa_handler`就好。如果要使用新的信
+    号处理模式的话，则需要使用`sa_sigaction`并将`SA_SIGINFO`赋给`sa_flags`。最后
+    一个字段`sa_restorer`并非应用程序可以用的，且POSIX并没有指定这个字段。`sa_mask`
+    和`sa_flags`这两个字段在使用新旧信号处理时均可以使用。
+
+    关于新旧信号处理函数，旧的信号处理函数只能拿到被处理的信号的编号，在处理函数
+    `sa_handler(int)`中的参数中可以看到。而若使用新的信号处理，则除了拿到被处理
+    信号的编号，还可以获取被调用的原因以及产生问题的上下文的相关信息。
+
+    新信号处理拿到的信息在`siginfo_t`的结构体:  
+
+    ```c
+    siginfo_t {
+        int      si_signo;     /* Signal number */
+        int      si_errno;     /* An errno value */
+        int      si_code;      /* Signal code */
+        int      si_trapno;    /* Trap number that caused
+                                 hardware-generated signal
+                                 (unused on most architectures) */
+        pid_t    si_pid;       /* Sending process ID */
+        uid_t    si_uid;       /* Real user ID of sending process */
+        int      si_status;    /* Exit value or signal */
+        clock_t  si_utime;     /* User time consumed */
+        clock_t  si_stime;     /* System time consumed */
+        sigval_t si_value;     /* Signal value */
+        int      si_int;       /* POSIX.1b signal */
+        void    *si_ptr;       /* POSIX.1b signal */
+        int      si_overrun;   /* Timer overrun count;
+                                 POSIX.1b timers */
+        int      si_timerid;   /* Timer ID; POSIX.1b timers */
+        void    *si_addr;      /* Memory location which caused fault */
+        long     si_band;      /* Band event (was int in
+                                  glibc 2.3.2 and earlier) */
+        int      si_fd;        /* File descriptor */
+        short    si_addr_lsb;  /* Least significant bit of address
+                                  (since Linux 2.6.32) */
+        void    *si_lower;     /* Lower bound when address violation
+                                  occurred (since Linux 3.19) */
+        void    *si_upper;     /* Upper bound when address violation
+                                  occurred (since Linux 3.19) */
+        int      si_pkey;      /* Protection key on PTE that caused
+                                  fault (since Linux 4.6) */
+        void    *si_call_addr; /* Address of system call instruction
+                                  (since Linux 3.5) */
+        int      si_syscall;   /* Number of attempted system call
+                                  (since Linux 3.5) */
+        unsigned int si_arch;  /* Architecture of attempted system call
+                                 (since Linux 3.5) */
+    }
+    ```
+
+    `sa_mask`是用来设置信号阻塞的，`sa_flags`是用来定义信号的行为的。
+
     
 13. UNIX中的软件中断被称为信号(signal)
 
@@ -151,3 +200,47 @@
     2. 系统对于连续的相同的信号，后面的信号会被阻塞，直到前面的信号被处理结束。
     3. 对于不同的信号的连续调用，后者会中断前者，后者执行完再去执行前者，有点像
     递归的函数调用。
+
+16. 关于`sa_mask`的一些api:  
+    
+    ```c
+    #include <signal.h>
+    int sigemptyset(sigset_t *set);                  // 将set置空
+    int sigfillset(sigset_t *set);                   // 将set置满
+    int sigaddset(sigset_t *set, int signum);        // 添加signum到set
+    int sigdelset(sigset_t *set, int signum);        // 删除signum到set
+    int sigismember(const sigset_t *set, int signum);// 检查signum是否在set中
+    ```
+    
+    还有一个更high-level的api:  
+
+    ```c
+    /* Prototype for the glibc wrapper function */
+    int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+    ``` 
+    
+    sigprocmask()  is  used  to fetch and/or change the signal mask of the 
+    calling thread.  The signal mask is the set of signals whose delivery is 
+    currently blocked for the caller (see also signal(7) for more details).
+
+    The behavior of the call is dependent on the value of how, as follows.  
+
+       * SIG_BLOCK The set of blocked signals is the union of the current set 
+       and the set argument.
+
+       * SIG_UNBLOCK The signals in set are removed from the current set of blocked signals.  It is 
+       permissible to attempt to  unblock  a  signal which is not blocked.
+
+       * SIG_SETMASK The set of blocked signals is set to the argument set.
+
+    If oldset is non-NULL, the previous value of the signal mask is stored in oldset.
+
+    If  set is NULL, then the signal mask is unchanged (i.e., how is ignored), 
+    but the current value of the signal mask is nevertheless returned in oldset 
+    (if it is not NULL).(fetch的话就这样做 sigprocmask(SIG_SETMASK, NULL, buf))
+
+    A set of functions for modifying and inspecting variables of type sigset_t 
+    ("signal sets") is described in sigsetops(3).(就是这点笔记最开始提到的一堆api)
+
+    The use of sigprocmask() is unspecified in a multithreaded process; see 
+    pthread_sigmask(3).
