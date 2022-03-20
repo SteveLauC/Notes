@@ -212,7 +212,6 @@
     int sigismember(const sigset_t *set, int signum);// 检查signum是否在set中
     ```
     
-    还有一个更high-level的api:  
 
     ```c
     /* Prototype for the glibc wrapper function */
@@ -244,3 +243,43 @@
 
     The use of sigprocmask() is unspecified in a multithreaded process; see 
     pthread_sigmask(3).
+  
+    第一组api和`sigprocmask`是用来结合着使用的，使用第一个来创建sigset，然后使用
+    `sigprocmask`进行设置。比如下面的代码片段进行设置:   
+    
+    ```c
+    sigset_t sigs, prevsigs;
+    sigemptyset(&sigs);
+    sigaddset(&sigs, SIGINT);               // 添加SIGINT
+    sigaddset(&sigs, SIGQUIT);              // 添加SIGQUIT
+    sigprocmask(SIG_SET, &sigs, &prevsigs); // 进行阻塞 
+    sigprocmask(SIG_SET, &prevsigs, NULL);  // 将阻塞set还原
+    ```
+
+17. `sa_flags`中的`SA_NODEFER`标记，正常情况下，在一个信号的handler被调用的时候，
+    如果再来一个这个信号，则后来的信号会被阻塞直到上一个handler执行完毕。但当这
+    个`SA_NODEFER`标记被设置的话，则允许同一信号处理函数的递归调用，后来的新的相
+    同信号则不会被阻塞。
+
+
+18. UNIX中给用于留下的，可以由用户自定义支配的两个信号，`SIGUSR1/SIGUSR2`
+
+19. 可以使用`kill`函数来让进程给另一个进程发送任意信号
+  
+    ```c
+    #include <sys/types.h>
+    #include <signal.h>
+
+    int kill(pid_t pid, int sig);
+    ```
+20. 记录一下时间的单位
+ 
+    1. 秒   second      s
+    2. 毫秒 millisecond ms
+    3. 微妙 microsecond us
+    4. 纳秒 nanosecond  ns
+
+21. `curses.h`中的`crmode()`设置终端进入char by char的模式，就和我们之前使用termios.h
+    中的`tcgetattr`以及`tcsetattr`是一样的。
+
+22. `curses.h`中的`noecho()`用来关闭tty的回显。
