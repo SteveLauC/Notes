@@ -283,3 +283,44 @@
     中的`tcgetattr`以及`tcsetattr`是一样的。
 
 22. `curses.h`中的`noecho()`用来关闭tty的回显。
+
+23. 究竟什么是异步?
+    和concurrency有点混乱，这个stackoverflow的答案说的很好。
+
+
+    Concurrent and parallel are effectively the same principle as you correctly 
+    surmise, both are related to tasks being executed simultaneously although I 
+    would say that parallel tasks should be truly multitasking, executed "at the 
+    same time" whereas concurrent could mean that the tasks are sharing the 
+    execution thread while still appearing to be executing in parallel.
+
+    Asynchronous methods aren't directly related to the previous two concepts, 
+    asynchrony is used to present the impression of concurrent or parallel 
+    tasking but effectively an asynchronous method call is normally used for 
+    a process that needs to do work away from the current application and we 
+    don't want to wait and block our application awaiting the response.
+
+    > 异步指的就是从你的主任务分出一个子任务来，但不想这个子任务将主任务block掉。
+    主任务不需要去等子任务完成才继续自己的执行，而是继续执行自己，当子任务完成，
+    回调函数会告知主任务子任务已经完成了
+
+    For example, getting data from a database could take time but we don't 
+    want to block our UI waiting for the data. The async call takes a call-back 
+    reference and returns execution back to your code as soon as the request has 
+    been placed with the remote system. Your UI can continue to respond to the 
+    user while the remote system does whatever processing is required, once it 
+    returns the data to your call-back method then that method can update the
+    UI (or handoff that update) as appropriate.
+
+    From the User perspective, it appears like multitasking but it may not be.
+
+    EDIT
+
+    It's probably worth adding that in many implementations an asynchronous 
+    method call will cause a thread to be spun up(created) but it's not essential, 
+    it really depends on the operation being executed and how the response can 
+    be notified back to the system.
+
+    > 异步依赖于实现
+  
+    最常见的异步操作是异步的IO了
