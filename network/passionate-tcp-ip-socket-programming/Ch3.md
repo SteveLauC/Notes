@@ -97,3 +97,8 @@
    蛮ok的。
 
 9. 即使host是大端序的，也应该使用字节序转换函数，来写出可移植性更好的代码。
+
+10. rust中的`{:x}/{:X}`也是有trait的，是`std::fmt::LowerHex/std::fmt::UpperHex`
+
+11. 如果你想做的类型是类似c中`mode_t`那种用bit来标识的类型，可以使用一个库
+    [bitflags](https://crates.io/crates/bitflags)
