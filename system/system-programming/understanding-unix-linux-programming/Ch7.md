@@ -324,3 +324,41 @@
     > 异步依赖于实现
   
     最常见的异步操作是异步的IO了
+
+24. UNIX的asychronous input有两种：  
+    1. 当输入就绪时发送信号，在使用`open`时给`O_ASYNC`flag即可或者使用`fcntl`手
+    动修改ia
+    2. 当输入被读入时发送信号，POSIX标准，调用`aio_read`函数。可以使用`man 7 aio`
+    来查看更多信息。
+
+    > 来自`man 7 aio`  
+    The POSIX asynchronous I/O (AIO) interface allows applications to initiate 
+    one or more I/O operations that are performed asynchronously (i.e., in the 
+    background).  The application  can  elect to be notified of completion of 
+    the I/O operation in a variety of ways: by delivery of a signal, by 
+    instantiation of a thread, or no notification at all.
+
+    当使用第一个种方式时，I/O完成的时候会给我们的进程发送`SIGIO`的信号，所以我们
+    的对IO的操作必须放在这个信号的handler里面。
+    
+    ```c
+    /*前提*/
+
+    // 确保SIGIO信号是发给此进程的。
+    // Set the process ID or process group ID that will receive SIGIO  and  
+    // SIGURG  signals  for events on the file descriptor fd. 
+    fcntl(0, F_SETOWN, getpid());
+    // 打开O_ASYNC属性
+    fcntl(0, F_SETFL, fcntl(0, F_GETFL)|O_ASYNC);
+    ``` 
+
+    ```c
+    // 设置SIGIO的handler
+    signal(SIGIO, handler);
+    ```
+
+    ```c
+    void handler(int signum) {
+        // scanf(); some IO function
+    }
+    ```
