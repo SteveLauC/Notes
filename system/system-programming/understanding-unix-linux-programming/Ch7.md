@@ -362,3 +362,39 @@
         // scanf(); some IO function
     }
     ```
+
+    
+    当使用第二种方式时，必须先准备一个`struct aiocb`的buf，来配置想要的异步IO请
+    求:
+
+    ```c
+    struct aiocb
+    {
+      nt aio_fildes;       /* File desriptor.  */ // 从哪里读
+      int aio_lio_opcode;       /* Operation to be performed.  */
+      int aio_reqprio;      /* Request priority offset.  */
+      volatile void *aio_buf;   /* Location of buffer.  */  // 读到哪里去
+      size_t aio_nbytes;        /* Length of transfer.  */  // 读多少个字节
+      struct sigevent aio_sigevent; /* Signal number and value.  */ // 如果读到了，应该做什么
+
+      /* Internal members.  */
+      struct aiocb *__next_prio;
+      int __abs_prio;
+      int __policy;
+      int __error_code;
+      __ssize_t __return_value;
+
+       #ifndef __USE_FILE_OFFSET64
+         __off_t aio_offset;       /* File offset.  */
+         char __pad[sizeof (__off64_t) - sizeof (__off_t)];
+       #else
+         __off64_t aio_offset;     /* File offset.  */
+       #endif
+         char __glibc_reserved[32];
+
+    };
+    ```
+
+    然后再使用`aio_read(ptr_to_aiocb_struct)`来生成一个请求。然后等键盘输入字符
+    后就会发送你设置的信号(如果aiocb的aio_sigevent中的signotify设置为SIGEV_SIGNAL)
+    。就可以在对应信号的处理函数中使用`aio_return`来拿到读到的东西。
