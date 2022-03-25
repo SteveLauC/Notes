@@ -327,7 +327,7 @@
 
 24. UNIX的asychronous input有两种：  
     1. 当输入就绪时发送信号，在使用`open`时给`O_ASYNC`flag即可或者使用`fcntl`手
-    动修改ia
+    动修改
     2. 当输入被读入时发送信号，POSIX标准，调用`aio_read`函数。可以使用`man 7 aio`
     来查看更多信息。
 
