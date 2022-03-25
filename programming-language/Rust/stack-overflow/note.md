@@ -84,3 +84,9 @@
    `ls 2>&1 | vim -`
 
    > 2022-3-24 [question_link](https://stackoverflow.com/questions/2342826/how-can-i-pipe-stderr-and-not-stdout)
+
+5. rust的参数和返回值都是要求在编译时确定大小的，也就是要满足这个`std::marker::
+   Sized`的隐性要求，但假如你的参数不想这样子，可以使用`?Sized`来去除这个限制。
+
+   > All type parameters have an implicit bound of Sized. The special syntax 
+   ?Sized can be used to remove this bound if it’s not appropriate.
