@@ -68,7 +68,8 @@
    换句话说，假如我们在execvp后面print一下，是不会得到输出的，因为进程已经被替换
    为`ls`了。
 
-   > execvp就像换脑
+   > execvp就像换脑，The  exec()  family  of  functions replaces the current 
+   process image with a new process image.
 
 4. 在rust中要做这个的话，需要这样
 
@@ -91,3 +92,35 @@
 
    为了获得`execvp`的换脑体验，需要使用`std::os::unix::prelude::CommandExt`这个
    trait中的`exec`函数。
+
+5. 使用`strncpy()`来进行拷贝时，需要这样
+
+   ```c
+   strncpy(des, src, strlen(src)+1);
+   ```
+
+   第三个参数`n`，src的前n个字节需要包含`NUL`，所以是`strlen(src)+1`
+
+   > The strncpy() function is similar, except that at most n bytes of src are 
+   copied.  Warning: If there is no null byte among the first n bytes of src, 
+   the string placed in dest will not  be  null-terminated.
+
+6. 在使用`exec()`家族函数前申请的内存，在函数调用后，都会被自动释放，无需自行释
+   放
+
+   [question_link](https://stackoverflow.com/questions/14492971/how-to-free-memory-created-by-malloc-after-using-execvp)
+
+   > You don't need to. Specifically, if you allocate memory in a process 
+   before an exec()-type routine (e.g., execvp() in your case) is called, all 
+   of the memory associated with the original executable is released. It's a 
+   similar situation to a process exiting (and having all its resources released), 
+   and a new process being started with a clean slate.
+
+7. 在rust中`trim`字符串使用的是`str`的`trim`函数，其返回值也是`&str`。所以如果我
+   们想要trim的是`String`类型，则比较浪费资源，如果你清楚此值的最后边有一个new
+   line的话，可以原地trim(trim in place)
+
+   ```rust
+   // str is of type `mut String`
+   str.truncate(str.len()-1);
+   ```
