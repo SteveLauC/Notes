@@ -130,3 +130,15 @@
    }
    ```
    > 2022-3-26 [question_link](https://stackoverflow.com/questions/71615447/how-to-split-line-in-rust)
+
+7. 写一个函数，既可以接受`String`类型的参数，又可以要`&str`的参数，可以使用范型+trait bound
+
+   ```rust
+   fn foo<T: Into<String>(_: T){
+
+   }
+   ```
+
+   > 甚至这个trait bound还可以传`char`的参数。
+
+   > 2022-3-26 [question_link](https://stackoverflow.com/questions/71613464/is-it-possible-to-create-a-function-that-accepts-optionstring-or-optionstr)
