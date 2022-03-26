@@ -90,3 +90,43 @@
 
    > All type parameters have an implicit bound of Sized. The special syntax 
    ?Sized can be used to remove this bound if it’s not appropriate.
+
+6. 原来`map`函数需要的闭包参数可以直接传一个函数指针的
+  
+   ```rust
+   pub fn format(basic_line: &str) -> Vec<String> {
+       basic_line
+           .trim()
+           .split_whitespace()
+           .map(str::to_lowercase) // 注意这的用法
+           .collect()
+   } 
+   ```
+
+   所以当我们把`&str`的Vec转为`String`的Vec可以这样写:  
+   
+
+   ```rust
+   fn main() {
+       let v: Vec<&str> = vec!["hello"]; // 会move掉v
+       let owned: Vec<String> = v.into_iter().map(str::to_owned).collect();
+
+       println!("{:?}", owned);
+   }
+   ```
+
+   想不move掉v的话:
+
+   ```rust
+   fn main() {
+       let v: Vec<&str> = vec!["hello"];
+       let owned: Vec<String> = v.iter().map(|&item|{ // 使用`&来匹配掉一个&`
+               item.to_owned()
+                   
+       }).collect();
+
+       println!("{:?}", owned);
+       println!("{:?}", v);
+   }
+   ```
+   > 2022-3-26 [question_link](https://stackoverflow.com/questions/71615447/how-to-split-line-in-rust)
