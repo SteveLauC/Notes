@@ -142,3 +142,21 @@
    > 甚至这个trait bound还可以传`char`的参数。
 
    > 2022-3-26 [question_link](https://stackoverflow.com/questions/71613464/is-it-possible-to-create-a-function-that-accepts-optionstring-or-optionstr)
+
+8. 将rust中`Ipv4Addr`转换为`u32`: 
+   
+   ```rust
+   // 由于Ipv4Addr实现了`From<u32>`的trait，所以我们可以使用它反过来的trait，`Into`
+
+   use std::net::Ipv4Addr;
+   fn main() {
+       let add: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
+       let num: u32 = add.into();
+   }
+   ```
+
+   > 2022-3-27 [question_link](https://stackoverflow.com/questions/71632582/how-to-convert-an-ip-to-a-i32-and-back-in-rust)
+
+9. rust中的大数，使用数组实现的。是`num`这个crate旗下的crate，`[num-bigint](https://crates.io/crates/num-bigint)`
+
+   > 2022-3-27 [question_link](https://stackoverflow.com/questions/71630159/how-can-i-convert-u32-datatype-to-bigint-in-rust)
