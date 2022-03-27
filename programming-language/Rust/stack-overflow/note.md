@@ -160,3 +160,19 @@
 9. rust中的大数，使用数组实现的。是`num`这个crate旗下的crate，`[num-bigint](https://crates.io/crates/num-bigint)`
 
    > 2022-3-27 [question_link](https://stackoverflow.com/questions/71630159/how-can-i-convert-u32-datatype-to-bigint-in-rust)
+
+10. 一个`&str`，如何将它拆分为第一个`char`和余下的`&str`
+   
+   ```rust
+   fn split_first_char(s: &str) -> Option<(char, &str)> {
+       let mut chars = s.chars();
+       chars.next().map(|c| (c, chars.as_str()))
+   }
+   ```
+
+   注意它调用的`map`不是对迭代器map，而是对`next()`产生的`Option<char>`map，将
+   `Option<char>`变为`Option<char, &str>`.
+
+   真的优雅这个实现。
+
+   > 2022-3-27 [question_link](https://stackoverflow.com/questions/71628761/how-to-split-a-string-into-the-first-character-and-the-rest)
