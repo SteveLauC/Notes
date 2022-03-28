@@ -124,3 +124,99 @@
    // str is of type `mut String`
    str.truncate(str.len()-1);
    ```
+
+8. `fork()`进程，来得到和自己一模一样的进程。
+
+   ```c
+   #include <stdio.h>
+   #inlcude <unistd.h>
+   
+   int main() {
+       printf("Going to fork myself\n");        
+       pid_t pid = fork();
+       printf("my pid is %d, fork() says %d\n", getpid(), pid); // NOTE: 被两次打印
+   }
+   ```
+
+   ```shell
+   $ gcc main.c && ./a.out
+   Going to fork myself
+   my pid is 1639022, fork() says 1639023
+   my pid is 1639023, fork() says 0
+   ```
+   
+   之所以被两次打印，是因为我们在`fork()`调用后有两个一模一样的进程，它们具有相
+   同的PC指针，都指向`fork()`返回后的下一条指令。所以printf语句被打印了两次。那
+   怎么判断我们是在父进程还是在子进程里面？通过fork()函数的返回值，在父进程中其
+   返回新得到的子进程的pid；而在新创建的子进程中，该函数返回0.
+
+   ```c
+   #include <stdio.h>
+   #include <unistd.h>
+   
+   int main() {
+       pid_t pid = fork();
+       
+       if (0 == pid) {
+           printf("we are in the child process\n");
+       } else {
+           printf("we are in the parent process\n");
+           printf("And the pid of new child process is %d\n", pid);
+       }
+
+       return 0;
+   }
+   ```
+
+   ```c
+   #include <stdio.h>
+   #include <unistd.h>
+
+   int main() {
+       fork();
+       fork();
+       fork();
+       printf("1\n");
+       return 0;
+   }
+   ```
+
+   上面这段代码会有多少行`1`被打印，答案是8行，因为2^3=8，有点像二分裂
+
+
+9. rust `nix`中对`fork()`的api的封装
+
+   ```rust
+   pub unsafe fn fork() -> Result<ForkResult>
+   ```
+
+   函数的返回值中的类型，`ForkResult`是一个`enum`
+
+   ```rust
+   pub enum ForkResult {
+       Parent {
+        child: Pid,
+       },
+    Child,
+   }
+   ```
+
+   其实就是将返回值`0/child_pid`给封装了一下，刚好可以使用rust的pattern matching
+   来判断是在父进程还是子进程中。
+
+   ```rust
+   use nix::unistd::{fork, ForkResult};
+
+   fn main() {
+       match unsafe{fork()} {
+           Ok(ForkResult::Child) => {
+               println!("we are in the child process");
+           },
+           Ok(ForkResult::Parent{id}) => {
+               println!("we are in the parent process");
+               // Pid is a wrapper type for pid_t(aka. i32)
+               println!("and the new child process is {}", id.as_row());
+           }
+       }
+   }
+   ```
