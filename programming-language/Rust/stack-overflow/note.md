@@ -163,19 +163,19 @@
 
 10. 一个`&str`，如何将它拆分为第一个`char`和余下的`&str`
    
-   ```rust
-   fn split_first_char(s: &str) -> Option<(char, &str)> {
-       let mut chars = s.chars();
-       chars.next().map(|c| (c, chars.as_str()))
-   }
-   ```
+    ```rust
+    fn split_first_char(s: &str) -> Option<(char, &str)> {
+        let mut chars = s.chars();
+        chars.next().map(|c| (c, chars.as_str()))
+    }
+    ```
 
-   注意它调用的`map`不是对迭代器map，而是对`next()`产生的`Option<char>`map，将
-   `Option<char>`变为`Option<char, &str>`.
+    注意它调用的`map`不是对迭代器map，而是对`next()`产生的`Option<char>`map，将
+    `Option<char>`变为`Option<char, &str>`.
 
-   真的优雅这个实现。
+    真的优雅这个实现。
 
-   > 2022-3-27 [question_link](https://stackoverflow.com/questions/71628761/how-to-split-a-string-into-the-first-character-and-the-rest)
+    > 2022-3-27 [question_link](https://stackoverflow.com/questions/71628761/how-to-split-a-string-into-the-first-character-and-the-rest)
 
 11. rust的`const generics`
 
