@@ -176,3 +176,58 @@
    真的优雅这个实现。
 
    > 2022-3-27 [question_link](https://stackoverflow.com/questions/71628761/how-to-split-a-string-into-the-first-character-and-the-rest)
+
+11. rust的`const generics`
+
+    generics除了可以用作范型参数，还可以表示常量，最显著的一个用法，就是你想给任
+    何长度的数组实现一个方法，但数组的长度是算在数组的类型里面的，以前做这个就只
+    能给所有长度的数组都实现一遍，但现在不需要了，因为可以把数组的大小用`const
+    generics`来表示。
+
+    ```rust
+	use std::fmt::Display;
+
+	fn main() {
+		let arr: [String; 1] = ["hello".to_owned()];
+		print_any_len_arr(&arr);
+	}
+
+	fn print_any_len_arr<T: Display, const N: usize>(arr: &[T; N]) {
+		for item in arr.into_iter() {
+			println!("{}", item);
+		}
+	}
+	```	
+
+    忘了在哪个版本的rust中数组的`into_iter()`函数稳定了，这个的稳定就归功于`const generics`
+
+    > 2022-3-28 [question_link](https://stackoverflow.com/questions/71640770/is-this-the-most-efficient-way-to-append-an-array-to-a-slice) 
+
+12. 数组的方法，`copy_from_slice()`
+
+    ```rust
+    pub fn copy_from_slice(&mut self, src: &[T])
+	where T: Copy, 
+ 	```
+	
+    > 如果你要用的`T`不copy，使用`clone_from_slice()`
+
+	Copies all elements from src into self, using a memcpy. The length of src 
+    must be the same as self.	
+
+    ```rust
+    fn main() {
+		let mut arr: [u8;3] = [0;3];
+		let brr: [u8;3] = [1;3];
+		arr.copy_from_slice(&brr);
+		println!("{:?}", arr); // [1, 1, 1]
+		arr[0..1].copy_from_slice(&[99]);
+		println!("{:?}", arr); // [99, 1, 1]
+	}
+ 	```
+
+	可以对数组整体赋值，也可以slice一个数组再赋值，slice的大小是在编译时不清楚
+    的，可以通过编译大概是参数包含了长度信息，又要求`self`和`src`的打小相同才可
+    以的吧。
+
+    > 2022-3-28 [question_link](https://stackoverflow.com/questions/71640770/is-this-the-most-efficient-way-to-append-an-array-to-a-slice) 
