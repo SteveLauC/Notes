@@ -231,3 +231,69 @@
     以的吧。
 
     > 2022-3-28 [question_link](https://stackoverflow.com/questions/71640770/is-this-the-most-efficient-way-to-append-an-array-to-a-slice) 
+
+
+13. rust中的`union`类型，是为了兼容c的abi才设计出来的。rust中常用的`enum`就是基于
+    tagged union搞出来的，使用rust中的union需要注意
+    
+    1. 其字段的类型不可以是要被drop的类型
+    2. 访问union实例的字段是unsafe的
+
+    比如我们之前写过的用`union`来判断机器的大小端序的代码，可以这样在rust中写:
+
+    ```rust
+	union E {
+		s: u8,
+		i: u32,
+	}
+
+	
+	fn main() {
+		let u: E = E { i: (0x12345678) };
+		unsafe{println!("0x{:x}", u.s)};  // 0x78
+		println!("{}", std::mem::size_of_val(&u)); // 4
+	}
+    ```
+
+    还有就是`union`可以使用pattern matching，但是和`enum`不同的是，它可以match任
+    何一个字段，就像上面的代码一样，即使初始化时使用的是`i`，但仍可以拿到`s`。
+
+    > 2022-3-29 [question_link](https://stackoverflow.com/questions/71653011/rust-is-an-enum-a-subset-of-structs)
+
+
+14. `&str`和`&Stirng`是可以比较的，因为
+
+     ```rust
+     impl<'a, 'b> PartialEq<&'a str> for String
+     ```
+
+     > 2022-3-29
+
+15. 突然意识到，在rust中，`ReRef`和`&`这两个操作并不总是相反的，对称的。
+
+    ```rust
+    let v: Vec<i32> = vec![1, 2, 3];
+    let slice: &[i32] = &*v;
+    ```
+
+    比如上面这段代码，解引用再引用就变成了slice。
+
+    > 2022-3-29
+
+
+16. rust的method lookup 
+ 
+    简单概括就是，对于`T`类型的实例`x`，`x.foo()`这个函数调用会去寻找`foo`这个函数
+    。寻找的过程是:  
+    
+    ```
+    当x可以被解引用时，逐层地解引用(*x/**x/***x...)：
+    1. 每一次解引用得到的类型设为U，看看`impl U/impl trait for U`中有没`foo`这个
+    函数，如果有则调用
+    2. 对U进行一次引用，得到`&U/&mut U`，然后查看`impl &U/impl &mut U/impl trait 
+    for &U/impl trait for &mut U`中有没有`foo`这个函数，如果有则调用
+
+    > 如果在impl和trait中都存在`foo`这个函数，impl中的会被先调用。
+    ```
+
+    > 2022-3-29 [question_link](https://stackoverflow.com/questions/28519997/what-are-rusts-exact-auto-dereferencing-rules)
