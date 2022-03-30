@@ -235,3 +235,35 @@
 
     传入去的是32bit的数字，但被用到的只有低16位，前8位用来表示退出的状态，再7位记
     录信号的编码(如是被信号杀死的)，最后1位标记是否产生了core dump
+
+    32位数字的编码如下，从Most significant bit到least significant bit
+    
+    ![note](https://github.com/SteveLauC/pic/blob/main/photo_2022-03-30_15-46-47.jpg) 
+
+    `sys/wait.h`中有一些宏可以帮我们处理这个wait status值:
+  
+    ```c
+    WIFEXITED();      // 是否子进程是自己exit的
+    WIFSIGNALED();    // 是否子进程是被信号终止调的
+    WIFSTOPPED();     // 被信号暂停了
+
+    WEXITSTATUS();    // 如果是自己exit，则拿到退出的值
+    WTERMSIG();       // 如果是被信号杀死，则信号是
+    WSTOPSIG();       // 如果是被信号暂停，信号是 
+
+    WCOREDUMP();      // 如果被信号终止，有没有发生core dump
+    ```
+
+    这些结果和nix中`WaitStatus`的封装是对应的。
+
+    ```rust
+   	pub enum WaitStatus {
+		Exited(Pid, i32),
+		Signaled(Pid, Signal, bool),
+		Stopped(Pid, Signal),
+		PtraceEvent(Pid, Signal, c_int),
+		PtraceSyscall(Pid),
+		Continued(Pid),
+		StillAlive,
+	} 
+	```
