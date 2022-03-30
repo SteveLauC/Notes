@@ -297,3 +297,9 @@
     ```
 
     > 2022-3-29 [question_link](https://stackoverflow.com/questions/28519997/what-are-rusts-exact-auto-dereferencing-rules)
+
+17. 有一个RFC想要enum的variabts成为first-class citizen, 但是这个RFC被推迟了
+
+    > [rfc](https://github.com/rust-lang/rfcs/pull/1450)
+
+    > 2022-3-30 [question_link](https://stackoverflow.com/questions/71669082/is-it-possible-to-have-a-struct-where-the-field-is-an-item-from-an-enum-rust)
