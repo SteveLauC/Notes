@@ -303,3 +303,12 @@
     > [rfc](https://github.com/rust-lang/rfcs/pull/1450)
 
     > 2022-3-30 [question_link](https://stackoverflow.com/questions/71669082/is-it-possible-to-have-a-struct-where-the-field-is-an-item-from-an-enum-rust)
+
+
+18. rust中的bit-wise copy
+   
+   ```
+   pub unsafe fn read<T>(src: *const T) -> T
+   ```
+
+   > 2022-3-31 [question_link](https://stackoverflow.com/questions/71681279/why-does-value-allocated-in-stack-didnt-result-in-double-free-pointer)
