@@ -312,3 +312,26 @@
    ```
 
    > 2022-3-31 [question_link](https://stackoverflow.com/questions/71681279/why-does-value-allocated-in-stack-didnt-result-in-double-free-pointer)
+
+19. 有一个trait用来帮你的类型变成`String`
+   
+    ```rust
+    pub trait ToString {
+        fn to_string(&self) -> String;
+    }
+
+    > A trait for converting a value to a String.
+
+    This trait is automatically implemented for any type which implements the 
+    Display trait. As such, ToString shouldn’t be implemented directly: Display 
+    should be implemented instead, and you get the ToString implementation for free.
+
+    这个trait不应该被实现给你的类型，如果想要使用这个类型，则应该使用`std::fmt::
+    Display`
+    ```
+
+    > 2022-3-31 [question_link](https://stackoverflow.com/questions/71678232/best-way-to-create-a-hashmap-from-a-slice-of-string-slices)
+
+20. `Itertools`这个crate貌似在对迭代器进行排序上非常好用
+   
+    > 2022-3-31 [question_link](https://stackoverflow.com/questions/71440867/how-to-sort-json-in-rust)
