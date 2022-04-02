@@ -351,3 +351,28 @@
     更好，比如传Vec，可以传Vec本身，也可以传Vec.into_iter()，通用性更好，而且实
     现了`Iterator`的类型就实现了`IntoIter`，这是一个blanket implementation
 
+
+23. 将`Option<Result<T, E>>`转换为`Option<T>`，可以这样做
+
+    ```rust
+   	fn main() {
+		let nothing: Option<Result<i32, String>> = None;
+		assert_eq!(None, foo(nothing));
+		let okk: Option<Result<i32, String>> = Some(Ok(1));
+		assert_eq!(Some(1), foo(okk));
+		let err: Option<Result<i32, String>> = Some(Err("error info".into()));
+		assert_eq!(None, foo(err));
+	}
+
+	fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
+		t.and_then(|x| x.ok())
+	} 
+    ```
+
+    但其实我看到的问题，要求是在`Some<Err<E>>`的情况下返回Err，所以他想要的是将
+    `Option<Result<T, E>>`变为`Result<Option<T>, E>`
+
+    可以使用`pub fn transpose(self) -> Result<Option<T>, E>`，这个函数是有两个的，
+    也就是两种类型可以互换
+
+    > 2022-4-2 [question_link](https://stackoverflow.com/questions/71709494/convert-optionresultt-e-to-optiont)
