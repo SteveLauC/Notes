@@ -307,7 +307,7 @@
 
 18. rust中的bit-wise copy
    
-   ```
+   ```rust
    pub unsafe fn read<T>(src: *const T) -> T
    ```
 
@@ -335,3 +335,19 @@
 20. `Itertools`这个crate貌似在对迭代器进行排序上非常好用
    
     > 2022-3-31 [question_link](https://stackoverflow.com/questions/71440867/how-to-sort-json-in-rust)
+
+21. 要实现一个方法，这个方法要给迭代器用，函数原型可以是 
+   
+    ```rust
+    fn foo<T: Iterator>(item: T)
+    ``` 
+
+    但是
+
+    ```rust
+    fn foo<T: IntoIter>(item: T)
+    ```
+
+    更好，比如传Vec，可以传Vec本身，也可以传Vec.into_iter()，通用性更好，而且实
+    现了`Iterator`的类型就实现了`IntoIter`，这是一个blanket implementation
+
