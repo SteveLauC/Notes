@@ -416,3 +416,18 @@
     always follow the pointer.
 
     > 2022-4-4
+
+
+27. match ergonomic这个rfc
+  
+    [link_to_detailed_doc](https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md)
+
+    这个`rfc`的行为是在对`reference`进行match并且`pattern`是`non-reference 
+    pattern`时，rustc会自动将被match的`reference`给`dereference`，然后更新
+    `bind mode`。
+
+    最后所新生成的类型，如果最后一步的处理的pattern是`non-ref pattern`，那
+    么所新拿到的类型是收到`bind mode`所影响的。
+
+    > 2022-4-4 [question_link](https://stackoverflow.com/a/71733238/14092446)
+    [question_link](https://stackoverflow.com/questions/71731788/weird-type-when-pattern-matching-references)
