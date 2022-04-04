@@ -376,3 +376,43 @@
     也就是两种类型可以互换
 
     > 2022-4-2 [question_link](https://stackoverflow.com/questions/71709494/convert-optionresultt-e-to-optiont)
+
+
+24. rust中的`mut`不是关于值的，而是关于`binding`的
+  
+    ```rust
+    let v: String = "hello".to_owned();
+    ```
+    当像上面这样申请一个变量时(创建一个binding时)，是在说不可以通过`v`来改变这个
+    字符串，但当这个字符串被给了别的binding，就要看新的`binding`是不是可以被改变
+    了。
+
+    ```rust
+    fn foo(mut str: String) {
+        // 新的binding可以进行改变
+        str = "world".to_owned();
+    }
+
+    foo(v);
+    ```
+
+    > 2022-4-4 [question_link](https://stackoverflow.com/questions/71730828/why-does-an-immutable-struct-become-mutable-when-moved-into-a-vector)
+
+
+25. 有时候rust的报错信息也是有误导性的，比如它有时说`method exist for xxx, but 
+    the trait bound is not satisfed`，这种时候可能是对这种类型，这个方法压根不
+    存在
+    
+    > 2022-4-4 [question_link](https://stackoverflow.com/questions/71730011/the-method-fold-exists-for-reference-t-but-its-trait-bounds-were-not-sat)
+
+26. 在栈上的数据类型，`move`是会移动内存的，而在堆上的，目前来看只会移动栈上的指
+    针，而堆上的内存则不会被移动。
+
+    > There is a special case where the lifetime tracking is overzealous: when 
+    you have something placed on the heap. This occurs when you use a Box<T>, 
+    for example. In this case, the structure that is moved contains a pointer 
+    into the heap. The pointed-at value will remain stable, but the address 
+    of the pointer itself will move. In practice, this doesn't matter, as you 
+    always follow the pointer.
+
+    > 2022-4-4
