@@ -7,7 +7,7 @@
            
    
    }
-`````
+   ```
 
    `*x`的操作其实是`*Deref::deref(&x)`的语法糖
 
@@ -20,7 +20,7 @@
    3     println!("{}", x);
    4 
    }
-`````
+   ```
 
    ```shell
    $ cargo run -q
@@ -37,7 +37,7 @@
 
             For more information about this error, try `rustc --explain E0382`.
             error: could not compile `t` due to previous error
-            ```
+    ```
 
    这个是历史的产物，可以看下这个[回答](https://stackoverflow.com/questions/42264041/how-do-i-get-an-owned-value-out-of-a-box)
    其实很奇怪，应该给这个语义单独加一个trait，不然`deref(&self)`怎么会move掉参数呢？
@@ -453,3 +453,6 @@ fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
 
 
 28. rust的饮式类型转换，`&U->&T(如果U实现了Deref<T>)`，还有就是`*U = *deref(&U) = T`
+
+29. 可以使用`Iterator`中的`fn step_by(self, step: usize) -> StepBy<Self>`函数来
+    创建一个特定步长的迭代器，可以将之前的迭代器悉数掉。
