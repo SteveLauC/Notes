@@ -431,3 +431,6 @@
 
     > 2022-4-4 [question_link](https://stackoverflow.com/a/71733238/14092446)
     [question_link](https://stackoverflow.com/questions/71731788/weird-type-when-pattern-matching-references)
+
+
+28. rust的饮式类型转换，`&U->&T(如果U实现了Deref<T>)`，还有就是`*U = *deref(&U) = T`
