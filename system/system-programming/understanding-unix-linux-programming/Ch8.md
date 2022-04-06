@@ -267,3 +267,30 @@
 		StillAlive,
 	} 
 	```
+
+11. zombie process僵尸进程
+    指的是进程已经退出，但是仍然存在在进程的表格中的进程。之所以它存在在进程表格 
+    是因为它的父进程没有调用`wait`系统调用来读取它的退出状态，导致它必须还存在在
+    进程表格中
+
+12. `_exit(int status)`函数会做什么？
+    
+    The  function _exit() terminates the calling process "immediately".  Any open 
+    file descriptors belonging to the process are closed. Any children of the 
+    process are inherited by init(1) (or by the nearest "subreaper" process as  
+    defined  through  the  use  of  the prctl(2) PR_SET_CHILD_SUBREAPER operation).  
+    The process's parent is sent a SIGCHLD signal.
+
+    > 调用这个函数的进程会立刻被结束，所有被此进程打开的文件描述符被关闭，其子进程
+    都被继承给init进程(systemd)。向其父进程发送`SIGCHLD`信号
+
+    The  value  status  &  0xFF  is  returned to the parent process as the process's 
+    exit status, and can be collected using one of the wait(2) family of calls.
+
+    > status参数和`0xff`进行与操作，然后做为返回值返回。
+
+13. `exec(3)`家族的函数都是`execve(2)`的前端，封装
+
+
+14. 在创建新的进程时，我们传一串字符串的参数给新的进程；新进程退出后，会通过exit
+    函数来传回16bits的返回值。这种通信的方式是很典型的。
