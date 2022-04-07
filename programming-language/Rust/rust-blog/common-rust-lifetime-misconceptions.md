@@ -38,3 +38,33 @@
        let literal: &'static = "";
        foo(literal);
    }```
+
+
+5. 如果我们有一个`struct`并且它是generic over `'a`的，然后我们想写一个方法，其参数
+   是`&'a mut self`，那么我们就是在向rust说这个方法会可变独占地借用这个struct，在
+   整个struct的生命周期中
+
+   ```rust
+   #[derive(Debug)]
+   struct RefNum<'a> (&'a i32);
+
+   impl<'a> RefNum<'a> {
+       fn foo(&'a mut self){}
+   }
+
+   fn main() {
+       let mut r = RefNum(&8);
+       r.foo();
+       r.foo();  // can not borrow r as mutable more than once
+       println!("{:?}", r);
+   }
+   ```
+
+   解决办法也很直接，那就是把方法的`'a`生命周期给去掉，手动写一个别的生命周期或者
+   让生命周期缺省规则帮你写
+
+   ```rust
+   impl<'a> RefNum<'a> {
+       fn foo(&mut self){}
+   }
+   ```
