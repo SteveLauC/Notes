@@ -68,3 +68,23 @@
        fn foo(&mut self){}
    }
    ```
+
+
+8. rust的lifetime检查是编译时的概念，静态的检查，完全不管运行时会怎么样。
+
+   ```rust
+   fn main() {
+       let ptr: &i32;
+
+       if false {
+           let num: i32 = 9;
+           ptr = &num;
+       }
+       println!("{}", ptr);
+   }
+   ```
+
+   比如上面这段代码，if块中的语句根本不会执行，但rust仍然拒绝编译
+
+   还有就是rust的生命周期只能在编译期shrink，而无法grow，而且rust会选择最短的生
+   命周期，用最严格的方式确保不会有悬垂指针。
