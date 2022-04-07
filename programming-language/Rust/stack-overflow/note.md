@@ -456,3 +456,10 @@ fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
 
 29. 可以使用`Iterator`中的`fn step_by(self, step: usize) -> StepBy<Self>`函数来
     创建一个特定步长的迭代器，可以将之前的迭代器悉数掉。
+
+30. 要将一个slice按照某种条件拆分为2个slice，可以使用`pub fn split<F>(&self, pred
+    : F) -> Split<'_, T, F>`
+
+    返回的是一个迭代器，可以遍历拿到分离的两个slice，但是中间的符合条件的值被去掉了
+
+    > 2022-4-7 [question_link](https://stackoverflow.com/questions/71774589/how-to-slice-to-a-particular-element-in-a-vec)
