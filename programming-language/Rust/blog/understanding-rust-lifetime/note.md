@@ -56,3 +56,40 @@
 
    2. struct/enum/union则使用第二种方法，GLB，greatest lower bound  
    这部分这文章基本没有讲....
+
+
+6. 已经知道`covariant`和`invariant`的区别，是前者具有subtyping的能力，而后者没有，所以在
+   对lifetime parameter实例化的时候，如果要实例化的生命周期参数是covariant的，并且有多个
+   引用传给这个参数用来实例化，那么会取最短的生命周期。如果是invariant的话，那么invariant
+   的那个部分就直接被赋予了这个参数的生命周期
+    
+   ```rust
+   struct MutStr<'a >{
+       s: &'a mut &'a str,
+   }
+
+   fn main() {
+       let mut s: &'static str = "hello";
+
+       MutStr{
+           s: &mut s,
+       };
+       println!("{}", s);
+   }
+   ```
+
+   比如上面这个代码，结构体字段`&'a mut &'a str`是invariant over`&'a str`的，那么在初始化
+   赋值的时候，`&mut s`，`s`是invariant的部分，被初始化为了`&'static str`，那么`'a`这个参
+   就直接被实例化为`'static`了，所以初始化的部分`&mut s`这里的引用，对`s`的引用的生命周期
+   同样是`'a`，但不及`'static`，所以编译报错说s这个东西(引用而不是被硬编码到二进制的字符
+   串常量)活得不够久，这是一种思考方式。即遇到invariant的实例化部分，直接将生命周期参数实
+   例化为被传入参数的生命周期。
+
+   又或者我们认为在rust初始化`'a`时，总会选择最短的那个生命周期，被传入的对`s`的引用参数和
+   `'static`中选择短的`'lifetime_to_s`，将`'a`实例化为`'lifetime_to_s`，然后我们发现我们
+   的结构体中初始化语句做了这样的操作`&'lifetime_to_s mut &'lifetime_to_s str = &'lifetime_to_s
+   mut &'static str`，因为这个类型是invariant的，两者完全没有subtyping的关系，赋值语句是
+   错误的，rustc发现不对，然后告诉你其中短的那个活得不够长
+
+   > 对于上面的两个思路，我感觉第一个更像是程序员依据行为总结的，第二个是borrow checker的做
+   法。
