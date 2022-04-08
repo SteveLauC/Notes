@@ -81,7 +81,7 @@
    比如上面这个代码，结构体字段`&'a mut &'a str`是invariant over`&'a str`的，那么在初始化
    赋值的时候，`&mut s`，`s`是invariant的部分，被初始化为了`&'static str`，那么`'a`这个参
    就直接被实例化为`'static`了，所以初始化的部分`&mut s`这里的引用，对`s`的引用的生命周期
-   同样是`'a`，但不及`'static`，所以编译报错说s这个东西(引用而不是被硬编码到二进制的字符
+   同样是`'a`，不及`'static`长，所以编译报错说s这个东西(引用而不是被硬编码到二进制的字符
    串常量)活得不够久，这是一种思考方式。即遇到invariant的实例化部分，直接将生命周期参数实
    例化为被传入参数的生命周期。
 
@@ -93,3 +93,48 @@
 
    > 对于上面的两个思路，我感觉第一个更像是程序员依据行为总结的，第二个是borrow checker的做
    法。
+
+
+
+    ```rust
+	fn evil_feeder<T>(input: &mut T, val: T) {
+		*input = val;
+	}
+
+	fn main() {
+		let mut mr_snuggles: &'static str = "meow! :3";  // mr. snuggles forever!!
+		{
+			let spike = String::from("bark! >:V");
+			let spike_str: &str = &spike;                // Only lives for the block
+			evil_feeder(&mut mr_snuggles, spike_str);    // EVIL!
+		}
+		println!("{}", mr_snuggles);                     // Use after free?
+	}
+	```
+    用上面的两种分析方法分析下上面的代码片段，先用borrow checker的方法，在实例化时选择最短的
+    生命周期参数。注意这里是有生命周期缺省规则
+
+    ```rust
+    fn evil_feeder<'a, T>(input: &'a mut T, val: T) {
+        *input = val;
+    }
+    ```
+
+    然后我们初始化`T`，发现`T`应该被初始化为`&str`，这里也会有一个生命周期参数，也就是下面的
+    样子
+
+    ```rust
+    fn evill_feeder<'a, 'b, T>(intput: &'a mut &'b str, val: &'b str) {
+        *input = val;
+    }
+    ```
+
+    然后在`evill_feeder(&mut mr_snuggles, spike_str)`时，`'a`被实例化为`lifetime_to_mr_snuggles`
+    而`'b`被传入了两个，一个是`'lifetime_to_spike`，一个是`'static`，选择短的那个，使用`'lifetime_to_spike`
+    实例化后再来看我们的input的传参语句，其实是在`&'lifetime_to_mr_snuggles mut &'lifetime_to_spike str = 
+    &'lifetime_to_mr_snuggles mut &'static str`，同样由于invariance，这两个类型没有非父子，不可以
+    赋值，拒绝编译。
+
+    再使用第一种分析方法，由于input的`'b`是invariant的，所以传入什么就是什么，`'b`就直接被确定为
+    `'static`，然后再看`val`的传值，其实是在做`&'static str = &'lifetime_to_spike str`，前者是后
+    者的子类型，所以不能赋值，rustc抱怨`spike`存活得太短了。
