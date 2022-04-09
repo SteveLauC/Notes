@@ -68,12 +68,12 @@
        println!("{:?}", res);
    
    }
-`````
+   ```
 
    ```shell
    $ cargo run -q
    [(1, true), (2, false)]
-   `````
+   ```
 
 
    > 2022-3-24 [question_link](https://stackoverflow.com/questions/71594073/filter-a-vector-using-a-boolean-array/71594147#71594147)
@@ -105,7 +105,7 @@
            .collect()
    
    } 
-`````
+   ```
 
    所以当我们把`&str`的Vec转为`String`的Vec可以这样写:  
    
@@ -118,7 +118,7 @@
        println!("{:?}", owned);
    
    }
-`````
+   ```
 
    想不move掉v的话:
 
@@ -134,7 +134,8 @@
        println!("{:?}", v);
    
    }
-`````
+   ```
+
    > 2022-3-26 [question_link](https://stackoverflow.com/questions/71615447/how-to-split-line-in-rust)
 
 7. 写一个函数，既可以接受`String`类型的参数，又可以要`&str`的参数，可以使用范型+trait bound
@@ -144,7 +145,7 @@
 
    
    }
-`````
+   ```
 
    > 甚至这个trait bound还可以传`char`的参数。
 
@@ -161,7 +162,7 @@
        let num: u32 = add.into();
    
    }
-```
+   ```
 
    > 2022-3-27 [question_link](https://stackoverflow.com/questions/71632582/how-to-convert-an-ip-to-a-i32-and-back-in-rust)
 
@@ -177,7 +178,7 @@
         chars.next().map(|c| (c, chars.as_str()))
     
     }
-`````
+    ```
 
     注意它调用的`map`不是对迭代器map，而是对`next()`产生的`Option<char>`map，将
     `Option<char>`变为`Option<char, &str>`.
@@ -202,14 +203,14 @@
     
     }
 
-fn print_any_len_arr<T: Display, const N: usize>(arr: &[T; N]) {
-    for item in arr.into_iter() {
-            println!("{}", item);
+    fn print_any_len_arr<T: Display, const N: usize>(arr: &[T; N]) {
+        for item in arr.into_iter() {
+                println!("{}", item);
+            
+        }
         
     }
-    
-}
-`````   
+    ```
 
     忘了在哪个版本的rust中数组的`into_iter()`函数稳定了，这个的稳定就归功于`const generics`
 
@@ -220,7 +221,7 @@ fn print_any_len_arr<T: Display, const N: usize>(arr: &[T; N]) {
     ```rust
     pub fn copy_from_slice(&mut self, src: &[T])
     where T: Copy, 
-    `````
+    ```
     
     > 如果你要用的`T`不copy，使用`clone_from_slice()`
 
@@ -235,9 +236,8 @@ fn print_any_len_arr<T: Display, const N: usize>(arr: &[T; N]) {
         println!("{:?}", arr); // [1, 1, 1]
         arr[0..1].copy_from_slice(&[99]);
         println!("{:?}", arr); // [99, 1, 1]
-    
     }
-`````
+    ```
 
     可以对数组整体赋值，也可以slice一个数组再赋值，slice的大小是在编译时不清楚
     的，可以通过编译大概是参数包含了长度信息，又要求`self`和`src`的打小相同才可
@@ -262,13 +262,13 @@ fn print_any_len_arr<T: Display, const N: usize>(arr: &[T; N]) {
     }
 
     
-fn main() {
+    fn main() {
         let u: E = E { i: (0x12345678)  };
         unsafe{println!("0x{:x}", u.s)};  // 0x78
         println!("{}", std::mem::size_of_val(&u)); // 4
     
-}
-`````
+    }
+    ```
 
     还有就是`union`可以使用pattern matching，但是和`enum`不同的是，它可以match任
     何一个字段，就像上面的代码一样，即使初始化时使用的是`i`，但仍可以拿到`s`。
@@ -289,7 +289,7 @@ fn main() {
     ```rust
     let v: Vec<i32> = vec![1, 2, 3];
     let slice: &[i32] = &*v;
-    `````
+    ```
 
     比如上面这段代码，解引用再引用就变成了slice。
 
@@ -322,11 +322,11 @@ fn main() {
 
 18. rust中的bit-wise copy
    
-   ```rust
-   pub unsafe fn read<T>(src: *const T) -> T
-   `````
+    ```rust
+    pub unsafe fn read<T>(src: *const T) -> T
+    ```
 
-   > 2022-3-31 [question_link](https://stackoverflow.com/questions/71681279/why-does-value-allocated-in-stack-didnt-result-in-double-free-pointer)
+    > 2022-3-31 [question_link](https://stackoverflow.com/questions/71681279/why-does-value-allocated-in-stack-didnt-result-in-double-free-pointer)
 
 19. 有一个trait用来帮你的类型变成`String`
    
@@ -335,7 +335,7 @@ fn main() {
         fn to_string(&self) -> String;
     
     }
-
+    ```
     > A trait for converting a value to a String.
 
     This trait is automatically implemented for any type which implements the 
@@ -344,7 +344,6 @@ fn main() {
 
     这个trait不应该被实现给你的类型，如果想要使用这个类型，则应该使用```std::fmt::
     Display`
-    ```
 
     > 2022-3-31 [question_link](https://stackoverflow.com/questions/71678232/best-way-to-create-a-hashmap-from-a-slice-of-string-slices)
 
@@ -356,13 +355,13 @@ fn main() {
    
     ```rust
     fn foo<T: Iterator>(item: T)
-    ````` 
+    ```
 
     但是
 
     ```rust
     fn foo<T: IntoIter>(item: T)
-    `````
+    ```
 
     更好，比如传Vec，可以传Vec本身，也可以传Vec.into_iter()，通用性更好，而且实
     现了`Iterator`的类型就实现了`IntoIter`，这是一个blanket implementation
@@ -381,11 +380,11 @@ fn main() {
     
     }
 
-fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
-        t.and_then(|x| x.ok())
-    
-} 
-`````
+    fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
+            t.and_then(|x| x.ok())
+        
+    } 
+    ```
 
     但其实我看到的问题，要求是在`Some<Err<E>>`的情况下返回Err，所以他想要的是将
     `Option<Result<T, E>>`变为`Result<Option<T>, E>`
@@ -400,7 +399,7 @@ fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
   
     ```rust
     let v: String = "hello".to_owned();
-    `````
+    ```
     当像上面这样申请一个变量时(创建一个binding时)，是在说不可以通过`v`来改变这个
     字符串，但当这个字符串被给了别的binding，就要看新的`binding`是不是可以被改变
     了。
@@ -413,7 +412,7 @@ fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
     }
 
     foo(v);
-    `````
+    ```
 
     > 2022-4-4 [question_link](https://stackoverflow.com/questions/71730828/why-does-an-immutable-struct-become-mutable-when-moved-into-a-vector)
 
@@ -463,3 +462,113 @@ fn foo(t: Option<Result<i32, String>> ) -> Option<i32> {
     返回的是一个迭代器，可以遍历拿到分离的两个slice，但是中间的符合条件的值被去掉了
 
     > 2022-4-7 [question_link](https://stackoverflow.com/questions/71774589/how-to-slice-to-a-particular-element-in-a-vec)
+
+
+31. 将`format!`产生的`String`变为字节流，使用
+    
+    ```rust
+    let slice: &[u8] = format!("").as_bytes();
+    for item in slice {
+        println!("{}", item);
+    }
+    ```
+    会报错说`temporary value dropped while borrowed`，rust并没有因为`format!`产
+    生的`String`被借用，而延长其生命周期，该学一学rust怎么延长生命周期了。
+
+    回答里有人说，可以使用`into_bytes()`来得到`Vec<u8>`
+
+    ```rust
+    let slice: Vec<u8> = format!("").into_bytes();
+    ```
+
+    > 2022-4-9 [question_link](https://stackoverflow.com/questions/71802959/how-can-i-get-the-byte-representation-of-a-format-string-in-a-single-expressi)
+
+
+32. `IntoIterator`这个trait的返回值，并不一定是拿到直接的`value`，也可能是`ref/mut ref`
+
+    ```rust
+   	impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
+		type Item = &'a mut T; // 拿到 mut ref
+		type IntoIter = slice::IterMut<'a, T>;
+
+		fn into_iter(self) -> slice::IterMut<'a, T> {
+			self.iter_mut()
+		}
+	}
+	```
+
+	```rust
+	impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
+		type Item = &'a T;  // 拿到ref
+		type IntoIter = slice::Iter<'a, T>;
+
+		fn into_iter(self) -> slice::Iter<'a, T> {
+			self.iter()
+		}
+	}
+	```
+
+	```rust
+    impl<T, A: Allocator> IntoIterator for Vec<T, A> {
+        type Item = T; // 拿到value
+        type IntoIter = IntoIter<T, A>;
+
+        /// Creates a consuming iterator, that is, one that moves each value out of
+        /// the vector (from start to end). The vector cannot be used after calling
+        /// this.
+        ///
+        /// # Examples
+        ///
+        /// 
+        /// let v = vec!["a".to_string(), "b".to_string()];
+        /// for s in v.into_iter() {
+        ///     // s has type String, not &String
+        ///     println!("{}", s);
+        /// }
+        /// 
+        #[inline]
+        fn into_iter(self) -> IntoIter<T, A> {
+            unsafe {
+                let mut me = ManuallyDrop::new(self);
+                let alloc = ptr::read(me.allocator());
+                let begin = me.as_mut_ptr();
+                let end = if mem::size_of::<T>() == 0 {
+                    arith_offset(begin as *const i8, me.len() as isize) as *const T
+                } else {
+                    begin.add(me.len()) as *const T
+                };
+                let cap = me.buf.capacity();
+                IntoIter {
+                    buf: NonNull::new_unchecked(begin),
+                    phantom: PhantomData,
+                    cap,
+                    alloc,
+                    ptr: begin,
+                    end,
+                }
+            }
+        }
+    }
+    ```
+
+    ```rust
+    impl<'a, T> IntoIterator for &'a [T] {
+        type Item = &'a T; // 拿到ref
+        type IntoIter = Iter<'a, T>;
+
+        fn into_iter(self) -> Iter<'a, T> {
+            self.iter()    // 发现实现直接调用的slice::iter()
+        }
+    }
+
+    impl<'a, T> IntoIterator for &'a mut [T] {
+        type Item = &'a mut T; // 拿到mut ref
+        type IntoIter = IterMut<'a, T>;
+
+        fn into_iter(self) -> IterMut<'a, T> {
+            self.iter_mut()   // 发现实现直接调用slice::iter_mut();
+        }
+    }
+	```
+
+    > 2022-4-9 [question_link](https://stackoverflow.com/questions/71802044/why-does-the-compiler-expect-a-double-reference-instead-of-a-reference-when-trea)
