@@ -572,3 +572,9 @@
 	```
 
     > 2022-4-9 [question_link](https://stackoverflow.com/questions/71802044/why-does-the-compiler-expect-a-double-reference-instead-of-a-reference-when-trea)
+
+
+33. higher ranker trait bound
+    
+    > 2022-4-10 [question_link](https://stackoverflow.com/questions/35592750/how-does-for-syntax-differ-from-a-regular-lifetime-bound)
+    不过没看懂:(
