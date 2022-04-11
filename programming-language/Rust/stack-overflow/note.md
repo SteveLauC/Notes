@@ -321,7 +321,7 @@
 
 
 18. rust中的bit-wise copy
-   
+
     ```rust
     pub unsafe fn read<T>(src: *const T) -> T
     ```
@@ -329,7 +329,7 @@
     > 2022-3-31 [question_link](https://stackoverflow.com/questions/71681279/why-does-value-allocated-in-stack-didnt-result-in-double-free-pointer)
 
 19. 有一个trait用来帮你的类型变成`String`
-   
+
     ```rust
     pub trait ToString {
         fn to_string(&self) -> String;
@@ -342,8 +342,7 @@
     Display trait. As such, ToString shouldn’t be implemented directly: Display 
     should be implemented instead, and you get the ToString implementation for free.
 
-    这个trait不应该被实现给你的类型，如果想要使用这个类型，则应该使用```std::fmt::
-    Display`
+    这个trait不应该被实现给你的类型，如果想要使用这个类型，则应该使用`std::fmt::Display`
 
     > 2022-3-31 [question_link](https://stackoverflow.com/questions/71678232/best-way-to-create-a-hashmap-from-a-slice-of-string-slices)
 
@@ -495,20 +494,15 @@
 			self.iter_mut()
 		}
 	}
-	```
 
-	```rust
 	impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
 		type Item = &'a T;  // 拿到ref
 		type IntoIter = slice::Iter<'a, T>;
-
 		fn into_iter(self) -> slice::Iter<'a, T> {
 			self.iter()
 		}
 	}
-	```
 
-	```rust
     impl<T, A: Allocator> IntoIterator for Vec<T, A> {
         type Item = T; // 拿到value
         type IntoIter = IntoIter<T, A>;
@@ -549,9 +543,7 @@
             }
         }
     }
-    ```
 
-    ```rust
     impl<'a, T> IntoIterator for &'a [T] {
         type Item = &'a T; // 拿到ref
         type IntoIter = Iter<'a, T>;
