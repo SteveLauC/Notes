@@ -65,6 +65,9 @@
    # 后面的路径是macOS中使用homebrew安装的路径，请使用`which fzf`查看自己电脑中fzf的路径
    set rtp+=/opt/homebrew/bin/fzf
    ```
+   
+   接下来就可以在vim中`:FZF`来在当前工作目录中搜索文件了，使用`ctrl j/k`下/上选择，使用
+   `enter`来确认，vim会打开这个被选中的文件
 
 6. rust与c代码的自动补全
    
