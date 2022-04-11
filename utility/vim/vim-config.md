@@ -74,7 +74,8 @@
    2. c中我使用`coc-clangd`，需要事先安装好`clangd`，然后打开vim，输入`:CocInstal coc-clangd`
    即可
 
-   > 关于clangd的安装
+   关于clangd的安装
+
    macOS其实是自带的，其路径在`/Library/Developer/CommandLineTools/usr/bin/clangd`，二进制
    文件就在这里，但是这个`bin`目录并没有在`PATH`中，而且这个`bin`下面有很多的常用cli的二进
    制文件，为了不引起冲突，我决定不将其加入`PATH`中。使用`homebrew`安装一套新的
