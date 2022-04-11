@@ -72,7 +72,7 @@
 6. rust与c代码的自动补全
    
    1. rust中我使用`coc-rust-analyzer`，在安装好`coc.nvim`后，打开vim，输入`:CocInstall coc-rust-analyzer`
-   即可
+   即可，`rust-analyzer`的binary如果没有在路径中，它会询问你然后安装，很快
    
    2. c中我使用`coc-clangd`，需要事先安装好`clangd`，然后打开vim，输入`:CocInstal coc-clangd`
    即可
@@ -92,3 +92,14 @@
    cd /opt/homebrew/bin
    ln -s /opt/homebrew/Cellar/llvm/13.0.1_1/bin/clangd  clangd
    ```
+
+   Ubuntu的安装方法，依照[官网](https://clangd.llvm.org/installation.html)
+   
+   ```shell
+   sudo apt-get install clangd-12
+   sudo update-alternatives --install /usr/bin/clangd clangd /usr/bin/clangd-12 100
+
+   # 查看成果
+   $ which clangd
+   /usr/bin/clangd
+    ```
