@@ -78,14 +78,12 @@
    macOS其实是自带的，其路径在`/Library/Developer/CommandLineTools/usr/bin/clangd`，二进制
    文件就在这里，但是这个`bin`目录并没有在`PATH`中，而且这个`bin`下面有很多的常用cli的二进
    制文件，为了不引起冲突，我决定不将其加入`PATH`中。使用`homebrew`安装一套新的
-   
    ```shell
    brew install llvm
    ```
    安装完成之后，你输入`clangd`仍然是`command not found`，这是由于`homebrew`知道macOS自带这
    家伙，它也怕引起冲突，所以并没有在`/opt/homebrew/bin`中创建软连接。但macOS自带的`clangd`
    并没有直接暴露给用户，所以我就去`homebrew`的`bin`下面创建软连接
-   
    ```shell
    cd /opt/homebrew/bin
    ln -s /opt/homebrew/Cellar/llvm/13.0.1_1/bin/clangd  clangd
