@@ -106,3 +106,7 @@
    $ which clangd
    /usr/bin/clangd
     ```
+
+7. Plug 'tpope/vim-commentary'
+    
+   提供`gc`来进行代码的快速注释
