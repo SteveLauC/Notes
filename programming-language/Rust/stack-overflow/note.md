@@ -1,11 +1,9 @@
 1. `*`这个运算符号所对应的trait是`std::ops::Deref`或者`std::ops::DerefMut`。
-    
+
    ```rust
    pub trait Deref {
        type Target: ?Sized;
        fn deref(&self) -> &Self::Target;
-           
-   
    }
    ```
 
@@ -18,8 +16,7 @@
    1     let x: Box<String> = Box::new(String::new());
    2     let _y: String = *x;
    3     println!("{}", x);
-   4 
-   }
+   4 }
    ```
 
    ```shell
@@ -37,7 +34,7 @@
 
             For more information about this error, try `rustc --explain E0382`.
             error: could not compile `t` due to previous error
-    ```
+   ```
 
    这个是历史的产物，可以看下这个[回答](https://stackoverflow.com/questions/42264041/how-do-i-get-an-owned-value-out-of-a-box)
    其实很奇怪，应该给这个语义单独加一个trait，不然`deref(&self)`怎么会move掉参数呢？
@@ -567,6 +564,6 @@
 
 
 33. higher ranker trait bound
-    
+ 
     > 2022-4-10 [question_link](https://stackoverflow.com/questions/35592750/how-does-for-syntax-differ-from-a-regular-lifetime-bound)
     不过没看懂:(
