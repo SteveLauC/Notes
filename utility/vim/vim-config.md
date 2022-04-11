@@ -13,6 +13,9 @@
    # for Ubuntu
    sudo apt update
    sudo apt install nodejs
+   
+   # 检查版本
+   $ node --version   
    ```
    
    2. 然后就可以直接使用`vim-plug`来安装
@@ -21,7 +24,7 @@
    Plug 'neoclide/coc.nvim', {'branch': 'release'}
    ``` 
 
-3. Plug 'airblade/vim-rooter'
+3. Plug '907th/vim-auto-save'
    
    提供vim的自动保存，需要在`~/.vimrc`中加入
    
