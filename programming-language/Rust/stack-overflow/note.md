@@ -567,3 +567,22 @@
  
     > 2022-4-10 [question_link](https://stackoverflow.com/questions/35592750/how-does-for-syntax-differ-from-a-regular-lifetime-bound)
     不过没看懂:(
+
+34. 将`Vec<String>`变为`HashMap<String, String>`，`Vec`的元素0变为key，
+    元素1变为value，以此类推:
+
+    ```rust
+    use itertools::Itertools;
+    use std::collections::HashMap;
+
+
+    fn main() {
+        let v: Vec<String> = vec!["key1".into(), "val1".into(), "key2".into(), "val2".into()];
+        // 多余的元素会被丢掉        
+        let hm: HashMap<String, String> = v.into_iter().tuples().collect();
+        
+        assert_eq!(hm, HashMap::from([("key1".into(), "val1".into()), ("key2".into(), "val2".into())]));
+    }
+    ```
+
+    > 2022-4-28 [question_link](https://stackoverflow.com/questions/72036456/how-to-convert-vect-to-hashmapt-t-in-rust/72037035#72037035)
