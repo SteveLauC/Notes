@@ -20,3 +20,19 @@
    4. 如果成功，shell执行then部分的代码
    5. 如果失败，shell执行else部分的代码
    6. 关键字fi标志着if块的结束
+
+6. rust中的`read_line`:
+
+   * std::io::Stdin::read_line
+   * std::io::BufRead::read_line 
+
+   前者的实现当中，是这样的
+   
+   ```rust
+   pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
+        self.lock().read_line(buf)
+   } 
+   ```
+   
+   它调用了自身的`lock`方法拿到了`StdinLock`类型的实例，而`StdinLock`类型刚好实现了`BufRead`的trait
+   所以`std::io::Stdin::read_line`就是调用了`std::io::BufRead::read_line`。
