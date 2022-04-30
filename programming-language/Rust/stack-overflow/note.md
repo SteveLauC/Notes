@@ -586,3 +586,23 @@
     ```
 
     > 2022-4-28 [question_link](https://stackoverflow.com/questions/72036456/how-to-convert-vect-to-hashmapt-t-in-rust/72037035#72037035)
+
+35. 关于rust里面`main`函数的返回值问题
+
+    ```rust
+    pub trait Termination {
+        fn report(self) -> ExitCode;
+    }
+    ```
+    
+    其返回值是由这个trait来控制的
+    
+    > A trait for implementing arbitrary return types in the main function.
+    The C-main function only supports to return integers as return type. So, every type implementing the Termination trait has to be converted to an integer.
+    The default implementations are returning libc::EXIT_SUCCESS to indicate a successful execution. In case of a failure, libc::EXIT_FAILURE is returned.
+
+    值的注意的是，c系语言的main函数的返回值都会是一个整数u8，所以正如`Termination`里定义的函数一样，最后都会变为`ExitCode`
+    在成功的情况下，`libc::EXIT_SUCCESS`会被返回，失败则返回`libc::EXIT_FAILURE`，但是`libc::EXIT_SUCCESS`和`libc::
+    EXIT_FAILURE`并不一定是`0/1`，只有在POSIX里才是这样的。
+
+    > 2022-4-30 [question_link](https://stackoverflow.com/questions/72054026/in-rust-what-happens-if-main-function-returns-err)
