@@ -447,10 +447,10 @@
     [question_link](https://stackoverflow.com/questions/71731788/weird-type-when-pattern-matching-references)
 
 
-28. rust的饮式类型转换，`&U->&T(如果U实现了Deref<T>)`，还有就是`*U = *deref(&U) = T`
+28. rust的隐式类型转换，`&U->&T(如果U实现了Deref<T>)`，还有就是`*U = *deref(&U) = T`
 
 29. 可以使用`Iterator`中的`fn step_by(self, step: usize) -> StepBy<Self>`函数来
-    创建一个特定步长的迭代器，可以将之前的迭代器悉数掉。
+    创建一个特定步长的迭代器，可以将之前的迭代器稀疏掉。
 
 30. 要将一个slice按照某种条件拆分为2个slice，可以使用`pub fn split<F>(&self, pred
     : F) -> Split<'_, T, F>`
@@ -480,7 +480,8 @@
     > 2022-4-9 [question_link](https://stackoverflow.com/questions/71802959/how-can-i-get-the-byte-representation-of-a-format-string-in-a-single-expressi)
 
 
-32. `IntoIterator`这个trait的返回值，并不一定是拿到直接的`value`，也可能是`ref/mut ref`
+32. `IntoIterator`这个trait的结构体的`Iterator`的`next()`返回值，并不一定是拿到直接的`value`，也可能是
+    `ref/mut ref`
 
     ```rust
    	impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
@@ -606,3 +607,52 @@
     EXIT_FAILURE`并不一定是`0/1`，只有在POSIX里才是这样的。
 
     > 2022-4-30 [question_link](https://stackoverflow.com/questions/72054026/in-rust-what-happens-if-main-function-returns-err)
+
+36. `std::ops::Fn`这个trait给那些不捕捉周围变量或者捕捉变量的不可变借用的闭包实现了，也为函数指针实现了
+
+    > Fn is implemented automatically by closures which only take immutable references to captured variables or don’t capture anything at all, as well as (safe) function pointers (with some caveats, see their documentation for more details). Additionally, for any type F that implements Fn, &F implements Fn, too.
+    
+    > 其实fn ptr实现了`Fn/FnMut/FnOnce`3个trait，因为这几个trait是继承的关系，`Fn:FnMut:FnOnce`
+    注意看任何实现了`Fn` trait的类型`F`，其引用`&F`业实现了这个trait
+    
+    ```rust
+    impl<'_, A, F> Fn<A> for &'_ F
+    where
+        F: Fn<A> + ?Sized, 
+    ```
+    
+    
+37. closure与fn ptr的关系
+
+    fn ptr实现了`Fn-family`的trait，由于closure就是由trait来定义的抽象类型，所以从某种意义上讲，fn ptr
+    就是closure。
+    
+    但是从closure到fn ptr的映射，则要求这个closure不能捕捉环境变量
+    
+    > fn ptr一定是closure，而closure不一定是fn ptr
+    
+    > Plain function pointers are obtained by casting either 
+    plain functions
+    or closures that don’t capture an environment:
+    
+    ```rust
+    fn add_one(x: usize) -> usize {
+        x + 1
+    }
+
+    let ptr: fn(usize) -> usize = add_one;
+    // 如果要从plain function拿到fn ptr，那么这个plain function一定要提前定义好
+    
+    /*
+    不可以这样做
+    let ptr: fn(usize) -> usize = fn add_one(x: usize) -> usize {
+        x + 1
+    }
+    */
+    assert_eq!(ptr(5), 6);
+
+    let clos: fn(usize) -> usize = |x| x + 5;
+    assert_eq!(clos(5), 10);
+    ```
+
+    > [question_link](https://stackoverflow.com/questions/72106387/having-trouble-writing-the-function-property-of-a-struct-correctly-in-rust/72107251#72107251)
