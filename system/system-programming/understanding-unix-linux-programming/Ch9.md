@@ -36,3 +36,43 @@
    
    它调用了自身的`lock`方法拿到了`StdinLock`类型的实例，而`StdinLock`类型刚好实现了`BufRead`的trait
    所以`std::io::Stdin::read_line`就是调用了`std::io::BufRead::read_line`。
+
+7. shell变量包含两种，局部变量和环境变量
+
+
+8. 对变量的操作
+
+   |operation|syntax|
+   |---------|-------|
+   |赋值      | var=value|
+   |引用      | $var|
+   |删除      | unset var|
+   |输入      | read var |
+   |列出变量| set|
+   |全局化| export var|
+   
+    
+9. shell变量在内部的存储结构
+
+   ```c
+   struct var{
+      char * str; // name=val
+      int global;
+   }
+   ```
+   
+10. rust中数组里批量初始化的写法，需要那个类型满足`Copy`的trait
+
+    ```
+    A repeat expression [x; N], which produces an array with N copies of x. The type of x must be Copy.
+    ```
+    
+    如果你要初始化的类型它不copy，可以这样做
+    ```rust
+    #[derive(Default)]
+    struct NonCopy;
+    
+    fn main() {
+       let arr: [NonCopy;200] = [();200].map(|_| NonCopy::default());
+    }
+    ```
