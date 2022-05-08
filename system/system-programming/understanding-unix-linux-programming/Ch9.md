@@ -39,6 +39,11 @@
 
 7. shell变量包含两种，局部变量和环境变量
 
+   `set`命令是shell的内置命令，`set`可以看到局部和环境变量。而`env`命令是一个单独的程序
+   仅可以拿到环境变量
+   
+   > 就像我们自己写的shell，将所有变量存储在一个数组中，当执行`set`时，会遍历数组将所有的变量打印出来
+
 
 8. 对变量的操作
 
@@ -74,5 +79,81 @@
     
     fn main() {
        let arr: [NonCopy;200] = [();200].map(|_| NonCopy::default());
+    }
+    ```
+11. 我们目前写的shell的结构是这样的
+
+    ```
+    is control command:
+      do control command
+    is built-in command:
+      do built-in command
+    do shell command
+    ```
+    要先将特殊的过滤出去，然后再执行普通的shell命令
+    
+12. 当使用`sudo command`来运行命令的时候，它会覆盖当前用户的环境变量
+
+    ```shell
+    $ sudo bash -c 'echo $http_proxy'
+
+    $ sudo -E bash -c 'echo $http_proxy'
+    http://127.0.0.1:8890  
+    ```
+    
+    可以使用`sudo -E`来preserver variable
+    > -E, --preserve-env
+    Indicates to the security policy that the user wishes to preserve their 
+    existing environment variables.  The security policy may return an error if the
+    user does not have permission to preserve the environment.
+    
+    **但是**，对于`bash`来言，`PATH`使用`-E`是救不回来的
+    
+    ```shell
+    $ sudo -E bash -c 'echo $PATH'
+    /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+    $ sudo bash -c 'echo $PATH'
+    /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin    
+    ```
+
+    但`zsh`是可以救回来的：）
+    ```shell
+    $ sudo zsh -c 'echo $PATH'
+    /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+    $ sudo -E zsh -c 'echo $PATH'
+    /home/steve/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+    ```
+    
+    注意的是，在检测`sudo`会不会覆盖环境变量时，不要用`sudo echo $PATH`或者`sudo echo $http_proxy`，这样
+    环境变量的替换还是由当前自己的shell来完成的。
+    
+13. 在c中如何遍历所有的环境变量，有一个特殊的变量`extern char ** environ`，这是一个字符串数组，遍历它就可以将所有的环境变量打印出
+    来
+    
+    ```c
+    #include <stdio.h>
+    extern char ** environ;
+    int main() {
+       for (int i = 0; environ[i]; i+=1) {
+          printf("%s\n", environ[i]);
+       }
+       return 0;
+    }
+    ```
+    
+14. 如何拿到具体的环境变量
+
+    ```c
+    #include <stdlib.h>
+    #include <stdio.h>
+
+    int main() {
+       char * target = getenv("PATH");
+       if (target != NULL) {
+          printf("PATH=%s\n", target);
+       } else {
+          printf("PATH is unset");
+       }
+       return 0;
     }
     ```
