@@ -37,13 +37,13 @@
    它调用了自身的`lock`方法拿到了`StdinLock`类型的实例，而`StdinLock`类型刚好实现了`BufRead`的trait
    所以`std::io::Stdin::read_line`就是调用了`std::io::BufRead::read_line`。
 
-7. shell变量包含两种，局部变量和环境变量
+7. UNIX变量包含两种，shell变量和环境变量(environment variable)
 
-   `set`命令是shell的内置命令，`set`可以看到局部和环境变量。而`env`命令是一个单独的程序
-   仅可以拿到环境变量
+   `set`命令是shell的内置命令，`set`可以看到shell和环境变量。而`env`命令是一个单独的程序
+   仅可以拿到环境变量(env是怎么做的，遍历environ字符串数组罢了)
    
-   > 就像我们自己写的shell，将所有变量存储在一个数组中，当执行`set`时，会遍历数组将所有的变量打印出来
-
+   > 命令的管理，shell变量字母小写而环境变量大写，但`http_proxy/https_proxy`这两个环境变量通常是小写的
+   [What's the 'right' format for the HTTP_PROXY environment variable? Caps or no caps?](https://unix.stackexchange.com/questions/212894/whats-the-right-format-for-the-http-proxy-environment-variable-caps-or-no-ca)
 
 8. 对变量的操作
 
@@ -57,9 +57,9 @@
    |全局化| export var|
    
     
-9. shell变量在内部的存储结构
+9. UNIX变量在内部的存储结构
 
-   ```c
+   ```c 
    struct var{
       char * str; // name=val
       int global;
@@ -127,8 +127,8 @@
     注意的是，在检测`sudo`会不会覆盖环境变量时，不要用`sudo echo $PATH`或者`sudo echo $http_proxy`，这样
     环境变量的替换还是由当前自己的shell来完成的。
     
-13. 在c中如何遍历所有的环境变量，有一个特殊的变量`extern char ** environ`，这是一个字符串数组，遍历它就可以将所有的环境变量打印出
-    来
+13. 在c中如何遍历所有的环境变量(environment variables)，有一个特殊的变量`extern char ** environ`，这是一个
+    字符串数组，遍历它就可以将所有的环境变量打印出来
     
     ```c
     #include <stdio.h>
@@ -141,7 +141,7 @@
     }
     ```
     
-14. 如何拿到具体的环境变量
+14. 如何拿到具体的环境变量(environment variable)
 
     ```c
     #include <stdlib.h>
@@ -156,4 +156,60 @@
        }
        return 0;
     }
+    ```
+    
+15. 前面说过，在使用`exec`家族的系统调用时就像是进行了换脑。但有一个例外，则是进程的环境变量(environment variable)
+
+    ```c
+    /*
+     * changeenv.c: shows how to change the environment
+     * note: calls `env` to display environments variables
+    */
+    #include <unistd.h>
+
+    extern char ** environ;
+
+    int main() {
+        char * table[3] = {NULL, NULL, NULL};  // don't forget that this string-array needs to be NULL-terminated 
+        table[0] = "TERM=vt100";
+        table[1] = "/on/the/range";
+        
+        environ = table;
+
+        // 在这里进行了患脑，但是环境变量仍然没有换        
+        execlp("env", "env", NULL);
+    }
+    ```
+
+16. 前面我们在自己的shell中定义了如何存储UNIX变量，但是并没有和系统里面真正的环境变量进行交互。而系统内真正的环境变量
+    就是`environ`这个字符串数组以及`getenv/setenv/clearenv`的接口，我们仍然需要将UNIX变量中的环境变量放到
+    `environ`数组中以及将数组中的变量放到我们的UNIX变量中的2个接口，来提供和真正的环境变量之间的交互
+
+    而且我们应该在shell启动的时候，就将`environ`中的环境变量导入到我们自己的存储结构中
+    
+17. 父进程给子进程传消息的方式:
+
+    1. 通过参数 fork之后，调用execvp时把参数传给子进程。子进程通过main函数的`ac/av`来接收
+    2. 环境变量，fork时，父进程的环境变量直接复制给了子进程。
+    
+18. 我们自己写的shell，在varlib.c中对tab做的修改，都是对父进程中tab做的，并没有改子进程中tab这个变量，毕竟改了也
+    没有用，子进程调用exec后tab变量就消失了，子进程只剩下environ这个东西了。
+    
+    用户在使用smsh的时候，与UNIX变量做的交互都是使用的是自己定义的tab及其api，并没有直接修改envrion。这就满足了在使用shell时所有
+    和UNIX变量交互的需求了。但当fork子进程时，我们就不能单纯地和tab进行交互了，而是需要将tab中的环境变量放到父进的environ中去，由
+    OS完成父进程environ到子进程environ的拷贝
+    
+    ```
+    // 何时对tab进行修改，何时对environ进行修改
+
+    shell启动: 在父进程中，将environ中的环境变量拷贝到tab中
+    用户使用shell:
+      1. 创建UNIX变量
+      2. 更新UNIX变量
+      3. 打印UNIX变量
+      ...
+      都是在和tab交互，而不是和environ交互
+      
+    用户要执行别的程序，创建子进程了，在父进程中将tab中的环境变量拷贝到environ中去(毕竟用户可能对环境变量做了修改，需要交给子进程)
+    而tab中的shell变量则不需要动，毕竟这是shell独属的
     ```
