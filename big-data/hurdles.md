@@ -14,4 +14,4 @@
 5. 装完hive没有初始化，直接去打开了hive的cli
    > Starting from Hive 2.1, we need to run the schematool command below as an initialization step. For example, we can use "derby" as db type. 
    
-   [link](https://stackoverflow.com/questions/43947930/unable-to-initialize-hive-with-derby-from-brew-install)
+  [link](https://stackoverflow.com/questions/43947930/unable-to-initialize-hive-with-derby-from-brew-install)
