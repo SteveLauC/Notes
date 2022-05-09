@@ -45,6 +45,9 @@
    > 命令的管理，shell变量字母小写而环境变量大写，但`http_proxy/https_proxy`这两个环境变量通常是小写的
    [What's the 'right' format for the HTTP_PROXY environment variable? Caps or no caps?](https://unix.stackexchange.com/questions/212894/whats-the-right-format-for-the-http-proxy-environment-variable-caps-or-no-ca)
 
+   > 这里的名字可能有点歧义，在学shell编程时，统一将所有的变量都称作shell variable，而在这里我们叫它UNIX variable。
+   这里的shell variable只的是仅shell自身可见的变量
+
 8. 对变量的操作
 
    |operation|syntax|
