@@ -656,3 +656,26 @@
     ```
 
     > [question_link](https://stackoverflow.com/questions/72106387/having-trouble-writing-the-function-property-of-a-struct-correctly-in-rust/72107251#72107251)
+
+38. 对于任何有`lifetime parameter`的东西，为了可读性，都是应该显示出来的。对于
+    reference而言，可以不去手动地给出`lifetime parameter`，`&str`，因为`&`本身
+	就提供了足够的可读性，显示出这里有一个`lifetime parameter`。
+
+	而对于具有`lifetime parameter`的类型而言，为了可读性，最好不要省略
+
+	```rust
+	struct Foo<'a>{
+		name: &'a str,
+	}
+
+	fn foo(_: Foo) {}  
+	// 然而在2018以后，为了人体工学，在`non-async function`中这个东西可以省略
+
+	fn foo(_: Foo<'_>) 
+	// 还是建议显式地写出来，用下划线来表示，避免额外需要定义`lifetime parameter`
+
+	```
+
+	另外，可以通过lint来关掉这种人体工学的设置`#![deny(rust_2018_idioms)]`
+
+	[question_link](https://stackoverflow.com/questions/72242102/lifetime-on-a-single-argument-function)
