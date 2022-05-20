@@ -114,7 +114,7 @@
    2. 初始化server address
    3. 调用connect连接client fd到server address
    (1个client fd，1个server address)
-   4. 然后从client fd读东西
+   4. 然后从client fd读东西(是由server写过来的东西)
 
    > 这个client fd代表着一个socket文件，只有当client这边调用了connect，accept才
    会拿到client的fd。就好像钓鱼一样，鱼上钩了，一抬竿，才能抓到鱼
