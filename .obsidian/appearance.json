@@ -1,0 +1,9 @@
+{
+  "theme": "system",
+  "translucency": false,
+  "enabledCssSnippets": [
+    "obsidian",
+    "nord"
+  ],
+  "baseFontSize": 19
+}
