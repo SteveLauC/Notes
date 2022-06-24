@@ -153,3 +153,27 @@
     此session的process的PID
 
     > TLPI section 2.14 俺没读懂
+
+18. 进程占用的时间
+    * real time: 从进程被创建到进程结束真正占用了多少时间
+    * process time(cpu time): 指进程真正占用CPU的时间
+        * system CPU time: 进程在kernel mode下执行所花时间
+        * user CPU time: 进程在user mode下所花的时间
+
+    > GNU的`time`命令有一个`-p`选项，可以使用这种时间的格式
+    ```shell
+    -p, --portability
+           Use the following format string, for conformance with POSIX standard 1003.2:
+                     real %e
+                     user %U
+                     sys %S
+    ```
+
+    需要注意的是，`bash`以及`zsh`都有一个内置命令`time`(不支持`-p`选项)，如果想
+    使用GNU的，可以
+    ```shell
+    $ command time -p ls
+    ```
+
+19. real time operating system
+    Linux本是一个分时系统，但其在不断的改进中，已经完全支持real time 
