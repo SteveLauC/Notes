@@ -2,5 +2,9 @@
   "legacyEditor": false,
   "livePreview": false,
   "showLineNumber": true,
-  "vimMode": true
+  "vimMode": true,
+  "strictLineBreaks": false,
+  "spellcheck": true,
+  "readableLineLength": false,
+  "showUnsupportedFiles": false
 }

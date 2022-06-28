@@ -72,13 +72,13 @@
 
    每一个进程都有一个RUID和RGID，继承自父进程。EUID和EGID默认等于RUID和RGID，但
    是有时普通用户需要更高权限，此时可以更改EUID来获取更高权限。比如设置了setuid
-   位的程序，在运行时，其EUID会被设置为程序的UID而不是用户的UID。而SUID是为了解
+   位的程序，在运行时，其EUID会被设置为程序的UID而不是用户的UID。SUID是为了解
    决有高权限的进程在短暂地处理不需要高权限的任务为设计的，在这时，其EUID先会被
    赋给SUID，然后EUID会变为权限更低的ID，等到低权限任务完成后，EUID会将原来的UID
    从SUID中读取出来
 
 
-   [set uid and set gid 19](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/understanding-unix-linux-programming/Ch3.md)
+   [[system/system-programming/understanding-unix-linux-programming/Ch3#^a5a1a3]]
 
 9. init进程
     内核在启动时，会创建一个名为`init`的特殊进程，为所有进程的父进程

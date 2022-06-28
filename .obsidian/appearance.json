@@ -2,8 +2,7 @@
   "theme": "system",
   "translucency": false,
   "enabledCssSnippets": [
-    "obsidian",
-    "nord"
+    "obsidian"
   ],
   "baseFontSize": 19
 }

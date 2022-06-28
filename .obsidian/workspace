@@ -4,7 +4,7 @@
     "type": "split",
     "children": [
       {
-        "id": "98d97e9dc256dd25",
+        "id": "231afb810f63d2d4",
         "type": "leaf",
         "state": {
           "type": "empty",
@@ -83,11 +83,15 @@
     "width": 300,
     "collapsed": true
   },
-  "active": "98d97e9dc256dd25",
+  "active": "231afb810f63d2d4",
   "lastOpenFiles": [
-    "system/system-programming/understanding-unix-linux-programming/Ch3.md",
     "system/system-programming/the-linux-programming-interface/Ch2.md",
+    "system/system-programming/understanding-unix-linux-programming/Ch3.md",
+    "system/system-programming/the-linux-programming-interface/Ch3.md",
     "system/system-programming/the-linux-programming-interface/preface.md",
+    "programming-language/Rust/blog/rust-blog/common-rust-lifetime-misconceptions.md",
+    "utility/shell/Linux_shell脚本攻略CH1.md",
+    "programming-language/Rust/rust-in-action/Ch2.md",
     "system/system-programming/understanding-unix-linux-programming/Ch15.md"
   ]
 }
