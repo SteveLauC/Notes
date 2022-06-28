@@ -4,15 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "1c976ac813e6a7e3",
+        "id": "98d97e9dc256dd25",
         "type": "leaf",
         "state": {
-          "type": "markdown",
-          "state": {
-            "file": "system/system-programming/understanding-unix-linux-programming/Ch15.md",
-            "mode": "source",
-            "source": false
-          }
+          "type": "empty",
+          "state": {}
         }
       }
     ],
@@ -53,7 +49,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "00cf934a0fa62c08",
@@ -69,7 +66,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "system/system-programming/understanding-unix-linux-programming/Ch15.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -87,8 +83,11 @@
     "width": 300,
     "collapsed": true
   },
-  "active": "1c976ac813e6a7e3",
+  "active": "98d97e9dc256dd25",
   "lastOpenFiles": [
+    "system/system-programming/understanding-unix-linux-programming/Ch3.md",
+    "system/system-programming/the-linux-programming-interface/Ch2.md",
+    "system/system-programming/the-linux-programming-interface/preface.md",
     "system/system-programming/understanding-unix-linux-programming/Ch15.md"
   ]
 }
