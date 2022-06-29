@@ -145,14 +145,27 @@
 
     我们可以使用如下的代码来诊断POSIX thread程序的错误
     ```c
+    errno = 0;
     errno = pthread_create(&thread_n, NULL, func, &arg);
     if (errno != 0) {
         errExit("pthread_create");
     }
     ```
 
+    但是errno是一个macro，在调用后，在预处理时展开为函数调用，返回一个可以修改的
+    左值(指针, 再deref)，每一次errno的出现都会导致一次系统调用。所以上面的写法并不高效。
+
+    ```c
+    int s;
+    s = pthread_create(&thread, NULL, func, &arg);
+    if (s != 0) {
+        errExitEN(s, "pthread_create");  // 仅仅在`errExitEN`中才使用errno
+    }
+    ```
+
 12. 关于errno
-    正常的errno都是正数，可以使用`$ errno -l`来查看
+    正常的errno都是正数，可以使用`$ errno -l`来查看。errno是thread-local的，每一
+    线程有各自的errno
 
 13. c的`variadic arguments`，当一个函数长这样子，它就是`variadic function`，
     `void foo(TYPE fixed_argument, ...)`，可以使用`#include <stdarg.h>`中的
@@ -204,7 +217,7 @@
     int my_printf(char * formatter, ...) {
         va_list list; 
         va_start(list, formatter);
-
+]
         char * p = formatter;
         while (*p != '\0') {
             switch (*p) {
@@ -226,3 +239,84 @@
         return 0;
     }
     ```
+
+    ```c
+    // 或者我们直接用`vprintf`，免得我们自己手动调用`va_arg`
+    #include <stdarg.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    void my_printf(const char *formatter, ...);
+
+    int main(void) {
+        my_printf("%d %s\n", 1, "hello");
+        return 0;
+    }
+
+    void my_printf(const char *formatter, ...) {
+        va_list arg;
+        va_start(arg, formatter);
+        vprintf(formatter, arg);
+        va_end(arg);
+    }
+    ```
+
+14. c的`__GNUC__`宏
+
+    ```c
+    #include <stdio.h>
+
+    int main(void) {
+    #ifdef __GNUC__
+        printf("you are using a GNU compiler\n");
+    #endif
+        return 0;
+    }
+    ```
+
+15. c的`noreturn`(no return) attribute是用来告诉编译器某个函数是不会返回值的。
+    这样既可以平息编译器的warning，又可以让其做一些优化
+
+    由于`__attribute__ ((attribute name))`写法是GNUC的，所以需要
+
+    ```c
+    #ifdef __GNUC__
+        __attribute__ ((noreturn))
+    #endif
+    int foo(); // tell compiler function `foo` will not return
+    ```
+
+16. 在c中用`enum`来模拟`Boolean`，可以这样做
+    
+    ```c
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    typedef enum {
+        FALSE,
+        TRUE,
+    } Boolean;
+
+    int main(void) {
+        Boolean false = FALSE;
+        Boolean true = TRUE;
+        printf("DEBUG: FALSE's numeric value: %d\n", FALSE);
+        printf("DEBUG: TRUE's numeric value: %d\n", TRUE);
+
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ gcc main.c && ./a.out
+    DEBUG: FALSE's numeric value: 0
+    DEBUG: TRUE's numeric value: 1
+    ```
+    由于`enum`在未指定的时候，从0开始，故刚好FALSE就是0，TRUE就是1
+
+17. c的`static`关键字如果用于函数是用于控制访问权限的
+
+    A static function is not callable from any compilation unit other than the 
+    one it is in.
+
+    > [link](https://stackoverflow.com/q/41196027/14092446)
