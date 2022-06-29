@@ -75,3 +75,154 @@
    极少数的syscall可以在成功时返回`-1`(比如`getpriority`)，对于这种syscall，想要
    检查其是否出错需要先将errno设置为0，然后调用它，再看errno是否为0，如果非0则是
    出错了
+
+
+6. 常用的头文件以及其用途
+    
+    ```c
+    #ifndef TLPI_HDR_H
+    #define TLPI_HDR_H
+
+    #include <sys/types.h>       /* Prevent accidental double inclusion */
+    #include <stdio.h>           /* Type definitions used by many arguments */
+    #include <unistd.h>          /* Prototypes of commonly used library functions, plus EXIT_SUCCESS and EXIT_FAILURE */
+    #include <errno.h>           /* Prototypes for many syscalls */
+    #include <string.h>          /* Commonly used string-handling functions */
+
+    #endif
+    ```
+
+7. 在c中创建一个临时文件
+    
+    ```c
+    #include <stdio.h>
+    FILE *tmpfile(void);
+ 
+    DESCRIPTION
+    The tmpfile() function opens a unique temporary file in binary read/write (w+b) mode.
+    The file will be automatically deleted when it is closed or the program terminates.
+ 
+    RETURN VALUE
+    The  tmpfile() function returns a stream descriptor, or NULL if a unique filename cannot 
+    be generated or the unique file cannot be opened.  In the latter case, errno is set to
+    indicate the error.
+    ```
+
+8. diff between `exit()` and `_exit()`
+
+    exit() flushes io buffers and does some other things like run functions registered by atexit(). exit() invokes _end( )
+
+    _exit() just ends the process without doing that. 
+    
+    > `_exit()` 和 `_Exit()`是完全相同的，前者来自POSIX，后镇来自C99
+
+10. 在`fork`得到的子进程中，退出子进程应该使用`exit()`还是`_exit()`
+    
+    应该使用`_exit()`，因为:
+    1. `fork`得到的子进程继承了父进程的buffer(c的buffer，而不是os的)
+    2. `exit()`会调用其handler函数，从而对父进程的外部数据发生冲突
+
+    > [link](https://stackoverflow.com/q/5422831/14092446)
+
+    > 举个例子的代码
+
+    ```c
+    #include <stdio.h>
+    #include <unistd.h>
+
+    int main(void) {
+        printf("hi");
+        fork();
+        // return 会将buffer都给flush掉
+        // 所以`hi`会被输出两遍
+        return 0;
+    }
+    ```
+
+11. POSIX thread api在错误的时候并不返回`-1`，而是errno的值
+    On success, pthread_create() returns 0; on error, it returns an error number,
+    and the contents of *thread are undefined.
+
+    我们可以使用如下的代码来诊断POSIX thread程序的错误
+    ```c
+    errno = pthread_create(&thread_n, NULL, func, &arg);
+    if (errno != 0) {
+        errExit("pthread_create");
+    }
+    ```
+
+12. 关于errno
+    正常的errno都是正数，可以使用`$ errno -l`来查看
+
+13. c的`variadic arguments`，当一个函数长这样子，它就是`variadic function`，
+    `void foo(TYPE fixed_argument, ...)`，可以使用`#include <stdarg.h>`中的
+    宏来访问所有的参数
+
+    > 使用`man stdarg`查看更多信息
+
+    
+    ```c
+    #include <stdarg.h>
+
+    void va_start(va_list ap, last);
+    type va_arg(va_list ap, type);
+    void va_end(va_list ap);
+    void va_copy(va_list dest, va_list src);
+    ```
+
+    使用方法，需要先使用创建一个`va_list`类型的变量，然后交给`va_start`宏进行
+    初始化(可能va_list内部有指针吧)，`va_start`的`last`是ariadic function的
+    fixed_argument的参数名(last的意思是最后一个明确的已知的参数)。然后连续掉用
+    `va_arg`来遍历参数，参数的类型要传给`type`参数，并且传入的参数必须是正确的。
+    需要提醒的是，并不能在`va_arg`函数中知道有多少个参数，调用的人需要在
+    `fixed_arguments`中将其表示出来(比如printf中使用format specifier的来显示)。
+    在最后需要使用`va_end`来将其结束
+
+    
+    示例程序:
+    ```c
+    #include <stdarg.h>
+    #include <stdio.h>
+    #include <unistd.h>
+
+    int my_printf(char * formatter, ...);
+
+    int main(void) {
+        my_printf("dsc", 1, "hello world", '!');
+        return 0;
+    }
+
+    /*
+     * purpose: a simple `printf` fork
+     *
+     * action: iterate over the `formatter` arguments and print the arguments
+     *
+     * arguments: string only contains formatter letters(d: int, s: char *, c: char )
+     *
+     * return: 0 on success, -1 on errno
+    */
+    int my_printf(char * formatter, ...) {
+        va_list list; 
+        va_start(list, formatter);
+
+        char * p = formatter;
+        while (*p != '\0') {
+            switch (*p) {
+                case 'd':
+                    printf("%d", va_arg(list, int));
+                    break;
+                case 's':
+                    printf("%s", va_arg(list, char *));
+                    break;
+                case 'c':
+                    printf("%c", va_arg(list, int));
+                    break;
+            }
+            p +=1;
+        }
+        fflush(stdout);
+
+        va_end(list);
+        return 0;
+    }
+    ```
