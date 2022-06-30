@@ -241,7 +241,7 @@
     }
 
     /*
-     * purpose: a simple `printf` fork
+     * purpose: a simple `printf` clone
      *
      * action: iterate over the `formatter` arguments and print the arguments
      *
@@ -356,3 +356,22 @@
     one it is in.
 
     > [link](https://stackoverflow.com/q/41196027/14092446)
+
+17. errno在其man pages中使用的都是其symbolic name，每一个symbolic name的具体编号
+    是多少是和CPU架构有关的。
+
+    而且有的其编号可能是不连续的，也就是说有的symbolic 
+    name没有值。
+
+    有的symbolic用`/`进行了分割，这意味着多个symbolic name对应者相同
+    的编号。比如`EAGAIN/EWOULDBLOCK`，前者来自`system V`，后者来自`BSD`
+
+18. str to num
+    
+    ```c
+    atoi    // in decimal, to int
+    atol    // in decimal, to long
+    atoll   // in decimal, to long long
+    strtol  // in any base, to long
+    strtoll // in any base, to long long
+    ```
