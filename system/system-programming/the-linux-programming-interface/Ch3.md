@@ -39,8 +39,9 @@
 
     ```c
     // 这种方法是在编译期做的，如果是在一台主机上编译，将binary放到另一个主机上
-	// 宏，预处理器做的
-    运行则无用，打印的是编译机器上的版本号
+    // 则无用，打印的是编译机器上的版本号
+
+	// 宏，预处理时展开的
     #include <stdio.h>
 
     int main(void) {
@@ -116,11 +117,11 @@
     
     > `_exit()` 和 `_Exit()`是完全相同的，前者来自POSIX，后镇来自C99
 
-10. 在`fork`得到的子进程中，退出子进程应该使用`exit()`还是`_exit()`
-    
+9. 在`fork`得到的子进程中，退出子进程应该使用`exit()`还是`_exit()`
+   
     应该使用`_exit()`，因为:
-    1. `fork`得到的子进程继承了父进程的buffer(c的buffer，而不是os的)
-    2. `exit()`会调用其handler函数，从而对父进程的外部数据发生冲突
+    1. `fork`得到的子进程继承了父进程的I/O buffer(这个buffer是c的机制，而不是os的)
+    2. `exit()`会调用其handler函数，从而与父进程的外部数据发生冲突
 
     > [link](https://stackoverflow.com/q/5422831/14092446)
 
@@ -139,7 +140,7 @@
     }
     ```
 
-11. POSIX thread api在错误的时候并不返回`-1`，而是errno的值
+10. POSIX thread api在错误的时候并不返回`-1`，而是errno的值
     On success, pthread_create() returns 0; on error, it returns an error number,
     and the contents of *thread are undefined.
 
@@ -159,17 +160,46 @@
     int s;
     s = pthread_create(&thread, NULL, func, &arg);
     if (s != 0) {
-        errExitEN(s, "pthread_create");  // 仅仅在`errExitEN`中才使用errno
+        errExitEN(s, "pthread_create");  // 避免了对`errno`的使用
     }
     ```
 
-12. 关于errno
+    ```c
+    // errExitEN
+    /*
+     * purpose: print error message and exit
+     *
+     * action: call `outputError` and `terminate`
+     *
+     * arguments:
+     * * `format`: user message
+     *
+     * note:
+     *  * `errExitEN` is like `errExit` but does not invoke `errno` directly
+     *      so that we can reduce the number of syscalls
+     *  * variadic function
+    */
+    void errExitEN(int errnum, const char *format, ...) {
+        va_list argList;
+
+        va_start(argList, format);
+        outputError(TRUE, errnum, TRUE, format, argList);
+        va_end(argList);
+
+        terminate(TRUE);
+    }
+    ```
+
+11. 关于errno  
     正常的errno都是正数，可以使用`$ errno -l`来查看。errno是thread-local的，每一
     线程有各自的errno
 
-13. c的`variadic arguments`，当一个函数长这样子，它就是`variadic function`，
-    `void foo(TYPE fixed_argument, ...)`，可以使用`#include <stdarg.h>`中的
-    宏来访问所有的参数
+    > 每个线程都有自己的`data area` 和 `stack`，所以errno宏展开后的指针指向的是
+    可写的`data area`
+
+12. c的`variadic arguments`，当一个函数长这样子，它就是`variadic function`，
+    `void foo(TYPE fixed_argument1, TYPE fixed_argument2,..., TYPE fixed_argumentX, ...)`
+    ，可以使用`#include <stdarg.h>`中的宏来访问所有的 variadic arguments
 
     > 使用`man stdarg`查看更多信息
 
@@ -184,12 +214,17 @@
     ```
 
     使用方法，需要先使用创建一个`va_list`类型的变量，然后交给`va_start`宏进行
-    初始化(可能va_list内部有指针吧)，`va_start`的`last`是ariadic function的
-    fixed_argument的参数名(last的意思是最后一个明确的已知的参数)。然后连续掉用
-    `va_arg`来遍历参数，参数的类型要传给`type`参数，并且传入的参数必须是正确的。
+    初始化(没有显式地给地址却能对其进行修改，可能va_list内部有指针吧)，
+    `va_start`的`last`是ariadic function中的最后一个fixed_argument的参数名
+    (last的意思是最后一个明确的已知的参数)。然后连续掉用`va_arg`来遍历参数，
+    参数的类型要传给`type`参数，并且传入的参数必须是正确的。
     需要提醒的是，并不能在`va_arg`函数中知道有多少个参数，调用的人需要在
     `fixed_arguments`中将其表示出来(比如printf中使用format specifier的来显示)。
     在最后需要使用`va_end`来将其结束
+
+    > 在使用`va_arg`时，`type`如果传入`char` `short` `float`等promptable的类型，
+    则会有UB出现。因为`char` `short`会被改为`int`，`float`会被改为`double`
+    [answer](https://stackoverflow.com/a/28054417/14092446)
 
     
     示例程序:
@@ -217,7 +252,7 @@
     int my_printf(char * formatter, ...) {
         va_list list; 
         va_start(list, formatter);
-]
+
         char * p = formatter;
         while (*p != '\0') {
             switch (*p) {
@@ -242,6 +277,7 @@
 
     ```c
     // 或者我们直接用`vprintf`，免得我们自己手动调用`va_arg`
+    // 不过这样就要使用`printf`中c规定的`format specifier`，就不能自己规定了
     #include <stdarg.h>
     #include <stdio.h>
     #include <stdlib.h>
@@ -261,7 +297,7 @@
     }
     ```
 
-14. c的`__GNUC__`宏
+13. c的`__GNUC__`宏
 
     ```c
     #include <stdio.h>
@@ -274,7 +310,7 @@
     }
     ```
 
-15. c的`noreturn`(no return) attribute是用来告诉编译器某个函数是不会返回值的。
+14. c的`noreturn`(no return) attribute是用来告诉编译器某个函数是不会返回值的。
     这样既可以平息编译器的warning，又可以让其做一些优化
 
     由于`__attribute__ ((attribute name))`写法是GNUC的，所以需要
@@ -286,7 +322,7 @@
     int foo(); // tell compiler function `foo` will not return
     ```
 
-16. 在c中用`enum`来模拟`Boolean`，可以这样做
+15. 在c中用`enum`来模拟`Boolean`，可以这样做
     
     ```c
     #include <stdio.h>
@@ -314,7 +350,7 @@
     ```
     由于`enum`在未指定的时候，从0开始，故刚好FALSE就是0，TRUE就是1
 
-17. c的`static`关键字如果用于函数是用于控制访问权限的
+16. c的`static`关键字如果用于函数是用于控制访问权限的
 
     A static function is not callable from any compilation unit other than the 
     one it is in.
