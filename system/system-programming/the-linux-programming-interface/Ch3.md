@@ -358,12 +358,12 @@
     > [link](https://stackoverflow.com/q/41196027/14092446)
 
 17. errno在其man pages中使用的都是其symbolic name，每一个symbolic name的具体编号
-    是多少是和CPU架构有关的。
+    (数值)是多少是和CPU架构有关的。
 
-    而且有的其编号可能是不连续的，也就是说有的symbolic 
-    name没有值。
+    而且有的其编号可能是不连续的，也就是说中间有些数值不是合法的`errno`，没有相
+    应的`symbolic name`
 
-    有的symbolic用`/`进行了分割，这意味着多个symbolic name对应者相同
+    有的symbolic用`/`进行了分割，这意味着多个symbolic name对应着相同
     的编号。比如`EAGAIN/EWOULDBLOCK`，前者来自`system V`，后者来自`BSD`
 
 18. str to num
@@ -374,4 +374,91 @@
     atoll   // in decimal, to long long
     strtol  // in any base, to long
     strtoll // in any base, to long long
+    ```
+
+19. feature test macro(FTM)
+
+    有些时候我们在写程序时想要所使用的系统调用或者library function的行为符合某一
+    个标准，就可以使用FTM来做到。
+
+    > Feature test macros allow the programmer to control the definitions that 
+    are exposed by system header files when a program is compiled.
+
+    比如我想使用`BSD`的行为，就可以使用`#define _BSD_SOURCE`或者`#define _BSD_SOURCE 1` 
+    需要注意的是这个预处理指令必须放到文件的最上方，在`#include`之前
+
+    除了使用`#define feature_test_macros`，还可以在`gcc`的选项中将其给出来
+    ```shell
+    # gcc -DMACRO=value
+    $ gcc -D_BSD_SOURCE=1
+    ```
+
+    > 不过这个`FST`过时了，需要配合`_DEFAULT_SOURCE`使用
+    ```c
+    #define _DEFAULT_SOURCE
+    #define _BSD_SOURCE
+    ```
+
+    > for more details, check out `man feature_test_macros` and [GNU doc](https://ftp.gnu.org/old-gnu/Manuals/glibc-2.2.3/html_node/libc_13.html) and `features.h`
+
+20. 在`glic` 2.19往后，`#define _GNU_SOURCE`会隐式地`#define _DEFAULT_SOURCE`
+
+    ```c
+    #define _GNU_SOURCE
+    #include <stdio.h>
+
+    int main(void) {
+    #ifdef _DEFAULT_SOURCE
+        printf("_DEFAULT_SOURCE is defined");
+    #else 
+        printf("_DEFAULT_SOURCE is not defined");
+    #endif
+    }
+    ```
+
+    ```shell
+    $ ldd --version
+    ldd (Ubuntu GLIBC 2.35-0ubuntu3) 2.35
+    $ gcc main.c && ./a.out
+    _DEFAULT_SOURCE is defined%
+    ```
+
+21. system data types
+    
+    为了写出更加跨平台的代码，对于system data type我们应该使用其本身的名字。比
+    如`process ID`的类型是`pid_t`，其在GNU中，就是`int`。为了跨平台，我们应该使
+    用`pid_t`而不是`int`
+
+    即使是相同的UNIX实现，在不同的版本中其类型也可能有所变化。比如`user ID`和'
+    `group ID`，在Linux 2.2以前是16 bits，而在2.4以后，则是32bits
+
+    > 大多数system data types都是以`_t`结尾的(end in _t)，大多数定义在`sys/types.h`
+    中，少数定义在其他的一些文件中
+
+22. 打印`system data type`
+ 
+    先给2个定义，由于历史遗留问题，函数中有具体类型的称作其有`prototype`，而没有
+    给出参数则称作没有`prototype`。对于有具体类型的参数，实参会被传为相应的参数
+    型；没有具体参数类型的参数，则使用`default argument promotion`
+
+    ```
+    The default argument promotions are:
+
+    * Integers narrower (technically, of lesser rank) than int are promoted to 
+    int if it can represent all the values of the source type or unsigned int 
+    otherwise.
+    * float arguments are converted to double.
+    ```
+
+    `printf(const char * format, ...)`中的variadic arguments就是应用了defualt 
+    argument promotion规则
+
+
+    再回到打印`system data type`，比如我们要打印的类型在不同实现中可能是`char`
+    `int``long`，那么按照default argument promotion规则，则只有2种最终类型的可
+    能，即`int`和`long`，所以可以向大类型转换
+    
+    ```c
+    pid_t pid = getpid(); 
+    printf("%d\n", (long)pid);
     ```
