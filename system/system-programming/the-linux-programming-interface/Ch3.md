@@ -462,3 +462,51 @@
     pid_t pid = getpid(); 
     printf("%d\n", (long)pid);
     ```
+
+23. 结构体初始化的可移植问题
+    
+    有的标准确实对结构体的定义作出了说明，比如`sembuf`
+    ```c
+    struct sembuf{
+        unsigned short sem_num;
+        short          sem_op;
+        short          sem_flg;
+    }
+    ```
+
+    但仍有下面2点是需要注意的:
+    1. 内部字段的顺序是未被指定的
+    2. 在某些实现中，可能会有额外的与实现相关的字段(比如用宏控制的字段)
+
+    所以下面的初始化是不跨平台的
+
+    ```c
+    struct sembuf s = {3, 01, SEM_UNDO};
+    ```
+
+    我们应该使用如下的初始化方法
+
+    ```c
+    struct sembuf s;
+    s.sem_num = 3;
+    s.sem_op = 01;
+    s.sem_flg = SEM_UNDO;
+    ```
+
+    或者如果在使用C99，可以使用其新语法
+    ```c
+    struct sembuf s = {
+        .sem_num = 3,
+        .sem_op = 01,
+        .sem_flg = SEM_UNDO,
+    }
+    ```
+
+24. `#include <sys/types.h>` before `#include` any header files importing the 
+    needed syscalls, this is required by `POSIX.1-1990`. But `SUSv1` removed
+    this due to its redundance. 
+
+    Nevertheless, when writing portable programs, it is wise to make this one of
+    the first header files included
+
+    > 但本书示例程序中不会这样多
