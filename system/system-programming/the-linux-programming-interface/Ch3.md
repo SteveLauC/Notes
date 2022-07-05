@@ -376,6 +376,28 @@
     strtoll // in any base, to long long
     ```
 
+    strtol 可以接受[0, 36]的任意base，如果`base`参数给0的话，其会自动的进行检测
+
+    ```c
+    #include <assert.h>
+    #include <stdlib.h>
+
+    int main(void) {
+      char *without_prefix = "77";
+
+      int hex_i = strtol(without_prefix, NULL, 16);
+      int oct_i = strtol(without_prefix, NULL, 8);
+      assert(hex_i == 119);
+      assert(oct_i == 63);
+
+      char *with_prefix_hex = "0x77";
+      char *with_prefix_oct = "077";
+      assert(strtol(with_prefix_hex, NULL, 0) == 119);
+      assert(strtol(with_prefix_oct, NULL, 0) == 63);
+      return 0;
+    }
+    ```
+
 19. feature test macro(FTM)
 
     有些时候我们在写程序时想要所使用的系统调用或者library function的行为符合某一
