@@ -43,6 +43,8 @@
    > interval timer其实是为了提高精度才引入的，在之前精度只到秒的时候，进程就已
    经有一个计时器了，所以算上3种interval timer，每个进程有4种计时器。
 
+   > 其实就是3种时间 [TLPI Ch2 18](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch2.md)
+
 8. c中的restrict关键字，修饰指针时，告诉编译器，这个指针是唯一可以访问这个变量
    的入口
 

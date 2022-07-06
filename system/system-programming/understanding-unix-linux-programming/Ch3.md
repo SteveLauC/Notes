@@ -431,7 +431,7 @@
 
 
 22. 当使用`int creat(const char *pathname, mode_t mode)`来创建文件时，可以请求将
-    新文件的文件权限设置为mode。不过只是请求，而不是命令，最后新文件的文件权限还
+    新文件的文件权限设置为mode。**不过只是请求，而不是命令**，最后新文件的文件权限还
 	要看`新建文件掩码`这个变量，从请求权限中去掉umask才是最后得到的权限
 
 	在rust中，使用`std::fs::OpenoOption::open()`创建文件，默认的权限是`0x666`，如
@@ -441,11 +441,11 @@
 	```shell
 	# Linux 上默认的啊掩码
 	# 使用umask命令来查看umask
-	➜  Desktop umask
+	$ umask
 	002
 	```
 
-	在macOS上试了下，发现umask默认是022
+	> 在macOS上试了下，发现umask默认是022
 
 	syscall中的`chmod(mode)`在rust中与之对应的是`std::os::unix::fs::PermissionsExt`
 	中的`fn set_mode(&mut self, mode: u32)`.
