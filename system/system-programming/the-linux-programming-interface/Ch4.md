@@ -95,3 +95,59 @@
 
     > RLIMIT_FSIZE The maximum size of file the process can create. Trying to 
     write a larger file causes a signal: SIGXFSZ. 
+
+12. 对于每一个打开的文件，kernel都会记录一个`file offset`，有时也被称为`read-write
+    offset or pointer`。是一个相对于`文件开始`的字节偏移量
+
+    ```c
+    #include <sys/types.h>
+    #include <unistd.h>
+
+    off_t lseek(int fd, off_t offset, int whence);
+    // l代表的是返回值是long，早期的UNIX有seek调用
+    ```
+
+    可以使用`lseek`函数来调整
+
+    `whence`参数:
+    ```
+    SEEK_SET The file offset is set to offset bytes.
+
+    SEEK_CUR The file offset is set to its current location plus offset bytes.
+
+    SEEK_END The file offset is set to the size of the file plus offset bytes.
+    ```
+
+    在早期的UNIX里面，没有`SEEK_*`的这种宏，而是`0/1/2`的magic number。在一些早
+    期的BSD中，这些值有别的名字`L_SET/L_INCR/L_XTN`
+
+    ```c
+    // from ""
+    /* values for the whence argument to lseek.  */
+    #ifndef	_stdio_h		/* <stdio.h> has the same definitions.  */
+    # define seek_set	0	/* seek from beginning of file.  */
+    # define seek_cur	1	/* seek from current position.  */
+    # define seek_end	2	/* seek from end of file.  */
+    # ifdef __use_gnu
+    #  define seek_data	3	/* seek to next data.  */
+    #  define seek_hole	4	/* seek to next hole.  */
+    # endif
+    #endif
+    ```
+
+    注意一下`SEEK_END`是将偏移量设到`文件大小`+offset，`lseek(fd, 0, SEEK_END)`此
+    时指针指到的并不是文件的内容，是文件最后一个字节的后一个字节
+
+    使用`lseek`单纯地改变内核中对`fd`的offset的记录，并不会造成任何的磁盘访问
+
+    pipe, FIFO, socket以及terminal都是不可以seek的
+
+13. hole
+    Linux允许`lseek`超过文件的大小，如果此时使用`write`进行写，就会产生洞。在洞
+    里进行读会返回0。洞的存在意味着一个文件的文件大小可以超过它真实地利用地磁盘
+    空间大小
+
+    就比如，你创建了一新文件，使用`lseek(fd, 5, SEEK_END)`来将指针超过文件6个字
+    节处，然后在这里开始`write(fd, "hello", 5)`，那么最终文件的大小就是`10`
+
+    ![illustration](https://github.com/SteveLauC/pic/blob/main/lseek_demo.jpeg)
