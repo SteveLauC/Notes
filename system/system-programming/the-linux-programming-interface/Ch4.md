@@ -142,7 +142,7 @@
 
     pipe, FIFO, socket以及terminal都是不可以seek的
 
-13. hole
+13. hole, sparse file
     Linux允许`lseek`超过文件的大小，如果此时使用`write`进行写，就会产生洞。在洞
     里进行读会返回0。洞的存在意味着一个文件的文件大小可以超过它真实地利用地磁盘
     空间大小
@@ -151,3 +151,77 @@
     节处，然后在这里开始`write(fd, "hello", 5)`，那么最终文件的大小就是`10`
 
     ![illustration](https://github.com/SteveLauC/pic/blob/main/lseek_demo.jpeg)
+
+    sparse file是那种有很多空字节(0)的文件，与其真实地在磁盘上存储这么多无用的0
+    ，不如在文件的元数据上标记一下哪里到哪里是0，这样就可以不在磁盘上真实地分配
+    了。达到节省空间的作用
+
+    GNU的cp现在可以检测sparse file，并在复制时使dest文件也是sparse file。我写的
+    用`read`实现的cp没有这个功能。
+
+    ```
+    --sparse=WHEN
+              control creation of sparse files. See below
+
+    By default, sparse SOURCE files are detected by a crude heuristic and the 
+    corresponding DEST file is made sparse as well.  That is the behavior selected 
+    by --sparse=auto. Specify --sparse=always to create a sparse DEST file 
+    whenever the SOURCE file contains a long enough sequence of zero bytes.  
+    Use --sparse=never to inhibit creation of sparse files.
+
+    这个选项就是gnu cp检测sparse file的开关，其默认值是`auto`，也就是在复制的时
+    侯检测到sparse file则拷贝时dest文件也是sparse file。`always`值可以使其在遇到
+    连续的真实分配在磁盘上的0(不是sparse file)时，复制出sparse file。如果使用
+    `never`则不管原文件是真实分配的0或是sparse file，dest都会是真实分配的0
+    ```
+
+    举个例子说明GNU cp的此项功能
+    1. 创建一个sparse file(大文件则比较好观察)
+    2. 使用gnu cp和自己写的copy对其进行复制
+    3. 观察上述2产物的block占用
+
+    ```c
+    #include <assert.h>
+    #include <stdio.h>
+    #include <fcntl.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    
+    int main(void)
+    {
+    	int fd = creat("sparse_file", 0666);
+    
+    	lseek(fd, 10000, SEEK_SET);
+    	assert(5==write(fd, "hello", 5));
+    	close(fd);
+    	return 0;
+    }
+    ```
+
+    ```shell
+    $ cp sparse_file gnu
+    $ cp sparse_file my_cp
+    $ stat gnu
+      File: sparse_file_copied_using_gnu_cp
+      Size: 10005           Blocks: 8          IO Block: 4096   regular file
+    Device: 803h/2051d      Inode: 3541392     Links: 1
+    Access: (0664/-rw-rw-r--)  Uid: ( 1000/   steve)   Gid: ( 1000/   steve)
+    Access: 2022-07-08 11:11:21.946126365 +0800
+    Modify: 2022-07-08 11:11:21.946126365 +0800
+    Change: 2022-07-08 11:11:21.946126365 +0800
+    Birth: 2022-07-08 11:11:21.946126365 +0800
+    $ stat my_cp
+      File: sparse_file_copied_using_my_copy
+      Size: 10005           Blocks: 24         IO Block: 4096   regular file
+    Device: 803h/2051d      Inode: 3541434     Links: 1
+    Access: (0664/-rw-rw-r--)  Uid: ( 1000/   steve)   Gid: ( 1000/   steve)
+    Access: 2022-07-08 11:11:35.402828404 +0800
+    Modify: 2022-07-08 11:12:17.016997942 +0800
+    Change: 2022-07-08 11:12:17.016997942 +0800
+    Birth: 2022-07-08 11:11:35.402828404 +0800
+    ```
+
+14. text file busy
+    出现这种错误说明binary在运行时被修改
+
+    [link](https://stackoverflow.com/questions/16764946/what-generates-the-text-file-busy-message-in-unix)
