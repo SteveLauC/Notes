@@ -74,6 +74,9 @@
     `F_GETFL`(get flag)来拿到
     2. file creation flags: 不能被拿到或者修改
     3. open file status flags: 可以使用`fcntl`中的`F_GETFL/F_SETFL`来拿或者修改
+    
+    > status flag is the only category of flag that can be modified. Attempts to
+    modify other flags are ignored
 
 7. `O_ASYNC`这个用来激活`signal-dirven I/O`的flag在`open(2)`中使用是没有用的，
    若想用只可以在`fcntl(2)`中使用`F_SETFL`来激活
