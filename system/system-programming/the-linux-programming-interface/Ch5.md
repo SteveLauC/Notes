@@ -124,3 +124,124 @@
     Note that the above command won't open file `output` twice cause it will result 2 
     different file descriptors which do not share a same offset, writing to such fds
     will elicit data corruption
+
+9. duplicate the fd
+
+   * dup2
+     ```c
+     int dup2(int oldfd, int newfd);
+     ```
+
+     You can specify the new fd instead of being allocated by the os. If the new fd
+     specified by `newfd` is alreay open, it is silently closed before duplication.
+     Any error encountered during the close will be **ignored**
+
+     When `oldfd` equals `newfd`, `dup2` does nothing.
+
+   * fcntl
+
+     ```c
+     newfd = fcntl(oldfd, F_DUPFD, startfd);
+     ```
+     
+     This call makes a duplicate fd using the lowest unused fd greater than or euqal
+     to `startfd`. This is useful when we wanna ensure that the new fd is in a certain
+     range
+
+   * dup3(linux-specific)
+   Allow us to control the `fd flag` of the new duplicate file descriptor
+ 
+   ```c
+   int dup3(int oldfd, int newfd, int flags);
+   ```
+
+   Currently, `flags` argument support only one flag(`O_CLOEXEC`)
+
+   > duplicate file descriptors share the same file offset and status flag 
+   cause they refer to the same open file description. But they do not share
+   `fd flags` for the reason that this flag is private to the fd.
+   
+
+10. read or write at a specific offset
+
+    ```c
+    ssize_t pread(int fd, void *buf, size_t count, off_t offset);
+
+    ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset);
+    ```
+
+    There two syscalls operate just like `read(2)/write(2)` except that they
+    read or write at a specific offset insead of current offset.
+
+    Also note, seeking to `offset` and read/write are performed as an atomic
+    operation.
+
+11. scatter-gather I/O(vectored I/O)
+
+
+    ```c
+    #include <sys/uio.h>
+
+    ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+
+    ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+    ```
+
+    There functions transfer a cluster of buffers to the file `fd`, rather than
+    a single buffer.
+
+    ```c
+    struct iovec {
+        void  *iov_base;    /* Starting address */
+        size_t iov_len;     /* Number of bytes to transfer */
+    };
+    ```
+
+    Argument `iov` is an array of struct `iovec` containing the starting address
+    and buffer length of those buffers. The number of buffers is specified in
+    `iovcnt`
+
+    example of `readv`
+
+    ```c
+    #include <stdio.h>
+    #include <assert.h>
+    #include <sys/uio.h>
+    #include <unistd.h>
+    #include <stdlib.h>
+    #include <fcntl.h>
+    
+    int main(void)
+    {
+	    int fd = open("test", O_RDONLY);
+    
+	    if (fd == -1) {
+		    fprintf(stderr, "can not open");
+		    exit(1);
+	    }
+    
+	    char buf1[10];
+	    char buf2[10];
+	    struct iovec buffers[] = {
+		    { buf1, sizeof(buf1) },
+		    { buf2, sizeof(buf2) },
+	    };
+    
+	    ssize_t n_read = readv(fd, buffers, 2);
+	    assert(n_read == 20);
+    
+	    write(1, buf1, sizeof(buf1));
+	    write(1, buf2, sizeof(buf2));
+	    close(fd);
+	    return EXIT_SUCCESS;
+    }
+    ```
+
+    Scatter-gather IO in rust
+
+    ```rust
+    // from `std::io::Read`
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
+    // from `std::io::Write`
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize>
+    ```
