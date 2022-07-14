@@ -248,39 +248,3 @@
     ```
 
     > Scatter input or output is performed as an atomic operation
-
-12. perform scatter I/O at a specific offset
-
-    ```c
-    ssize_t preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset);
-    ssize_t pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset);
-    ```
-
-    > Added in kernel 2.6.30
-
-13. truncate a file to a specific length
-   
-    ```c
-    #include <unistd.h>
-    #include <sys/types.h>
-
-    int truncate(const char *path, off_t length);
-    int ftruncate(int fd, off_t length);
-    ```
-
-    If the file is longer than `length`, then the excess data is lost. If the file
-    is shorter than `length`, then it is extended with bytes null or hole.
-
-    The file offset is untouched
-
-14. Non-blocking I/O
-	
-    when `O_NONBLOCK` is used inside `open`, it has 2 functionalities:
-    1. if the file can not be opened immediately, the `open` will return without
-    block.
-    2. if the file is successfully opened, then the subsequent I/O operations
-    performed on this file are also non-blocking.
-
-    > O_NONBLOCK is ignored on regular files as the kernel buffer cache ensures
-    that I/O on regular file does not block.(One exception: when file is being 
-    )
