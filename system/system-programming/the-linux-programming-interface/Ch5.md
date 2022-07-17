@@ -329,9 +329,9 @@
 
 16. `/dev/fd`
 
-    Ther kernle maintains such a diretory for each process using soft link(link
+    Ther kernel maintains such a diretory for each process using soft link(link
     to `/proc/self/fd`, which is also a soft link linking to `/proc/PID/fd`)
-    The files under this directory is named `n` where n is a open file descriptor.
+    The files under this directory is named `n` where n is an open file descriptor.
 
     > `/dev/stdin|/dev/stdout|/dev/stderr` are provided as soft links respectively
     to `fd/0|1|2`
@@ -344,9 +344,9 @@
     fd = dup(0);
     ```
 
-17. weird behavior when `ls` such a directory
+17. weird behavior when `ls` `/proc/self/fd`
    
-    `/dev/fd` is a softlink to `proc/self/fd` so we will use the letter here.
+    `/dev/fd` is a softlink to `/proc/self/fd` so we will use the letter here.
 
     ```shell
     $ cd /proc/self/fd
@@ -375,4 +375,47 @@
     The reason why the outputs of the above two commands are different is that
     `/proc/self` is a magic directroy. When `ls` is executed without `path` argument,
     and the current working dir is `/proc/self/fd`, seems it will print the open 
-    file descriptors of its parent process
+    file descriptors of its parent process(i.e. the shell)
+
+18. make a temporary file
+
+    ```c
+    int mkstemp(char *template);
+    FILE *tmpfile(void);
+    ```
+
+    * mkstemp:
+    The argument `template` is a modifiable string which must ends with `XXXXXX`
+    , like `char tmp[]="/tmp/a_file_XXXXXX"`. And the last 6 characters will be
+    modified to generate a unique temporary file name. And the tempoprary file 
+    will be created as `open(template, O_CREAT|O_RDWR|O_EXCL, 0600)`, note that
+    the `O_EXCL` flag warrants that this file is created exclusively, and the
+    mode of this file is `rw-------`.
+    ```c
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    
+    int main(void)
+    {
+	    char tmp_file_name[] = "/tmp/tmp_file_XXXXXX";
+	    int fd = mkstemp(tmp_file_name);
+	    if (fd == -1) {
+		    perror("mkstemp");
+		    exit(EXIT_FAILURE);
+	    }
+    
+	    printf("The generated unique file name is %s\n", tmp_file_name);
+    
+	    close(fd);
+	    return EXIT_SUCCESS;
+    }
+    ```
+
+    * tmpfile is just like `mkstemp` but returns a FILE stream.
+
+19. unlink(2)
+	
+    delete a `file name` from the file system. If this name is the last link referring
+    to this file and no processes have the file open, the space used by it is deallocated.
