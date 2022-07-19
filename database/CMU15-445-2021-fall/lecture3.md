@@ -11,7 +11,7 @@
 3. file layout(what the pages look like inside the disk file)
 
    
-   1. Some dbms stores the whole database as a single file(liek sqlite), whereas
+   1. Some dbms stores the whole database as a single file(like sqlite), whereas
    others store things across multiple files cuase there is a max file limitation
    and you don't wanna hit it.
 
