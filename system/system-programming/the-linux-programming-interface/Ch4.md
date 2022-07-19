@@ -46,7 +46,7 @@
 
 5. `open(2)`的`flag`参数的可选值
     
-    | Flag     | Purpose        |
+    | Flag(20 in total)     | Purpose        |
     |----------|----------------|
     |O_RDONLY  | open for reading only|
     |O_WRONLY  | open for writing only|
@@ -54,20 +54,22 @@
     | =========|======|
     |O_CLOEXEC | set the close-on-exec flag|
     |O_CREAT|  create file if it does not already exist|
-    |O_DIRECT |FILE I/O bypasses buffer (kernel) cache|
     |O_DIRECTORY| fail if pathname is not a dir(service opendir(3))|
     |O_EXCL| with O_CREAT: create file exclusively|
-    |O_LARGEFILE|used on 32-bit systems to open large files|
-    |O_NOATIME| don't update atime on read(2)|
     |O_NOCTTY|don't let `pathname` become the controlling terminal|
     |O_NOFOLLOW| don't deref symbolic link|
+    |O_TMPFILE(linux-specifi)||
     |O_TRUNC|truncate existing file to zero length|
     |=|=|
     |O_APPEND|writes are always appended to end of file|
     |O_ASYNC| generate a signal when I/O is possible|
+    |O_DIRECT |FILE I/O bypasses buffer (kernel) cache|
     |O_DSYNC|provide synchronized I/O data intergrity|
-    |O_NONBLOCKING| open in non-blocking mode|
-    |O_SYNC|make file writes synchronous|
+    |O_LARGEFILE|used on 32-bit systems to open large files|
+    |O_NOATIME| don't update atime on read(2)|
+    |O_NONBLOCK or O_NDELAY| open in non-blocking mode|
+    |O_PATH||
+    |O_SYNC or O_FSYNC or O_RSYNC|make file writes synchronous|
 
 6. 5中的`flags`可以被大致分为3组:
     1. file access mode flags: `O_RDONLY/O_WDONLY/O_RDWR` 可以在`fcntl`中使用
