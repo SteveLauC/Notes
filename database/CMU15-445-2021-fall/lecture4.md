@@ -52,14 +52,6 @@ layout` which we have covered part of it in the last lecture)
 	    NumericDigit *digits; // digits storage
     } Numeric;
    ```
-     
-   For example, to store `0.35` in such a format:
-
-   ```c
-   Numeric f1;
-   f1.ndights = 2;
-   f1.weight=
-   ```
 
 2. How to store large values?
 
@@ -72,7 +64,7 @@ layout` which we have covered part of it in the last lecture)
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2012-29-17.png)
     
    For example:
-   * In PostgreSQL: if the value is bigger than a constant TOAST(2KiB), then it
+   * In PostgreSQL: if the value is bigger than a constant 2KiB, then it
    will be stored in overflow page.
 
    * MySQL: page size is typically 16 KiB, threshold is the half size of page 
@@ -130,19 +122,23 @@ can fit the workloads most.
    * Disadvantage:
 
      1. not good for scanning large portions of table and a subset of the
-     attributes
+     attributes. When you need just few attributes, the DBMS still has to fetch
+     the *whole tuple* to get that few attributes.
 
 2. decomposition storage model(aka column storage)(DSM)
 
-The DBMS sotres the values of a single attribute for all tuples continuously
-in a page
+   The DBMS sotres the values of a single attribute for all tuples continuously
+   in a page. If we only need one attribute, then we just need one page.
 
    * Advantage:
 
      1. reduces the amount of wasted I/O because the DBMS only reads the data
      it needs
 
-     2. better query processing and data compression
+     2. better query processing and data compression. Compression can be done
+     cause all the data in a page have the same type(domain). For example, if
+     this page is all about temperature, and the data is all about 30 degrees,
+     like 31, 29, then we can just store 1 and -1.
 
    * Disadvantage:
 
