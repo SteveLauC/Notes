@@ -18,9 +18,9 @@
    process ID. Each time the limit is reached, the kernel resets its process ID 
    counter so that process IDs are assigned starting from low integer values.
 
-   Once it has reached 32767, the process ID counter is reset to 300, rather than
-   1. This is done because many low-numbered process IDs are in permanent use by 
-   system processed and daemons, and thus time would be wasted searching for an
+   Once it has reached 32767, the process ID counter is reset to 300, rather than 1
+   . This is done because many low-numbered process IDs are in permanent use by 
+   system processes and daemons, and thus time would be wasted searching for an
    unused process ID in this range.
 
    > The default reset value 300, it is correct under 32 bits. Not sure it is still
@@ -42,15 +42,17 @@
    for the reason that a program can construct many processes, this segment is 
    shareable
 
-   * initialized data segment(userinitialized data segment): Explicitly 
-   initialized global and static variables. This is read from the executable file.
+   * initialized data segment(user-initialized data segment): Explicitly 
+   initialized global and static variables. This is read(copied) from the
+   executable file.
 
    * uninitialized data segment(zero-initialized data segment): Global and static 
    variables that are not explicitly initialized. This segment is usually called 
    the *bss segment* due to historical reasons. Before starting the process, the 
-   system initializes this segment to 0. In the executable file, there is mere 
-   space allocated for this segment cause they are not initialized, and it is 
-   mainly allocated(more space for the value) at runtime
+   system initializes this segment to 0. In the executable **file**, there is mere 
+   space allocated for this segment cause they are not initialized(only need to 
+   store how many `unitialized variables` we have instead of storing something 
+   like `a = 0`), and it is mainly allocated at runtime
 
    * stack
 
@@ -60,7 +62,7 @@
 
    > size(1) command can list the size of text, initialized-data and bss segments
 
-6. The aim of virtual memory is to exploit a property that is typical of most 
+6. Virtual memory exploits a property that is typical of most 
    programs: locality(局限性，常规译为地区位置) of reference.
 
    * Spatial locality(空间局限性): is the tendency of a program to reference
@@ -69,16 +71,16 @@
    the same memory in the near future
 
    The upshot or result of this locality is that the kernel can just maintain
-   a small piece of address space used by the process so that there will be 
-   more free space that can be used by other processes.
+   a small piece of phycial address space used by the process so that there 
+   will be more free phycial space that can be used by other processes.
 
    Virtual memory splits the memory used by each program into small, fixed-size 
    units call pages. At any time, only some of the pages need to be loaded into 
    the *phycial memory*. Others are stored in a reserved area of disk called 
    swap area and will only be loaded when necessary.
 
-   In order to support this feature, the kernel maintains a `page table(页表)`(mapping from
-   virtual memory to phycial memory and swap area)
+   In order to support this feature, the kernel maintains a `page table(页表)`
+   (mapping from virtual memory to phycial memory and swap area)
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-07-20_09-31-45.jpg)
 
