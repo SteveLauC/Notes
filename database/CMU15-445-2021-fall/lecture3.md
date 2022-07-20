@@ -127,3 +127,8 @@
    ![demo](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2014-28-13.png)
 
    For example, in postgresql, we have a field `ctid` which is exactly this stuff
+
+9. two indirectional layers
+   
+   1. Page ID in directory page
+   2. Slot ID in slot array
