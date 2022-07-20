@@ -23,26 +23,26 @@
 
 ### Data representation
 
-	> How to represent data type in DBMS(Actually, this is part of `tuple 
-	layout` which we have covered part of it in the last lecture)
+> How to represent data type in DBMS(Actually, this is part of `tuple 
+layout` which we have covered part of it in the last lecture)
 
-    	![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-29-10.png)
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-29-10.png)
 
 
-    1. how to store floating point in DBMS
+1. how to store floating point in DBMS
 
-        Float/Double(IEEE 754) is fast cause CPU is very efficient at doing such 
-        type operations. But it is inexact(0.1+0.2 != 0.3) and we need an exact type
-        to represent floating point numbers
+   Float/Double(IEEE 754) is fast cause CPU is very efficient at doing such 
+   type operations. But it is inexact(0.1+0.2 != 0.3) and we need an exact type
+   to represent floating point numbers
 
-        > ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-47-22.png)
-      > Same data, different types. Numeric/Decimal type takes twice the time 
-      > compared to the Float/Double.
+   > ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-47-22.png)
+   > Same data, different types. Numeric/Decimal type takes twice the time 
+   > compared to the Float/Double.
      
 
-  What does PostgreSQL do to handle this?[src](https://doxygen.postgresql.org/backend_2utils_2adt_2numeric_8c_source.html#l00304)
+   What does PostgreSQL do to handle this?[src](https://doxygen.postgresql.org/backend_2utils_2adt_2numeric_8c_source.html#l00304)
     
-  ```c
+   ```c
     typedef unsigned char NumericDigit;
     typedef struct {
             int ndigits; // how many digits we have
@@ -51,103 +51,100 @@
 	    int sign;    // positive|negitive|NaN
 	    NumericDigit *digits; // digits storage
     } Numeric;
-  ```
+   ```
      
-  For example, to store `0.35` in such a format:
+   For example, to store `0.35` in such a format:
 
-      ```c
-      Numeric f1;
-      f1.ndights = 2;
-      f1.weight=
-      ```
+   ```c
+   Numeric f1;
+   f1.ndights = 2;
+   f1.weight=
+   ```
 
-  2. How to store large values?
+2. How to store large values?
 
-    Generally, a tuple is limited in its size to not be greater than the 
-    size of a single page.
+   Generally, a tuple is limited in its size to not be greater than the 
+   size of a single page.
 
-    To store values(attributes values) larger than a page, DBMS uses separate
-    `overflow page`(a dedicated page for storing large value)
+   To store values(attributes values) larger than a page, DBMS uses separate
+   `overflow page`(a dedicated page for storing large value)
 
-    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2012-29-17.png)
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2012-29-17.png)
     
-    For example:
-    * In PostgreSQL: if the value is bigger than a constant TOAST(2KiB), then it
-    will be stored in overflow page.
+   For example:
+   * In PostgreSQL: if the value is bigger than a constant TOAST(2KiB), then it
+   will be stored in overflow page.
 
-    * MySQL: page size is typically 16 KiB, threshold is the half size of page 
+   * MySQL: page size is typically 16 KiB, threshold is the half size of page 
 
-    * SQL Server: threshold is the page size.
+   * SQL Server: threshold is the page size.
 
-    3. External value storage
+3. External value storage
 
-    If the value so big that `overflow page` cannot hold it, then DBMS will use 
-    a seperate file to store it. This is named BLOB type(bad way).
+   If the value so big that `overflow page` cannot hold it, then DBMS will use 
+   a seperate file to store it. This is named BLOB type(bad way).
 
-    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2012-29-59.png)
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2012-29-59.png)
 
 
 ### System catalogs
 
-    > What is system catalog and how is it stored?
-	
-    The system catalogs contain metadata about databases:
-    * tables, columns, indexes, views
-    * users, permission
-    * internal statics
+> What is system catalog and how is it stored?
 
-    Every DBMS stores its catalogs in its own table. For example, in MySQL:
+The system catalogs contain metadata about databases:
+* tables, columns, indexes, views
+* users, permission
+* internal statics
 
-    ```sql
-    > use information_schema;
-    > show tables;
-    +---------------------------------------+
-    | Tables_in_information_schema          |
-    +---------------------------------------+
-    | ADMINISTRABLE_ROLE_AUTHORIZATIONS     |
-    | APPLICABLE_ROLES                      |
-    | CHARACTER_SETS                        |
-    | CHECK_CONSTRAINTS                     |
-    | COLLATIONS                            |
-    | COLLATION_CHARACTER_SET_APPLICABILITY |
-    ```
+Every DBMS stores its catalogs in its own table. For example, in MySQL:
+
+```sql
+> use information_schema;
+> show tables;
++---------------------------------------+
+| Tables_in_information_schema          |
++---------------------------------------+
+| ADMINISTRABLE_ROLE_AUTHORIZATIONS     |
+| APPLICABLE_ROLES                      |
+| CHARACTER_SETS                        |
+| CHECK_CONSTRAINTS                     |
+| COLLATIONS                            |
+| COLLATION_CHARACTER_SET_APPLICABILITY |
+```
 
 ### Storage models
 
-    For different workloads, DBMS can store tuples in different ways so that it
-    can fit the workloads most.
+For different workloads, DBMS can store tuples in different ways so that it
+can fit the workloads most.
 
-    1. n-ary storage model(aka row storage)(NSM)(what we will do in the semester)
+1. n-ary storage model(aka row storage)(NSM)(what we will do in the semester)
 
-    The DBMS sotres all attributes for a single tuple continuously in a page.
+   The DBMS sotres all attributes for a single tuple continuously in a page.
 
-    * Advantages:
+   * Advantages:
+     1. fast inserts, updates, and deletes
+     2. good for queries that need the entire tuple
 
-    	1. fast inserts, updates, and deletes
+     > Suitable for writeing and OLTP
 
-	2. good for queries that need the entire tuple
+   * Disadvantage:
 
-	> Suitable for writeing and OLTP
+     1. not good for scanning large portions of table and a subset of the
+     attributes
 
-    * Disadvantage:
+2. decomposition storage model(aka column storage)(DSM)
 
-    	1. not good for scanning large portions of table and a subset of the
-	attributes
+The DBMS sotres the values of a single attribute for all tuples continuously
+in a page
 
-  
-     2. decomposition storage model(aka column storage)(DSM)
+   * Advantage:
 
-     The DBMS sotres the values of a single attribute for all tuples continuously
-     in a page
+     1. reduces the amount of wasted I/O because the DBMS only reads the data
+     it needs
 
-     * Advantage:
+     2. better query processing and data compression
 
-     	1. reduces the amount of wasted I/O because the DBMS only reads the data
-	it needs
+   * Disadvantage:
 
-	2. better query processing and data compression
-
-     * Disadvantage:
-
-     	1. slow for point queries(need the retire tuple), inserts, updates and 
-	deletes because of tuple splitting
+     1. slow for point queries(need the retire tuple), inserts, updates and 
+     deletes because of tuple splitting
