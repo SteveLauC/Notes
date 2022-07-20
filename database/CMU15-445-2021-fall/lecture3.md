@@ -2,17 +2,25 @@
    
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2011-15-31.png)
 
-2. problems we are gonna figure out 
+2. volatile and non-volatile storage
+
+   * volatile storage is byte-accessable, which means that we can jump to any byte
+   address and get the value there.
+
+   * non-volatile storage is page/block-accessable. If we wanna fetch the data
+   at particular offset, we have to fetch the whole page/blcok containing that
+   byte
+
+3. problems we are gonna figure out 
  
    1. how the dbms represents the database in the disk file(letcture 3)
    2. how the dbms manages its memory and move data back and forth from the disk
    (between the disk file and the buffer pool)(lecture 4)
 
-3. file layout(what the pages look like inside the disk file)
-
+4. file layout(what the disk file looks)
    
    1. Some dbms stores the whole database as a single file(like sqlite), whereas
-   others store things across multiple files cuase there is a max file limitation
+   others store things across multiple files cause there is a max file limitation
    and you don't wanna hit it.
 
    2. The OS knows nothing about the database disk file, it is just a normal binary
@@ -23,9 +31,10 @@
    don't mix the different types of data within a page(i.e if one page contains a
    tuple, and all the stuff this page has are tuples)
 
-   4. Each page has a unique Id which enables the DBMS to map the Id to the phycial
-   location(indirection layer allowing us to move the phycial data freely, e.g. 
-   compact the data)
+   4. Each page has a unique ID which enables the DBMS to map the Id to the phycial
+   location. If the database is a single file, then ID can just be the page offset
+   (indirection layer allowing us to move the phycial data freely, e.g. compact the
+   data)
 
 	
    #### Heap file organization
@@ -35,7 +44,7 @@
 
    A great way to represent heap file is using `page directory`
 
-   #### Page directory(exists in both memory and disk, see arch above)
+   #### Page directory(exists in both memory and disk, see diagram above)
    The database maintains a `special page` that tracks the location of data pages
    in the database files. The directory also reocrds the number of free slots per
    page. The DBMS has to ensure that the directory page has to be in sync with
@@ -44,7 +53,7 @@
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2013-25-21.png)
 
 
-4. page layout
+5. page layout
     
    Every page has a header which contains the metadata of this page's contents:
    * page size
@@ -84,8 +93,11 @@
    to the beginning. When the borders of slot array and data meet, then we can
    say this page is full.
 
-5. tuple layout(how to represent a record inside the page, fixed-length reocrd 
+6. tuple layout(how to represent a record inside the page, fixed-length reocrd 
    and variable-length record)
+
+   > The class does not cover how to store variable-length tuples while the 
+   textbook does. Page 592
 
    A tuple is essentially a sequence of bytes, it's the job of the DBMS to 
    interpret those bytes into attributes types and values.
@@ -101,10 +113,10 @@
    	
 	![demo](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2014-52-55.png)
 
-6. storage engine(manager) is a dbms component that is responsible for maintaining
+7. storage engine(manager) is a dbms component that is responsible for maintaining
    the disk file(s)
 
-7. what will DBMS do when query happens? Say, we want the information of the student
+8. what will DBMS do when query happens? Say, we want the information of the student
    whose name is steve.
 
    DBMS will first fetch a `record id` from index, which is a pair of `page_id, 
