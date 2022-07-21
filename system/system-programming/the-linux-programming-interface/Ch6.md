@@ -60,6 +60,9 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2007-51-00.png)
 
+   You may note that the top most area stores cmd arguments and environment 
+   variables, that's where `av` and `environ` point to.
+
    > size(1) command can list the size of text, initialized-data and bss segments
 
 6. Virtual memory exploits a property that is typical of most 
@@ -115,5 +118,155 @@
     catched SIGSEGV signal
     ```
 
-    MMU is the hardware used to translate between virtual memory and physical memory,
-    it relies on page table to make decisions about which page to in or out.
+    MMU is the hardware used to translate between virtual memory and physical 
+    memory, it relies on page table to make decisions about which page to in 
+    or out.
+
+7. Stack and stack frame
+   
+   In most implementations, the stack won't decrease in size after these frames 
+   are dealloacted. And the memory is simply reused when new stack frame is 
+   allocated.
+
+   Kernel stack: the kernel maintains a per-process memory region in the kernel
+   space that is used for execution of functions called internally during the
+   execution of a syscall. And when we say stack, we are talking about the user
+   stack instead of kernel stack
+
+8. cli arguments
+   
+   ```c
+   #include <assert.h>
+   int main(int ac, char *av[]) {
+   	assert(av[ac]==NULL);
+   }
+   ```
+
+   `av` is NULL terminated.
+
+   ![d](https://github.com/SteveLauC/pic/blob/main/photo_2022-07-21_07-36-47.jpg)
+
+
+   Some hacky ways to get arguments:
+   
+   1. read file `/proc/self/cmdline`, all arguments are stored in a single line,
+   with each terimated by a '\0' byte.
+
+      ```rust
+      use std::{fs::File, io::Read};
+    
+      fn main() {
+           let mut cmdline: File = File::open("/proc/self/cmdline").expect("open");
+    
+           let mut buf: String = String::with_capacity(512);
+           cmdline.read_to_string(&mut buf).unwrap();
+    
+           buf.split('\0').for_each(|str: &str| println!("{}", str));
+      }
+      ```
+
+      ```shell
+      $ cargo run 1 2
+      target/debug/t
+      1
+      2
+      ```
+
+   2. GNU C library provides two global variables to access the first arugment
+      
+      ```c
+      #define _GNU_SOURCE
+      
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <errno.h>
+      
+      int main(void)
+      {
+	      printf("%s\n", program_invocation_name);
+	      printf("%s\n", program_invocation_short_name);
+	      return EXIT_SUCCESS;
+      }
+      ```
+   
+      ```shell
+      $ gcc main.c
+      $ ./../c/a.out
+      ./../c/a.out
+      a.out
+      ```
+   
+   There is an upper limit on the maximum number of bytes that can be stored
+   in the top most area:
+
+   ```c
+   #include <stdio.h>
+   #include <stdlib.h>
+   #include <linux/limits.h>
+   
+   int main(void)
+   {
+    printf("%d\n", ARG_MAX);
+    return EXIT_SUCCESS;
+   }
+   ```
+   ```shell
+   $ gcc main.c && ./a.out
+   131072
+   ```
+
+   On Linux, this limit can be changed via the `RLIMIT_STACK` variable
+
+9. hacky way to get environment variables, read `/proc/self/environ`
+	
+   All the environment variables are stored in a single line, wich each separated
+   by a `\0` byte. This is pretty similar to the hacky way to get `cmdline`
+
+
+   Well, there is a way I have never seen before:
+
+   ```c
+   int main(int ac, char *av[], char *envp[]) {
+   	char **p = envp;
+	while(*p != NULL) {
+		puts(*p);
+		p += 1;
+	}
+	return 0;
+   }
+   ```
+
+   It works like how we iterate over variables using `environ` but `environ` is
+   global and `envp` is only local to the main function. And this method is not
+   a standard way, so don't do it.
+
+   C has a function `getenv` to get the particular environment variable, do not
+   modify it.
+   > As typically implemented, getenv() returns a pointer to a string within the 
+   environment list.  The caller must take care not to modify this string, since 
+   that would change the environment of the process.
+
+10. `putenv(char *str)`
+	
+    ```c
+    #include <stdlib.h>
+
+    int main(void) {
+	char new_env[] = "a=b";
+	putenv(new_env);
+        // we are actually modifying the environment variable
+	new_env[0] = 'A'; 
+    }
+    // When the stack frame of main is deallocated, the pointer stored in environ
+    // becomes a dangling pointer
+    ```
+
+   What `putenv(char *str)` actually does is to add str(the address) to `environ`
+   instead of storing the contents of this key-value pair to that space. So the 
+   subsequent modification to `str` will effect the envionment variables. And 
+   `str` has to be static cause `environ` will have dangling pointer if `str` is 
+   auto
+
+   IF YOU WANNA MODIFY ENVIRONMENT VARIABLES, USE `setenv(char *name, char *value,
+   int overwrite)` INSTEAD
+
