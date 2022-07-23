@@ -60,7 +60,7 @@
 
       There is a Q1(select sum(a) from A), and Q1 is scanning the disk file Page 3
 
-      ![diagram](/home/steve/Pictures/Screenshot from 2022-07-23 15-41-28.png)
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-41-28.png)
 
       Then another query Q2(select avg(a) from A) comes, and the DBMS knows Q2
       and Q1 need to scan the same disk file(Page 0-5). Normally(with optimization),
@@ -69,10 +69,10 @@
       of Q1, so that they all scan from Page 3. When Page 5 is scanned, Q1 is 
       done. But Q2 still needs to scan Page0-2 to finish its job.
 
-      ![without_optimization](/home/steve/Pictures/Screenshot from 2022-07-23 15-47-49.png)
-      ![diagram](/home/steve/Pictures/Screenshot from 2022-07-23 15-48-24.png)
-      ![diagram](/home/steve/Pictures/Screenshot from 2022-07-23 15-48-36.png)
-      ![diagram](/home/steve/Pictures/Screenshot from 2022-07-23 15-48-52.png)
+      ![without_optimization](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-47-49.png)
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-48-24.png)
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-48-36.png)
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-48-52.png)
 
    4. buffer pool bypass
 
