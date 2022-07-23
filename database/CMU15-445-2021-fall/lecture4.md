@@ -36,6 +36,7 @@ layout` which we have covered part of it in the last lecture)
    to represent floating point numbers
 
    > ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-47-22.png)
+   >
    > Same data, different types. Numeric/Decimal type takes twice the time 
    > compared to the Float/Double.
      

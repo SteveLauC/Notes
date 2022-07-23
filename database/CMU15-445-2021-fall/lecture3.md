@@ -15,13 +15,13 @@
  
    1. how the dbms represents the database in the disk file(letcture 3)
    2. how the dbms manages its memory and move data back and forth from the disk
-   (between the disk file and the buffer pool)(lecture 4)
+   (between the disk file and the buffer pool)(lecture 5)
 
 4. file layout(what the disk file looks)
    
    1. Some dbms stores the whole database as a single file(like sqlite), whereas
-   others store things across multiple files cause there is a max file limitation
-   and you don't wanna hit it.
+   others store things across multiple files cause there is a max file size 
+   limitation and you don't wanna hit it.
 
    2. The OS knows nothing about the database disk file, it is just a normal binary
    file.
