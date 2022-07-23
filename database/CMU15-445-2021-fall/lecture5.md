@@ -64,8 +64,8 @@
 
       Then another query Q2(select avg(a) from A) comes, and the DBMS knows Q2
       and Q1 need to scan the same disk file(Page 0-5). Normally(with optimization),
-      Q2 should scan disk page from Page 0, but the DBMS knows Q2 and Q1 should 
-      scan the same page so it will ask attach the cursor of Q2 to the cursor 
+      Q2 should scan from Page 0, but the DBMS knows Q2 and Q1 should scan the 
+      same page so it will simply attach the cursor of Q2 to the cursor 
       of Q1, so that they all scan from Page 3. When Page 5 is scanned, Q1 is 
       done. But Q2 still needs to scan Page0-2 to finish its job.
 
@@ -87,9 +87,15 @@
    4. OS cache bypass 
 
       We read/write using OS api, the OS itself will cache the disk page but we
-      don't need it so it is redundant. So just use `open(file_path, O_DIRECT)` to bypass it.
+      don't need it so it is redundant. Use `open(file_path, O_DIRECT)` to bypass it.
 
 
-#### Replacement Policies
+#### Frame Replacement Policies
+> When the buffer pool is full, we need to free up a frame to make room for a
+new page, it must decide which page to `evict/replace`
+
+1. Least Recently Used(LRU)
+   Maintain a stimestamp of when each page is last accessed, evict the page with
+   oldest timestamp
 
 #### Other Memory Pools
