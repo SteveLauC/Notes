@@ -252,7 +252,7 @@
     #include <stdlib.h>
 
     int main(void) {
-	char new_env[] = "a=b";
+        char new_env[] = "a=b";
 	putenv(new_env);
         // we are actually modifying the environment variable
 	new_env[0] = 'A'; 
@@ -261,12 +261,73 @@
     // becomes a dangling pointer
     ```
 
-   What `putenv(char *str)` actually does is to add str(the address) to `environ`
-   instead of storing the contents of this key-value pair to that space. So the 
-   subsequent modification to `str` will effect the envionment variables. And 
-   `str` has to be static cause `environ` will have dangling pointer if `str` is 
-   auto
+    What `putenv(char *str)` actually does is to add str(the address) to `environ`
+    instead of storing the contents of this key-value pair to that space. So the 
+    subsequent modification to `str` will affect the envionment variables. And 
+    `str` has to be static cause `environ` will have dangling pointer if `str` is 
+    a auto variable(deallocation)
 
-   IF YOU WANNA MODIFY ENVIRONMENT VARIABLES, USE `setenv(char *name, char *value,
-   int overwrite)` INSTEAD
+    IF YOU WANNA MODIFY ENVIRONMENT VARIABLES, USE `setenv(char *name, char *value,
+    int overwrite)` INSTEAD
+
+11. `setenv(const char *name, const char *value, int overwrite)`
+    
+    `setenv` is safe cause it will allocate a memory and copy its arguments to
+    that memory.
+
+12. `unset(const char *name)` to unset the environment variable
+
+13. The tools you should use when interacting with environment variables
+   
+    ```c
+    // In C
+
+    getenv // read
+    setenv // write
+    unsetenv // delete
+    ```
+
+    ```rust
+    // In Rust
+
+    std::env::var // read
+    std::env::set_var // write
+    std::env::remove_var // delete
+    ```
+
+14. clear all the env variables
+   
+    ```c
+    int clearenv(const char *name);
+    ```
+
+    What `clearenv` does is simply set `environ` to NULL. This may elicit memory
+    leak if you use `setenv` to allocate some memory and use `clearenv` to clear
+    them all.
+
+    > But I tested it with `valgrind` and did not find memory leak
+
+15. non-local goto
+    
+    ```c
+    #include <setjmp.h>
+    int setjmp(jmp_buf env); // return 0 on initial call, `val` on second faked return
+
+    void longjmp(jmp_buf env, int val);
+    ```
+    
+    The above syscalls allow us to `goto` to another function. We use `setjmp`
+    to set the destination, and use `longjmp` to perform the jump.
+
+    From a program's view, the call of `longjmp` is actually the call of `setjmp`,
+    and we use the return value of `setjmp` to distinguish these two function calls.
+    `setjmp` return 0 on the first call(set target), and return `val` speicified in
+    the second argument of `longjmp`.
+
+    Think about it in the perspective of a computer, if function `A` wanna go to
+    function `B`, then the stack frame of `B` must exist when jump is performing.
+    So this can only be used in the circumstance where `B` is older than `A`. And
+    to execute the subsequent instruments of `B`, we must reset the PC pointer to
+    the location of the initial address in `B`. And the this procedure is performed
+    by the argument `env` 
 
