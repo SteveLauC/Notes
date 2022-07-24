@@ -66,3 +66,136 @@
 6. 拿到它们的大小
    
    使用`size()`或`length()`，他们是同义的，都返回`std::size_type`类型
+
+   
+   `decltype`在这时就有点用了...
+
+   ```cpp
+   decltype(std::string().size()) len = std::string("hello").size();
+
+   // 当然也可以使用auto
+   auto len = std::string("hello").size();
+   ```
+
+   需要注意的是，由于`size`返回的是无符号数，那么在比较的时候就要留意不同类型之
+   间的转化。应该在`cmake`里面禁止掉不同类型的运算，不过我不知道怎么做...
+   
+   ```cpp
+   #include <cstdint>
+   #include <iostream>
+   #include <string>
+   
+   int main() {
+     decltype(std::string().size()) len = std::string("hello").size();
+   
+     int32_t n = -1;
+   
+     // len: unsigned long 
+     // n: int32_t
+     // n will be implicitly converted into unsigned long, which is UINT64_MAX
+     if (len >= n) {
+       std::cout << "len > n" << std::endl;
+     } else {
+       std::cout << "len < n" << std::endl;
+     }
+     return 0;
+   }
+   ```
+   ```shell
+   $ g++ main.cpp && ./a.out
+   len < n
+   ```
+
+7. 比较字符串，和C不同，CPP将运算符对std::string进行了重载
+
+   ```cpp
+   if (std::string("h") > std::string("H")) {
+     cout << "h > H" << endl;
+   }
+   ```
+   ```cpp
+   $ g++ main.cpp && ./a.out
+   h > H
+   ```
+
+8. 拼接字符串
+
+   在cpp中可以直接使用`+`来拼接字符串。也可以字符字面量和字符串字面量到字符串上，
+   只要`+`两侧的操作对象至少有一个是`std::string`
+
+   ```cpp
+   auto str = '1' + std::string("hello");
+   auto str2 = "hello world" + std::string("hello");
+   auto str3 = std::string("hello") + std::string("hello");
+   std::string str4 = "hello" + "hello"; // error
+   ```
+
+   看下面的语句
+   ```
+   auto str = std::string("hello") + " " + "world";
+   ```
+   第2个`+`明明左右都是字符串字面量，怎么会通过编译？
+
+   因为`std::string("hello") + " "`的结果是一个字符串...
+
+
+   ```cpp
+   auto str = "steve" + " " + std::string("hello") + "world";
+   ```
+   这条语句则无法通过编译，因为cpp编译器从左往右看，看到的是2个字符串字面量。所
+   以在写的时候，确保最左边2个当中有一个是`std::string`就好了
+
+   > Rust也有这种限制。在Rust里面，重载`+`的函数签名是 `fn add(mut self,
+   > other: &str) -> String`，所以`+`左侧必须是`String`
+   >
+   > String + &str + &str + &str ...这样的模式是允许的
+   > 
+   > 相比之下，cpp更加灵活一点。不过在Rust里大家都用`concat!`，而不是`+`
+
+
+9. 检查字符的属性
+
+   其实就是c中`ctype.h`里面的那些函数，只不过在cpp里面需要引`#include <cctype>`
+
+   由于和C的是一样的，所以引起UB的地方也是一样的。参数必须是EOF或者是unsigned
+   char可以表示的值，否则就是UB。
+
+   cpp reference也比较贴心，像Linux manual一样将他们写到了Notes里面
+
+   ```
+   Like all other functions from <cctype>, the behavior of std::isupper is 
+   undefined if the argument's value is neither representable as unsigned 
+   char nor equal to EOF. To use these functions safely with plain chars 
+   (or signed chars), the argument should first be converted to unsigned char:
+   ```
+
+   > 我惊了，cpp reference这页的最下面有一个ascii表，标注了哪些字符对于上面的函
+   > 数返回真，哪些返回假[link](https://en.cppreference.com/w/cpp/string/byte/isupper)
+   > 
+   > ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2011-30-59.png)
+
+10. 遍历字符串中的字符
+  
+    ```cpp
+    #include <iostream>
+    #include <string>
+    
+    int main() {
+      auto str = std::string("BBB");
+      for (const char &c : str) {
+      	std::cout<< c << std::endl;
+      }
+      return 0;
+    }
+    ```
+    ```shell
+    $ g++ main.cpp && ./a.out
+    B
+    B
+    B
+    ```
+
+    上面用了常引用，对于`str`是只读的访问。想要改变某个char可以用引用来写。我发
+    现Rust在遍历`String`上只暴露了只读的接口`chars`。原因我想应该是utf-8是变长
+    的，改变其中一个字形，可能引起字节长度的变化。但是cpp里面这个拿到的char其实
+    就是u8，就可以随便改，不过可能把字符串改的面目全非就是了
