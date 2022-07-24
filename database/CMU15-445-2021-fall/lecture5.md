@@ -89,40 +89,41 @@
          to the buffer pool. When DBMS need `page 3`, it is already in the buffer
 	 pool
 
-	 > This is quite simple, the OS can also do this for us. For example, if 
-	 you ask a page a disk file using `mmap`, then the OS will prefetch the
-	 following pages for us. So by the time of asking subsequent pages, they
-	 are alreay in the memory.
+         > This is quite simple, the OS can also do this for us. For example, if 
+         you ask a page a disk file using `mmap`, then the OS will prefetch the
+         following pages for us. So by the time of asking subsequent pages, they
+         are alreay in the memory.
 
       2. index scans
        
          > This is what the OS can NOT do, cause it doesn't know the semantics
-	 of our query.
+         of our query.
 
-	 For example, we have a query
-	 ```sql
-	 SELECT * FROM A
-	 WHERE val BETWEEN 100 AND 250;
-	 ```
+         For example, we have a query
 
-	 And we have a `index` for table `A`
+         ```sql
+         SELECT * FROM A
+         WHERE val BETWEEN 100 AND 250;
+         ```
 
-	 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-29-14.png)
+         And we have a `index` for table `A`
 
-	 To iterate over our `index`, we have to read the root node of that index
-	 into memory.
-         
-	 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-30-27.png)
+         ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-29-14.png)
 
-	 And I know the `val` I need is greater than 100, which is on the left side
-	 of the tree, so I am gonna read `index-page-1` into memory.
-	 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-33-56.png)
+         To iterate over our `index`, we have to read the root node of that index
+         into memory.
+        
+         ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-30-27.png)
 
-	 At this time, the OS thinks "Oh, you have read page1, maybe you also need
-	 page 2 and 3". But we know that's not the case, according to our index,
-	 the pages we actually need are page 3 and 5.
-
-	 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-37-06.png)
+         And I know the `val` I need is greater than 100, which is on the left side
+         of the tree, so I am gonna read `index-page-1` into memory.
+         ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-33-56.png)
+        
+         At this time, the OS thinks "Oh, you have read page1, maybe you also need
+         page 2 and 3". But we know that's not the case, according to our index,
+         the pages we actually need are page 3 and 5.
+        
+         ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-37-06.png)
 
 
 
@@ -145,8 +146,11 @@
       done. But Q2 still needs to scan Page0-2 to finish its job.
 
       ![without_optimization](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-47-49.png)
+
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-48-24.png)
+
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-48-36.png)
+
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-23%2015-48-52.png)
 
    4. buffer pool bypass
@@ -200,10 +204,15 @@
    query needs this, evict it.
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-19-00.png)
+
    Find a reference bit of 1, set it to 0
+
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-19-19.png)
+
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-19-31.png)
+
    find a reference bit of 0, evict this frame.
+
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-19-45.png)
 
 3. how to handle dirty pages(when replacing frames)
