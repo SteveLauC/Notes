@@ -266,12 +266,19 @@
      我写的时候还是老老实实用`()`批量初始化，`{}`来做初始化列表吧。从这里就可以
      一瞥cpp的烂，简单的事情也给你100种做法，徒增心智负担
 
-13. 迭代器
+13. 可写的与只读的迭代器
 
-    > 所有的标准库容器都可以使用迭代器
+    > 所有的标准库容器都可以使用迭代器，均有`begin/cbegin/end/cend`函数来产生迭代
+    器，返回的类型是某种智能指针，对其deref返回其指向的容器元素的引用。需要注意
+    `(c)end`返回的是指向最后一个元素的后一个元素。`cbegin/cend`中的c是const，对其
+    deref返回的是常引用
 
-    是迭代器的类型都有`begin()``end()`两个函，目前不懂返回值是什么，好像是智能指
-    针
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-26%2008-40-58.png)
+
+
+    `begin/end`创建的迭代器是可写可读还是只读的，由容器是否可写决定。在cpp11之前
+    是没有`cbegin/cend`这两个函数的，这两个函数无论容器是否可以写都只能创建只读
+    的迭代器，让语义更统一了
 
     留意下面的代码
 
@@ -309,3 +316,132 @@
     了重新分配，使得原先拿到的首位指针无效了。将上面代码的2行注释取消掉便可以
     很清晰地发现其内存分配。这段代码如果在Rust中写，则根本不会通过编译，因为拿
     到指针是borrow了vec，那么在引用被丢掉之前，根本不允许对vec进行写
+
+
+14. 在cpp中判断2个变量是否具有相同的类型
+
+    ```cpp
+    auto a = 1;
+    auto b = 2;
+
+    cout << std::is_same<decltype(a), decltype(b)>::value << endl;
+    ```
+
+    其中`std::is_same<T, U>::value`的返回类型是bool
+
+15. 迭代器的类型(begin end返回什么)
+
+    我们可以不用关心其具体的返回类型，就像我们不关心`std::string::size()`的具体
+    类型一样，但我们可以通过`Container::iterator/const_iterator`拿到
+
+    ```cpp
+    #include <cassert>
+    #include <cstdint>
+    #include <iostream>
+    #include <string>
+    #include <vector>
+    
+    using std::string;
+    using std::vector;
+    
+    int main() {
+      auto v = string();
+      auto res = std::is_same<decltype(v.cbegin()), string::const_iterator>::value;
+      assert(res == 1);
+    
+      auto vv = vector<int32_t>();
+      res = std::is_same<decltype(vv.begin()), vector<int32_t>::iterator>::value;
+      assert(res == 1);
+    
+      return 0;
+    }
+    ```
+
+16. 批量移动迭代器
+
+    ```cpp
+    auto str = string("hello");
+
+    auto p = str.cbegin();
+    auto end = str.cend();
+
+    while(p != end) {
+         cout << *p << endl;
+	 p += 2;
+    }
+    ```
+
+    迭代器支持像上面的那样的`p += n`这样的批量移动的操作，但在批量移动的时候千万
+    小心，别刚好错过`end`变成非法的迭代器
+
+    ```
+    $ g++ main.cpp && ./a.out
+    h
+    l
+    o
+    sdjfljsl
+    ...    # 乱七八糟的输出
+
+    [1]    351109 segmentation fault (core dumped)  ./a.out
+    ```
+
+    或许把循环的条件改为`p <= end`则不会有问题，但是如果越界了拿到非法的迭代器
+    再去和`end`比较谁知道会不会是正常的呢?书上说参与比较的两个迭代器必须是同一
+    容器中的元素或者尾元素的下一位置(a.k.a. end())
+
+    
+17. 两个迭代器相减的类型
+    
+    很多容器都定义了`Container::difference_type`来表示两个迭代器相减，这是一个
+    有符号的数据类型
+
+18. cpp为了把数组搞得像容器，引入了`std::begin()/std::end()`函数来返回首指针和
+    指向尾元素后一元素的指针
+
+    ```cpp
+    #include <cassert>
+    #include <cstdint>
+    #include <iostream>
+    
+    int main() {
+      int32_t v[] = {1, 2, 3};
+      int32_t *p = std::begin(v);
+      assert(p == v);
+      size_t len = sizeof(v) / sizeof(int);
+      int32_t *end = std::end(v);
+      assert((end - 1) == &v[len - 1]);
+    
+      return 0;
+    }
+    ```
+
+    除了可以让数组用起来更加像容器，还有一个作用就是让指针更安全，使用函数可以确
+    保创建出来的指针不会指向别的地方
+
+19. 使用数组初始化vector
+
+    ```cpp
+    #include <cassert>
+    #include <cstdint>
+    #include <iostream>
+    #include <iterator>
+    #include <vector>
+    
+    using std::vector;
+    
+    int main() {
+      int32_t v[] = {1, 2, 3};
+      auto vv = vector<int32_t>(std::begin(v), std::end(v));
+    
+      for (const int32_t &v : vv) {
+        std::cout << v << std::endl;
+      }
+      return 0;
+    }
+    ```
+
+    又或者使用数组的一部分来初始化vector
+
+    ```cpp
+    auto vv = vector<int32_t>(std::begin(v) + 1, std::end(v) - 1); // 只包含元素2
+    ```
