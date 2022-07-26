@@ -1,0 +1,44 @@
+1. 错误处理
+
+   * throw expression
+     
+     > cpp有一系列可以用的[expression](https://en.cppreference.com/w/cpp/error/exception)
+
+   * try catch
+
+
+   ```cpp
+   #include <cstdint>
+   #include <exception>
+   #include <iostream>
+   
+   int32_t max(int32_t a, int32_t b);
+   
+   int main() {
+   
+     int32_t a = -1;
+     int32_t b = 9;
+   
+     try {
+       int32_t res = max(a, b);
+     } catch (std::exception &t) {
+       std::cout << "an error occured: " << t.what() << std::endl;
+     }
+     return 0;
+   }
+   
+   int32_t max(int32_t a, int32_t b) {
+     if (a < 0 || b < 0) {
+       throw std::invalid_argument("must be non-negative");
+     }
+   
+     if (a < b) {
+       return b;
+     } else {
+       return a;
+     }
+  }
+  ```
+
+  感觉着，一个函数如果要出错就可以`throw`，然后在其调用处可以使用`try`将其包裹，
+  如果函数真的`throw`了，那么就会被`catch`到；如果没有`throw`，就会正常执行
