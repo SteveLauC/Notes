@@ -14,6 +14,25 @@
    }
    ```
 
+   避免了这样的情况出现
+
+   ```cpp
+   #include <string>
+   #include <iostream>
+   
+   using std::string;
+   
+   int main() {
+    const string &f;
+    {
+	    string str("hlelo");	
+	    f = str;
+    }
+    std::cout << f << std::endl;
+    return 0; 
+   }
+   ```
+
 2. 由于引用不是一个对象，只是别名，所以不可以定义引用的引用
 
    ```cpp

@@ -4,7 +4,7 @@
    
    * dynamic_cast<T>(): 支持运行时时别
 
-   * const_cast<T>(): 用来将const属性从类型中去除
+   * const_cast<T>(): 用来将const属性从类型中去除或加上
 
    * reinterpret_cast<T>(): 将对象的那些字节重新解释为别的类型，像rust中的
    `std::mem::transmute()`。
