@@ -275,7 +275,80 @@
     `setenv` is safe cause it will allocate a memory and copy its arguments to
     that memory.
 
+    ```c
+    int
+    setenv (const char *name, const char *value, int replace)
+    {
+      if (name == NULL || *name == '\0' || strchr (name, '=') != NULL)
+        {
+          __set_errno (EINVAL);
+          return -1;
+        }
+    
+      return __add_to_environ (name, value, NULL, replace);
+    }
+    ```
+    
+    ```c
+    /* This function is used by `setenv' and `putenv'.  The difference between
+       the two functions is that for the former must create a new string which
+       is then placed in the environment, while the argument of `putenv'
+       must be used directly.  This is all complicated by the fact that we try
+       to reuse values once generated for a `setenv' call since we can never
+       free the strings.  */
+    int
+    __add_to_environ (const char *name, const char *value, const char *combined,
+		      int replace)
+    ```
+
+    The comment of `__add_to_environ` says that `setenv` must create a new string
+    before call it. But in the source code of `setenv`, I don't find any memory
+    allocation:(
+
+
 12. `unset(const char *name)` to unset the environment variable
+
+    ```c
+    int
+    unsetenv (const char *name)
+    {
+      size_t len;
+      char **ep;
+      if (name == NULL || *name == '\0' || strchr (name, '=') != NULL)
+        {
+          __set_errno (EINVAL);
+          return -1;
+        }
+      len = strlen (name);
+      LOCK;
+      ep = __environ;
+      if (ep != NULL)
+        while (*ep != NULL)
+          {
+            if (!strncmp (*ep, name, len) && (*ep)[len] == '=')
+              {
+                /* Found it.  Remove this pointer by moving later ones back.  */
+                char **dp = ep;
+                do
+                    dp[0] = dp[1];
+                while (*dp++);
+                /* Continue the loop in case NAME appears again.  */
+              }
+            else
+              ++ep;
+          }
+      UNLOCK;
+      return 0;
+    }
+    ```
+
+    The key statement here is `dp[0] = dp[1]`, we just move the strings behind 
+    our target back.
+
+    But if you use `setenv()` and `unsetenv()` to test memory leak, no leak
+    occurs, I guess, there is some extra metadata recoring some additional info
+    about which string is allocated(on the heap) and needs to be deallocated or
+    it is simply allocated on the stack?...
 
 13. The tools you should use when interacting with environment variables
    
@@ -306,6 +379,32 @@
     them all.
 
     > But I tested it with `valgrind` and did not find memory leak
+
+    UPDATE: In the source code of `clearenv`, we can clearly see that the call
+    of `free(__environ)`, which does free the memory.
+
+    ```c
+    /* The `clearenv' was planned to be added to POSIX.1 but probably
+       never made it.  Nevertheless the POSIX.9 standard (POSIX bindings
+       for Fortran 77) requires this function.  */
+    int
+    clearenv (void)
+    {
+      LOCK;
+      if (__environ == last_environ && __environ != NULL)
+        {
+          /* We allocated this environment so we can free it.  */
+          free (__environ);
+          last_environ = NULL;
+        }
+      /* Clear the environment pointer removes the whole environment.  */
+      __environ = NULL;
+      UNLOCK;
+      return 0;
+    }
+    ```
+    
+    
 
 15. non-local goto
     
