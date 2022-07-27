@@ -222,6 +222,41 @@
    All the environment variables are stored in a single line, wich each separated
    by a `\0` byte. This is pretty similar to the hacky way to get `cmdline`
 
+   But this file is not synced with the real environment variables list. That is
+   , if you update the environment variables, and read `/proc/self/environ` again,
+   the content is still the old one.
+
+   ```rust
+    use std::{
+        env::{set_var, var},
+        fs::{File, OpenOptions},
+        io::{Read, Seek},
+    };
+    
+    fn main() {
+        let mut f: File = OpenOptions::new()
+            .read(true)
+            .open("/proc/self/environ")
+            .unwrap();
+    
+        let mut buf: String = String::new();
+        f.read_to_string(&mut buf).unwrap();
+    
+        println!("{}", buf.trim().split('\0').count());
+    
+        set_var("new_val", "new_val");
+        assert!(var("new_val").is_ok());
+    
+        buf.clear();
+        print!("\n");
+    
+        f.rewind().unwrap();
+        f.read_to_string(&mut buf).unwrap();
+    
+        println!("{}", buf.trim().split('\0').count());
+   }
+   ```
+
 
    Well, there is a way I have never seen before:
 
