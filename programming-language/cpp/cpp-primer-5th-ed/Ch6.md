@@ -309,7 +309,9 @@
 
    cpp中的`constexpr`函数会隐式地被转换为内链函数
 
-   cpp的`constexpr fn`比rust的`const fn`目前要强得多
+
+   cpp允许`constexpr`函数的参数不是常量，当参数不是常量时，函数的返回值也不是常
+   量
 
    ```cpp
    #include <cstdint>
@@ -331,12 +333,14 @@
    3
    ```
 
+   Rust也可以
+
    ```rust
    fn main() {
        let a = 1;
        let b = 2;
-       const A: u8 = add(a, b);
-       println!("{}", A);
+       let r: u8 = add(a, b);
+       println!("{}", r);
    }
    
    const fn add(a: u8, b: u8) -> u8 {
@@ -345,22 +349,37 @@
    ```
    ```shell
    $ cargo r
-   error[E0435]: attempt to use a non-constant value in a constant
-    --> src/main.rs:4:23
-     |
-   4 |     const A: u8 = add(a, b);
-     |     -------           ^ non-constant value
-     |     |
-     |     help: consider using `let` instead of `const`: `let A`
+   3
+   ```
+
+8. `assert`与`NDEBUG`
+
+   `assert`依赖于`NDEBUG`，当`NDEBUG`被定义的时候，`assert`所有的`assert`语句都
+   会失效
+
+9. `__func__`是编译器定义的一个字符串，代表此语句出现的函数名
+  
+   还有一些其他的常用宏，比如
+
+   ```c
+   #include <stdio.h>
    
-   error[E0435]: attempt to use a non-constant value in a constant
-    --> src/main.rs:4:26
-     |
-   4 |     const A: u8 = add(a, b);
-     |     -------              ^ non-constant value
-     |     |
-     |     help: consider using `let` instead of `const`: `let A`
-   
-   For more information about this error, try `rustc --explain E0435`.
-   error: could not compile `t` due to 2 previous errors
+   int main(void)
+   {
+    printf("%s\n", __func__);
+    printf("%d\n", __LINE__);
+    printf("%s\n", __FILE__);
+    printf("%d\n", __COUNTER__);
+    return 0;
+   }
+   ```
+
+   Rust也有这些的编译宏
+
+   ```rust
+   fn main() {
+       println!("{}", line!());
+       println!("{}", column!());
+       println!("{}", file!());
+   }
    ```
