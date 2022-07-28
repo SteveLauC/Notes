@@ -35,7 +35,8 @@
    2. there are two unique features of selection sort:
 
       1. the time complexity is indenpent from the input for the reason that 
-      for any kind of input, it will just scan the array to find the minimal value.
+      for any kind of input, it will just scan the array to find the minimal value
+      over and over again.
      
          If you give a sorted data to the selection sort, you will find it consume
          the same time as the unordered one.
@@ -77,40 +78,41 @@
 
       * the number of comparsion:
         
-	> Time consumping is dependent on the input data, so the number of 
-	> comparsion is also determined by the data.
+        > Time consumping is dependent on the input data, so the number of 
+        > comparsion is also determined by the data.
 
-	* best case(data is ordered by default): n-1
-	  
-	  > try once and exit the while loop
+        * best case(data is ordered by default): n-1
+          
+          > try once and exit the while loop
 
-	* worst case(data is in reverse order): 
+        * worst case(data is in reverse order): 
 
-	  |i_idx|the number of comparsion|
-	  |-----|------------------------|
-	  |1    |1|
-	  |2    |2|
-	  |.....|........................|
-	  |n|n|
+          |i_idx|the number of comparsion|
+          |-----|------------------------|
+          |1    |1|
+          |2    |2|
+          |.....|........................|
+          |n|n|
 
           (n*n+1)/2 = (n^2)/2
-	
-	* average case: worst case/2 = (n*n+1)/4 = (n^2)/4
+        
+        * average case: worst case/2 = (n*n+1)/4 = (n^2)/4
 
       * the number of exchange: 
         
-	* best case: 0
+        * best case: 0
 
-	* worse case: 
+        * worse case: 
           
-	  |i_idx|the number of exchange|
-	  |-----|------------------------|
-	  |1    |1|
-	  |2    |2|
-	  |.....|........................|
-	  |n|n|
+          |i_idx|the number of exchange|
+          |-----|------------------------|
+          |1    |1|
+          |2    |2|
+          |.....|........................|
+          |n|n|
 
           (n*n+1)/2 = (n^2)/2
 
-	* average case: worst case/2 = (n*n-1)/4 = (n^2)/4
+        * average case: worst case/2 = (n*n-1)/4 = (n^2)/4
 
+   2. feature: If the input data is partially sorted, then insertion sort is super fast
