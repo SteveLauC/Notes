@@ -43,9 +43,9 @@
    2. pin/reference counter: how many threads are currently accessing(read or write)
    this frame. Each thread must increment it before accessing it. 
 
-   If the counter is greater than 0, then the storage engine is not allowed to 
-   evict this page from memory. This is why it is named `Pin` counter, we are
-   actually pinning(locking) it in the memory
+      If the counter is greater than 0, then the storage engine is not allowed to 
+      evict this page from memory. This is why it is named `Pin` counter, we are
+      actually pinning(locking) it in the memory
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-45-15.png)
 

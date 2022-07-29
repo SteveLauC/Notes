@@ -40,6 +40,14 @@
      
          If you give a sorted data to the selection sort, you will find it consume
          the same time as the unordered one.
+
+         ```shell
+         $ mst 10000 selection
+         Use <selection sort> to sort 10000 random numbers, consuming 1.675552184s
+
+         $ mst -o 10000 selection
+         Use <selection sort> to sort 10000 ordered numbers, consuming 1.663471248s
+         ```
    
       2. It only moves data n times(exclusive to selection sort)
 
@@ -122,3 +130,10 @@
         * average case: worst case/2 = (n*n-1)/4 = (n^2)/4
 
    2. feature: If the input data is partially sorted, then insertion sort is super fast
+      
+      ```shell
+      $ mst 10000 insertion
+      Use <insertion sort> to sort 10000 random numbers, consuming 209.427357ms
+      $ mst -o 10000 insertion # super fast!
+      Use <insertion sort> to sort 10000 ordered numbers, consuming 403.46µs
+      ```
