@@ -54,7 +54,7 @@
    s[j+1] = s[j]
 
    ```rust
-   fn insertion_sort<T: PartialOrd + Copy>(s: &mut [T]) {
+   pub fn insertion_sort<T: PartialOrd + Copy>(s: &mut [T]) {
        for i_idx in 1..s.len() {
            let key: T = s[i_idx];
            let mut j_idx: usize = i_idx - 1;
@@ -66,7 +66,13 @@
                }
                j_idx -= 1;
            }
-           s[j_idx] = key;
+           // exit from `break`
+           if j_idx == 0 && s[0] > key {
+               s[0] = key;
+           } else {
+               // exit from while
+               s[j_idx + 1] = key;
+           }
        }
    }
    ```
