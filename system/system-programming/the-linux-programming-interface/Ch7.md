@@ -47,13 +47,33 @@
 
 4. `free(void *ptr)`
 
-   Instead of reducing the `program break`, `free` adds the memory block to be
-   deallocated to a list of free blocks that are recycled by future calls to 
-   `malloc`.
+   In some cases, instead of reducing the `program break`, `free` adds the 
+   memory block to be deallocated to a list of free blocks that are recycled 
+   by future calls to `malloc`.
 
    This is done for few reasons:
    1. The memory being freed may not be in the end of heap but in the middle.
    2. This can reduce the number of syscalls
 
-   > Currently, we don't know about the behavior of `malloc`, will it increase
-   > `program break`?
+
+   We can test this using `free_and_sbrk`, for example:
+   ```shell
+   $ ./free_and_sbrk 1000 10240 1 1 2
+   Initial program break:       0x56498b9f2000
+   Allocating 1000*10240 bytes
+   Program break is now:       0x56498c3ba000
+   Freeing blocks from 1 to 2 in steps of 1
+   After free(), program break is       0x56498c3ba000 # program break does not decrease
+   ```
+
+   But if we deallcate the memory block which is at the end of heap:
+   ```shell
+   $ ./free_and_sbrk 1000 10240 1 1 2
+   Initial program break:       0x557688953000
+   Allocating 1000*10240 bytes
+   Program break is now:       0x55768931b000
+   Freeing blocks from 500 to 1000 in steps of 1
+   After free(), program break is       0x557688e34000
+   ```
+
+   This is a kind of optimization, I guess.
