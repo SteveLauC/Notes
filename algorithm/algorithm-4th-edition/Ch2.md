@@ -38,7 +38,7 @@
       for any kind of input, it will just scan the array to find the minimal value
       over and over again.
      
-         If you give a sorted data to the selection sort, you will find it consume
+         If you give a sorted data to the selection sort, you will find it consumes
          the same time as the unordered one.
 
          ```shell
@@ -85,6 +85,27 @@
    }
    ```
 
+   > If you make `j_idx` of type `usize`, which can not be less than 0, the
+   > implementation can be pretty ugly. 
+   > 
+   > If `j_idx` has type `isize`, the code snippet can be written as:
+   > ```rust
+   > while j_idx >= 0 && s[j_idx as usize] > key {
+   >     s[j_idx as usize + 1] = s[j_idx as usize];
+   >     j_idx -= 1;
+   > }
+   > s[j_idx + 1] = key;
+   > ```
+   > which is pretty consistent and elegant.
+   > But `j_idx` has type `usize`, so `j_idx >= 0` is redundant, but we have to
+   > prevent `overflow` from happening, so we add this:
+   > ```rust
+   > if j_idx == 0{
+   >     break;
+   > } 
+   > ```
+   > Then our `while` loop has 2 exits which should be handled differently
+
    Unlike `selection sort`, the consuming time of insertion sort is decided by
    the input data(note the condition of our while loop is `s[j_idx] > key`)
 
@@ -129,7 +150,8 @@
 
         * average case: worst case/2 = (n*n-1)/4 = (n^2)/4
 
-   2. feature: If the input data is partially sorted, then insertion sort is super fast
+   2. feature: If the input data is partially or totally sorted, then insertion 
+   sort is super fast
       
       ```shell
       $ mst 10000 insertion
@@ -137,3 +159,5 @@
       $ mst -o 10000 insertion # super fast!
       Use <insertion sort> to sort 10000 ordered numbers, consuming 403.46µs
       ```
+
+3. shell sort
