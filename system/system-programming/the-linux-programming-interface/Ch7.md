@@ -39,3 +39,21 @@
 
 3. `malloc` is implemented using `mmap` syscall, though on some systems, they
    are implemented with `brk`.
+
+   The behavior of `malloc(0)` is implementation-defined, on linux, it will return
+   a small piece of memory that should be freed.
+
+   [what-does-malloc0-return](https://stackoverflow.com/questions/2132273/what-does-malloc0-return)
+
+4. `free(void *ptr)`
+
+   Instead of reducing the `program break`, `free` adds the memory block to be
+   deallocated to a list of free blocks that are recycled by future calls to 
+   `malloc`.
+
+   This is done for few reasons:
+   1. The memory being freed may not be in the end of heap but in the middle.
+   2. This can reduce the number of syscalls
+
+   > Currently, we don't know about the behavior of `malloc`, will it increase
+   > `program break`?
