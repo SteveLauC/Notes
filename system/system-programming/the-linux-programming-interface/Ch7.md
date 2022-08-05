@@ -77,13 +77,11 @@
    After free(), program break is       0x557688e34000
    ```
 
-  This is a kind of optimization, I guess.
+   This is a kind of optimization, I guess.
 
 5. implementation of `malloc` and `free`
 
-   * malloc:
-   malloc
-
+   * malloc:(glibc memory allocator is ptmalloc2)
      1. scans the list of memory blocks previously released by `free()` in order
      to find one whoese size is larger than or equal to its requirements.
         1. If found and the block is exactly fit, return it. If it is larger, split
@@ -98,14 +96,57 @@
      then call `sbrk`.
      2. If we can't, put the allocated block onto the free list.
 
-> How does `free()` know the size of allocated memory block?
-> When `malloc` allocates memory, it will ask some extra bytes to store the length
-> of that block.
-> ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-05_08-25-57.jpg)
-> And the address returned by `malloc` actually is not the beginning address of
-> the allocated block
+   > How does `free()` know the size of allocated memory block?
+   > When `malloc` allocates memory, it will ask some extra bytes to store the length
+   > of that block.
+   > ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-05_08-25-57.jpg)
+   > And the address returned by `malloc` actually is not the beginning address of
+   > the allocated block
+   
+   > When a block is put on the (double linked) free list, `free()` uses the bytes
+   > of the block itself to track the previous and next node.
+   > ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-05_08-47-18.jpg)
+   
+   > You may wanna retrieve the size yourself, like this [one](https://stackoverflow.com/questions/5451104/how-to-get-memory-block-length-after-malloc)
+   > But this is implementation defined, you have to know the detail of the implementaion
+   > of glibc `malloc` to correctly obtain it.
 
-> When a block is put on the (double linked) free list, `free()` uses the bytes
-> of the block itself to track the previous and next node.
-> ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-05_08-47-18.jpg)
+6. debugging tool for observing heap allocation
+   
+   page 146
 
+7. Other functions to allocate memory on the heap
+
+   * void *calloc(size_t nmemb, size_t size): this function allocates memory 
+   for an array of type `[T; size]` where `T` has size `nmemb`. And this is similar
+   to `malloc(nmemb * size)` except that the overflow of `nmemb*size` can 
+   be detected in `calloc`
+
+   * void *realloc(void *ptr, size_t size): resize the size of memory pointed by
+   `ptr` to `size`, return the newly allocated memory address. The return value
+   and `ptr` may have the same value (if not allocated), you should not rely on
+   it.
+
+
+8. allocate aligned memory
+   
+   In C, you can use `aligned_alloc` (since c11) and `posix_memalign`.
+
+   In Rust, memory allocation is aligned by default
+
+   There is a funny [post](https://stackoverflow.com/questions/227897/how-to-allocate-aligned-memory-only-using-the-standard-library)
+   asking to allocate 1024 bytes which is 16 bytes aligned.
+
+9. allocate memory on the stack
+  
+   ```c
+   #include <alloca.h>
+
+   void *alloca(size_t size);
+   ```
+
+   This is done by modifying the stack pointer
+
+   And stack allocation has several advantages over the heap:
+   1. It is faster cause all it has done is simply adjusting the sp
+   2. Does not need to be freed.
