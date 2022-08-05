@@ -66,9 +66,10 @@
    After free(), program break is       0x56498c3ba000 # program break does not decrease
    ```
 
-   But if we deallcate the memory block which is at the end of heap:
+   But if we deallcate the memory block which is at the end of heap, then `sbrk` is 
+   involved to decrease the `program break`.
    ```shell
-   $ ./free_and_sbrk 1000 10240 1 1 2
+   $ ./free_and_sbrk 1000 10240 1 500 1000
    Initial program break:       0x557688953000
    Allocating 1000*10240 bytes
    Program break is now:       0x55768931b000
@@ -76,4 +77,35 @@
    After free(), program break is       0x557688e34000
    ```
 
-   This is a kind of optimization, I guess.
+  This is a kind of optimization, I guess.
+
+5. implementation of `malloc` and `free`
+
+   * malloc:
+   malloc
+
+     1. scans the list of memory blocks previously released by `free()` in order
+     to find one whoese size is larger than or equal to its requirements.
+        1. If found and the block is exactly fit, return it. If it is larger, split
+        it and return.
+        2. If no block is found, then call `sbrk` to allocate more memory. To
+	reduce the number of syscalls, `sbrk` normally allocate several pages
+	and put the unneeded ones into the free list.
+   malloc
+
+   * free: 
+     1. If we can decrease the `program break` to deallocate the memory block,
+     then call `sbrk`.
+     2. If we can't, put the allocated block onto the free list.
+
+> How does `free()` know the size of allocated memory block?
+> When `malloc` allocates memory, it will ask some extra bytes to store the length
+> of that block.
+> ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-05_08-25-57.jpg)
+> And the address returned by `malloc` actually is not the beginning address of
+> the allocated block
+
+> When a block is put on the (double linked) free list, `free()` uses the bytes
+> of the block itself to track the previous and next node.
+> ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-05_08-47-18.jpg)
+
