@@ -1,4 +1,4 @@
-1. 定义在类内部的函数是隐式的inline函数
+1. `定义`在类内部的函数是隐式的inline函数
 
 2. const成员函数(const member function)
 
@@ -70,3 +70,170 @@
 
    比较有意思的是，这个函数是一个友元函数，并不是成员函数。需要是友元是因为字段
    是`private`的，所以需要`friend`来访问他们。
+
+   不过正常情况下应该是将函数定义的外面，然后把函数签名放到类里面做友元
+
+   ```cpp
+   class Time
+   {
+       uint32_t hour;
+       uint32_t min;
+   
+   public:
+       friend ostream& operator<<(std::ostream& os, const Time& instance);
+   };
+   
+   ostream& operator<<(std::ostream& os, const Time& instance)
+   {
+       os << "Time is: (hour: " << instance.hour << ", min: " << instance.min
+          << ")" << std::endl;
+   
+       return os;
+   }
+   ```
+
+   由于读和写会改变流的内容，所以他们都是可变的引用，而非`const`引用
+
+4. 默认构造函数default constructor
+
+   如果我们没有**显示**地提供构造函数，编译器就会为我们隐式地生成一个默认构造函数。
+   编译器创建的构造函数又称为`合成的默认构造函数(synthesized default constructor)`
+
+
+   合成的默认构造函数将按以下规则来初始化类:
+   1. 如果存在类的初始值，用它来初始化成员
+   2. 否则，默认初始化
+
+   > 有点像Rust中的std::default::Default
+   >
+   > ```rust
+   > pub trait Default {
+   >     fn default() -> Self;
+   > }
+   > ```
+   > 如果是类的初始值就像Rust中我们手动实现`Default`，默认初始化则是我们令编译器
+   > 来实现`#[derive(Default)]`
+
+   > 类的初始值是这样的
+   > ```cpp
+   > class Person {
+   >     string name = "steve"; // 类的初始值
+   > };
+   > ```
+
+5. 在默认构造函数参数后面写上`=default`
+   
+   > since c++11
+
+   默认情况下，只有在程序员什么构造函数都不提供的情况下，编译器才会为我们生成默
+   认构造函数。而这个关键字是强行让编译器为我们生成默认构造函数，无论我们有没有
+   手动生成其他的构造函数。
+
+   如果我们既需要默认构造函数，又需要其他的构造函数，`=default`会很有用。比如下
+   面的代码，我们既需要默认构造函数，又需要有参构造函数。
+
+   > 不过仔细想想，在Rust里面`Default`还是用得比较少的
+
+   ```cpp
+   #include <cstdint>
+   #include <iostream>
+   #include <ostream>
+   #include <string>
+   
+   using std::string;
+   
+   class Person
+   {
+       string name;
+       uint32_t age;
+   
+   public:
+       Person() = default;
+   
+       Person(string name, uint32_t age) : name(name), age(age){};
+   
+       friend std::ostream& operator<<(std::ostream&, const Person&);
+   };
+   
+   std::ostream& operator<<(std::ostream& os, const Person& item)
+   {
+       os << "Person: (name: " << item.name << ", age: " << item.age << ")\n";
+       return os;
+   }
+   
+   int main()
+   {
+       auto p = Person();
+   
+       auto pp = Person("steve", 18);
+   
+       std::cout << p << pp;
+   }
+   ```
+
+6. 有参构造函数，但只提供部分字段
+
+   如果只提供部分字段，其他未提供的字段将会被隐式默认初始化
+
+   ```cpp
+   #include <cstdint>
+   #include <iostream>
+   #include <ostream>
+   #include <string>
+   
+   using std::string;
+   
+   class Person
+   {
+       string name;
+       uint32_t age;
+   
+   public:
+       Person() = default;
+   
+       Person(string name) : name(name){}; // 只提供name, age会被默认初始化
+   
+       friend std::ostream& operator<<(std::ostream&, const Person&);
+   };
+   
+   std::ostream& operator<<(std::ostream& os, const Person& item)
+   {
+       os << "Person: (name: " << item.name << ", age: " << item.age << ")\n";
+       return os;
+   }
+   
+   int main()
+   {
+       auto p = Person();
+   
+       auto pp = Person("steve");
+   
+       std::cout << p << pp;
+   }
+   ``` 
+
+   在Rust中的话，需要显式地写出来
+
+   ```rust
+   #[derive(Default, Debug)]
+   struct Person {
+       name: String,
+       age: u32,
+   }
+   
+   impl Person {
+       fn new(name: String) -> Self {
+           Self {
+               name,
+               age: u32::default(),
+           }
+       }
+   }
+   
+   fn main() {
+       let p: Person = Person::default();
+       let pp: Person = Person::new("steve".into());
+   
+       println!("{:?}\n{:?}", p, pp);
+   }
+   ```
