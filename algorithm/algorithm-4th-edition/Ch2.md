@@ -256,14 +256,11 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-06_19-54-56.jpg)
 
-   When `h` is a big value, we can move items in the array long distances thus 
-   making it easier for h-sort for smaller values of h.
-
    So the basic idea of shell sort is: first we have a relatively big `h`, then
    we h-sort this array, moving items long distances with few steps. Then we 
    decrease `h`, thanks for our previous big `h`, our array is basicially ordered
    so that these small `h`-sort won't take too much time. When h turns out to be
-   1(i.e. plain insertion sort), our array is guaranteed to be totally in order.
+   1 (i.e. plain insertion sort), our array is guaranteed to be totally in order.
 
    Why shell sort is fast:
    1. when h is big, the sub-array is very short(len: s.len()/h)
@@ -318,4 +315,9 @@
    ```
 
    The performance of `insertion sort` is dependent on the input data, so is
-   `shell sort`
+   `shell sort`. We should also note that the performance of `shell sort` is
+   related to `h`, it is very hard to find the most suitable `h`.
+
+   And `shell sort` is much more efficient than the `insertion sort` and 
+   `selection sort`, the bigger the array is, the larger the array, the more
+   efficient the `shell sort`.
