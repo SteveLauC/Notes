@@ -321,3 +321,66 @@
    And `shell sort` is much more efficient than the `insertion sort` and 
    `selection sort`, the bigger the array is, the larger the array, the more
    efficient the `shell sort`.
+
+4. top-down merge sort
+
+   The core operation of `merge sort` is merge two disjoint ordered array. And
+   merge sort is recursive, if you wanna sort a big array, you have to sort the
+   left half side, then sort the right half side, and combine these two parts
+   together.
+
+   ```rust
+   fn merge<T: Copy + Ord>(a: &mut [T], mid: usize) {
+       let aux: Vec<T> = a.to_vec();
+       let len: usize = a.len();
+       let mut i: usize = 0;
+       let mut j: usize = mid;
+       let mut p: usize = 0;
+   
+       while i < mid && j < len {
+           if aux[i] < aux[j] {
+               a[p] = aux[i];
+               i += 1;
+           } else {
+               a[p] = aux[j];
+               j += 1;
+           }
+           p += 1;
+       }
+   
+       if i < mid {
+           a[p..len].clone_from_slice(&aux[i..mid]);
+       }
+       if j < len {
+           a[p..len].clone_from_slice(&aux[j..len]);
+       }
+   }
+   
+   fn merge_sort<T: Copy + Ord>(a: &mut [T]) {
+       // already ordered
+       if a.len() <= 1 {
+           return;
+       }
+   
+       let mid: usize = a.len() / 2;
+   
+       merge_sort(&mut a[..mid]);
+       merge_sort(&mut a[mid..]);
+       merge(a, mid);
+   }
+   ```
+
+   Why it works? Let's give a simple example:
+   
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-08_20-03-12.jpg)
+
+   When the length is 2, left part and righ part both have only 1 element, which
+   is already ordered, so these two calls directly return. Then we merge
+   them, moving items around and making the whole array in order. If the target 
+   array's length is longer than 2, nothing complex, just make the `process
+   tree` deeper.
+
+   So the `merging operation` is the part that *moves* things, all those preceding
+   recursive calls do is to just halve the length until it reaches 2.
+
+   ![a deeper process tree](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-08_20-14-59.jpg)
