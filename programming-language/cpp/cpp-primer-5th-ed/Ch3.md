@@ -266,8 +266,18 @@
      我写的时候还是老老实实用`()`批量初始化，`{}`来做初始化列表吧。从这里就可以
      一瞥cpp的烂，简单的事情也给你100种做法，徒增心智负担
 
-     > 发现在给`类内初始值`的时候，使用`vector<T> v(n, val)`会报错，使用
-     > `vector<T> v{n, val}`则正常...
+     > 发现在给`类内初始值(in-class initializer)`的时候，使用`vector<T> v(n, val)`
+     > 会报错，使用`vector<T> v{n, val}`则正常...好像编译器把它视作一个成员函数的
+     > 函数签名了
+     > ```cpp
+     > class Window_mgr
+     > {
+     > private:
+     > public:
+     > std::vector<Screen> screens{3, Screen(24, 80, ' ')};
+     > std::vector<Screen> screens(3, Screen(24, 80, ' '));
+     > };
+     > ```
 
 13. 可写的与只读的迭代器
 
