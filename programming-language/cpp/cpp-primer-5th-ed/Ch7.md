@@ -237,3 +237,139 @@
        println!("{:?}\n{:?}", p, pp);
    }
    ```
+
+7. `=default`和`=delete`
+   
+   编译器会默认提供:
+   1. 默认构造函数
+   2. 拷贝构造函数
+   3. `=`的重载函数
+   4. 析构函数
+   
+   如果我们没有手动地去处理他们的话。
+
+   构造函数规则:
+   1. 如果程序员手动提供了有参构造函数，那么编译器则不再提供默认构造函数。
+   2. 程序员手动提供了拷贝构造函数，编译器不再提供默认构造函数
+
+   有的时候，我们不想应用这种构造函数规则，比如手动提供了有参构造，又想要编译器
+   提供默认构造函数，就可以使用`=default`显式地写出来
+
+   而`=delete`则是明确地告诉编译器，不想要它给我们提供的默认实现。
+
+8. copy constructor和copy assignment的区别
+
+   * copy constructor是用来给之前**没有**被初始化的变量使用的
+   * copy assignment是给之前**已经**被初始化的变量使用的
+
+   > 如何理解记忆，copy constructor是一个constructor，是用来construct一个没有被
+   > construct的东西的
+
+   ```cpp
+   A a;
+   A b;
+   b = a; // copy assignment
+   ```
+
+   ```cpp
+   A a;
+   A b = a; // copy constructor
+   ```
+
+   注意，`A a;`这样的写法，`a`是被初始化的了，调用的是默认构造函数。不和c一样，
+   这是cpp比较强调的一个地方。当然也不和Rust一样，Rust的初始化是很显式的。
+
+   可以测试一下:
+
+   ```cpp
+   class Person
+   {
+   public:
+       Person() = delete;
+   };
+   int main()
+   {
+       auto p; // Constructor is called implicitly
+   
+       return 0;
+   }
+   ```
+
+   ```shell
+   $ g++s main.cpp
+   main.cpp: In function ‘int main()’:
+   main.cpp:79:5: error: declaration of ‘auto p’ has no initializer
+      79 |     auto p;
+         |     ^~~~
+   ```
+
+9. `class`和`struct`的唯一区别就是默认的访问权限，`class`默认为`private`，而
+   `struct`默认为`public`
+
+10. 友元: 一般来说最好在类的定义开始或者结束前的位置集中声明友元
+
+11. cpp允许为特定的类来创建某种类型在类中的别名，cpp称其为`member type`，有点像
+    Rust中trait里面的类型一样？但用途很不一样哈
+   
+    ```cpp
+    class Screen
+    {
+    public:
+        using pos = std::string::size_type;
+    
+    private:
+        pos cursor = 0;
+        pos height = 0;
+        pos width = 0;
+        std::string contents;
+    };
+    ```
+
+    比如我们在上面的例子里面，将`std::string::size_type`在`Screen`中重命名为
+    `pos`。其实`std::string::size_type`也是在`string`中的一种重命名
+
+    Member type也是有访问权限的，比如这个public的，在`Screen`外就可以使用`Screen::pos`
+    来拿到
+
+12. mutable的成员
+    
+    当一个字段被标记为`mutable`的时候，即使是const的变量，或者是`const member
+    function`，也可以修改此mutable字段
+
+    ```cpp
+    class Person
+    {
+    public:
+        mutable uint32_t age = 0;
+    
+        Person() = default;
+        inline void change_age(uint32_t new_age) const;
+    };
+    
+    // const function can change mutable field
+    inline void Person::change_age(uint32_t new_age) const { this->age = new_age; }
+    
+    int main()
+    {
+        auto p = Person();
+        std::cout << p.age << std::endl;
+        p.change_age(18);
+        std::cout << p.age << std::endl;
+    
+	// mutable field of a constant can also be modified.
+        const auto con_p = Person();
+        std::cout << con_p.age << std::endl;
+        con_p.age = 18;
+        std::cout << con_p.age << std::endl;
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ g++ main.cpp
+    ./a.out
+    0
+    18
+    0
+    18
+    ```
