@@ -593,3 +593,99 @@
     main.cpp:77:12: error: use of deleted function ‘Person::Person()’
        77 |     Person p;
     ```
+
+21. 类的字段的初始化顺序是按照其定义的顺序做的。初始化列表中的顺序并不影响初始化
+    的顺序。
+
+    通常情况下，字段初始化顺序没有什么影响，但如果某个字段依赖于另一个字段，则可
+    能会有一些影响
+
+
+    ```cpp
+    class Foo
+    {
+    public:
+        int32_t i;
+        int32_t j;
+    
+	// j is uninitialized when used here
+        Foo(int32_t val) : j(val), i(j) {}
+    };
+    
+    int main()
+    {
+        Foo p(1);
+    
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ g++s main.cpp
+    main.cpp: In constructor ‘Foo::Foo(int32_t)’:
+    main.cpp:64:13: warning: ‘Foo::j’ will be initialized after [-Wreorder]
+       64 |     int32_t j;
+          |             ^
+    main.cpp:63:13: warning:   ‘int32_t Foo::i’ [-Wreorder]
+       63 |     int32_t i;
+          |             ^
+    main.cpp:66:5: warning:   when initialized here [-Wreorder]
+       66 |     Foo(int32_t val) : j(val), i(j) {}
+          |     ^~~
+    main.cpp: In constructor ‘Foo::Foo(int32_t)’:
+    main.cpp:66:34: warning: ‘*this.Foo::j’ is used uninitialized [-Wuninitialized]
+       66 |     Foo(int32_t val) : j(val), i(j) {}
+          |                                  ^
+    ```
+
+    > 因此我们应该将初始化列表的顺序和类字段的定义顺序保持一致
+
+22. 什么是默认构造函数
+
+    我们已知的是，当一个构造函数什么参数都没有的时候，那么此函数是默认构造函数。
+    但加入构造函数有参数，但所有的参数都有默认的参数值，那么此函数也是默认构造
+    函数，因为你也可以这样调用它`Foo f = Foo();`
+
+    ```cpp
+    class Foo
+    {
+    public:
+        int32_t i;
+        int32_t j;
+        
+        Foo(int32_t val = 1) {}
+    };
+    
+    int main()
+    {
+        Foo s;
+        return 0;
+    }
+    ```
+23. 委托构造函数(delegating constructor) (since c++11)
+
+    委托构造函数就是它自己本身不干什么活，调用其他的构造函数来初始化。
+
+    ```cpp
+    class Foo
+    {
+    public:
+        int32_t i;
+        int32_t j;
+    
+        Foo(int32_t i, int32_t j) : i(i), j(j) {}
+    
+        Foo() : Foo(0, 0) {} // delegating constructor
+    };
+    
+    int main()
+    {
+        Foo s;
+        return 0;
+    }
+    ```
+
+    上面的默认构造函数就是一个委托构造函数，它调用`Foo(int32_t, int32_t)`来实现
+    自己的功能。
+
+    > 这个还挺有意思的，封装起来备用的感觉
