@@ -689,3 +689,81 @@
     自己的功能。
 
     > 这个还挺有意思的，封装起来备用的感觉
+
+24. 转换构造函数 (converting constructor)
+   
+    当一个类的构造函数只接受一个实参的时候，此构造函数就是转换构造函数。然后实参
+    的类型就可以隐式转换为这个类。
+
+    ```cpp
+    class Foo
+    {
+    public:
+        std::string name;
+    
+        Foo(std::string name) : name(name) {}
+    };
+    
+    int main()
+    {
+        Foo s = std::string("hello");
+        return 0;
+    }
+    ```
+
+    这挺离谱的
+
+    然后cpp为了修掉这个离谱的东西，引入了`explicit`关键字
+
+
+    ```cpp
+    class Foo
+    {
+    public:
+        std::string name;
+    
+        explicit Foo(std::string name) : name(name) {}
+    };
+    
+    int main()
+    {
+        Foo s = std::string("hello"); // 然后这里就报错了
+        return 0;
+    }
+    ```
+
+    `clangtidy`的建议是，对于所有的一个参数的构造函数，都显式地标注上`explicit`
+    关键字避免这种隐式类型转换的发生/转换构造函数的产生。
+
+    其实我们之所以可以使用`std::string s = "hello"`来初始化一个字符串就是因为其
+    背后的这个单参数构造函数不是`explicit`的，但是还是建议`std::string s("hello")`
+    这样写来调用构造函数。
+
+25. 聚合类
+
+    当一个类具有如下特征时，它就是一个聚合类
+
+    1. 所有成员都是public的
+    2. 没有定义任何构造函数
+    3. 没有类内初始值 (in-class initializer)
+    4. 没有基类，也没有virtual函数
+
+    ```cpp
+    struct Person{
+        std::string name;
+	uint32_t age;
+    }
+    ```
+
+    当一个类是聚合类时，我们可以像c中初始化结构体那样来初始化它
+
+    ```cpp
+    int main()
+    {
+        Person p = {std::string("steve"), 18};
+    
+        return 0;
+    }
+    ```
+
+    别用这家伙就对了，感觉是为了和c兼容搞出来的.
