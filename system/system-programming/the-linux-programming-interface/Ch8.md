@@ -81,7 +81,7 @@ group IDs(real, effective, saved)
    including empty string) will be left on this field.
 
       > If this field is `empty`, it does not mean that this group does not have
-      > password. This is different from the password fielf of `/etc/passwd`
+      > password. This is different from the password field of `/etc/passwd`
       
       ```shell
       $ l gshadow
@@ -140,3 +140,4 @@ group IDs(real, effective, saved)
       lpadmin
       docker
       ```
+6. retrieve user and group information

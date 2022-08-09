@@ -183,7 +183,7 @@
     int main() {
       auto str = std::string("BBB");
       for (const char &c : str) {
-      	std::cout<< c << std::endl;
+              std::cout<< c << std::endl;
       }
       return 0;
     }
@@ -380,7 +380,7 @@
 
     while(p != end) {
          cout << *p << endl;
-	 p += 2;
+         p += 2;
     }
     ```
 

@@ -25,8 +25,8 @@
    int main() {
     const string &f;
     {
-	    string str("hlelo");	
-	    f = str;
+            string str("hlelo");        
+            f = str;
     }
     std::cout << f << std::endl;
     return 0; 
@@ -60,7 +60,7 @@
 
    但是有2个例外:
 
-   1. 在初始化常量引用时，只要可以初始化成功就可以 	
+   1. 在初始化常量引用时，只要可以初始化成功就可以         
 
       ```cpp
       int32_t i = 42;
