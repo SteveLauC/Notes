@@ -19,7 +19,7 @@ group IDs(real, effective, saved)
    3. UID: if this field is 0, then this account has superuser privileges. On 
    Linux (after kernel 2.4), uid is stored using 32 bits, `u32` on Linux.
 
-   > It is possible to have more than one accounts with the same UID.
+      > It is possible to have more than one accounts with the same UID.
 
    4. GID: The ID of the first group that this user is in.
 
@@ -55,3 +55,88 @@ group IDs(real, effective, saved)
    Permissions Size User Group  Date Modified Name
    .rw-r-----  1.4k root shadow  6 Jun 19:18   shadow
    ```
+
+   ```shell
+   $ sudo cat /etc/shadow |head -5
+   root:*:19042:0:99999:7:::
+   daemon:*:19042:0:99999:7:::
+   bin:*:19042:0:99999:7:::
+   sys:*:19042:0:99999:7:::
+   sync:*:19042:0:99999:7:::
+   ```
+
+   We will talk about the field of this file in detail in Section 8.5.
+
+   > This is not a standard file.
+
+5. The group file: `/etc/group`
+
+   One line for each group, each line contains 4 colon-separated fields:
+
+   1. Group name
+
+   2. Encrypted password: With the advent of multiple group memberships, group
+   password is rarely used. If `password shadowing` is enabled, then it is 
+   encrypted and stored in `/etc/shadow`, and any string literal (Mostly `x`, 
+   including empty string) will be left on this field.
+
+      > If this field is `empty`, it does not mean that this group does not have
+      > password. This is different from the password fielf of `/etc/passwd`
+      
+      ```shell
+      $ l gshadow
+      Permissions Size User Group  Date Modified Name
+      .rw-r-----   836 root shadow 14 Jun 13:24   gshadow
+      ```
+
+   3. Group ID: u32 (after kernel 2.4)
+
+   4. User list (separated by comma)
+
+   ```shell
+   cat /etc/group
+   root:x:0:
+   daemon:x:1:
+   bin:x:2:
+   sys:x:3:
+   adm:x:4:syslog,steve
+   ```
+
+   Find the groups to which steve belongs:
+   If we simply grep `steve` in `/etc/group`, according to the field definition,
+   he belongs to `admin/sudo/lpadmin/docker`. But `steve` is definitely included
+   in group `group`...
+
+   ```shell
+   $ cat group|grep steve
+   adm:x:4:syslog,steve
+   sudo:x:27:steve
+   lpadmin:x:121:steve
+   steve:x:1000:         # does not list `steve`..
+   docker:x:999:steve
+   ```
+
+   So the correct way to do this is: (what a stupid method...)
+
+   1. check out the group id of steve
+      
+      ```shell
+      $ awk 'BEGIN {FS = ":" }; { if ($1 == "steve") print $3}' /etc/passwd
+      1000
+      ```
+
+   2. Then print the group name of that gid
+      
+      ```shell
+      $ awk 'BEGIN {FS = ":" }; { if ($3 == "1000") print $1}' /etc/group 
+      steve
+      ``` 
+   3. Then other groups
+      
+      ```shell
+      $ cat /etc/group|grep steve|awk 'BEGIN {FS=":"}; {if ($1 != "steve") print $1}'
+      adm
+      sudo
+      lpadmin
+      docker
+      ```
