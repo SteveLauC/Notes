@@ -373,3 +373,223 @@
     0
     18
     ```
+
+13. 在`const member function`返回自身的引用得到的是`const reference`
+
+    ```cpp
+    class Person
+    {
+        std::string name;
+    
+    public:
+        const Person& display() const;
+        Person& change_name(std::string new_name);
+    };
+    
+    const Person& Person::display() const
+    {
+        std::cout << this->name << std::endl;
+        return *this;
+    }
+    
+    Person& Person::change_name(std::string new_name)
+    {
+        this->name = std::move(new_name);
+        return *this;
+    }
+    
+    int main()
+    {
+        Person p;
+        p.display().change_name(std::string("hello"));
+    
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ g++ main.cpp
+    main.cpp: In function ‘int main()’:
+    main.cpp:84:28: error: passing ‘const Person’ as ‘this’ argument discards qualifiers [-fpermissive]
+       84 |     p.display().change_name(std::string("hello"));
+          |     ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+    main.cpp:75:9: note:   in call to ‘Person& Person::change_name(std::string)’
+       75 | Person& Person::change_name(std::string new_name)
+          |         ^~~~~~
+    ```
+
+14. 在cpp中，如果一个变量use after move，编译会通过的...    
+   
+    ```cpp
+    #include <iostream>
+    #include <string>
+
+    int main() {
+        std::string a("hello");
+	std::string b = std::move(a);
+	std::cout << a << std::endl;
+
+	return 0;
+    }
+    ```
+
+    但是`clangtidy`会给出warning来
+
+15. 基于成员函数是否为`const`实现重载...
+
+    ```cpp
+    class Person
+    {
+        std::string name;
+    
+    public:
+        const Person& display() const;
+        Person& display();
+    
+        Person() = default;
+    };
+    
+    const Person& Person::display() const
+    {
+        std::cout << "const version" << std::endl;
+        std::cout << this->name << std::endl;
+        return *this;
+    }
+    
+    Person& Person::display()
+    {
+    
+        std::cout << "non-const version" << std::endl;
+        std::cout << this->name << std::endl;
+        return *this;
+    }
+    
+    int main()
+    {
+        const Person con_p;
+        Person p;
+    
+        p.display();
+        con_p.display();
+    
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ g++ main.cpp
+    $ ./a.out
+    non-const version
+    
+    const version
+    ```
+
+    为什么可以重载呢？如果一个对象是`const`，那么它只能调用`const`的member function。
+    对象并非是`const`的话，则2个函数都可以调用，不过非`const`的函数显然是一个更好
+    的匹配...
+
+16. 类作为类型的写法
+  
+    ```cpp
+    class Person {};
+
+    int main() {
+	// To be compatible with C: struct MyStruct s; ?
+	class Person p; // is equivalent to the following one
+	Person pp;
+        return 0;
+    }
+    ```
+
+17. 友元并不具备传递性，B是A的友元，C是B的友元，则C并不是A的友元。
+
+18. 函数重载与友元
+   
+    由于友元是需要将具体的函数签名放到类内的，所以将一个函数放过去并不能让其他的
+    重载函数成为友元
+
+19. 如果类的字段是`const`，`reference`或者是一种没有默认构造函数的类的话，我们
+    必须给使用`初始化列表`来对这些字段进行初始化
+
+    > 干脆全用初始化列表得了...
+
+    ```cpp
+    class Person
+    {
+    public:
+        const int i;
+        const int& ii;
+    
+        Person(int i)
+        {
+            this->i = i;
+            this->ref = i;
+        }
+    };
+    ```
+    ```shell
+    $ g++s main.cpp
+    main.cpp: In constructor ‘Person::Person(int)’:
+    main.cpp:66:5: error: uninitialized const member in ‘const int’ [-fpermissive]
+       66 |     Person(int i)
+          |     ^~~~~~
+    main.cpp:63:15: note: ‘const int Person::i’ should be initialized
+       63 |     const int i;
+          |               ^
+    main.cpp:66:5: error: uninitialized reference member in ‘const int&’ [-fpermissive]
+       66 |     Person(int i)
+          |     ^~~~~~
+    main.cpp:64:16: note: ‘const int& Person::ii’ should be initialized
+       64 |     const int& ii;
+          |                ^~
+    main.cpp:68:17: error: assignment of read-only member ‘Person::i’
+       68 |         this->i = i;
+          |         ~~~~~~~~^~~
+    main.cpp:69:15: error: ‘class Person’ has no member named ‘ref’
+       69 |         this->ref = i;
+          |               ^~~
+    ```
+
+    ```cpp
+    class Person
+    {
+    public:
+        const int i;
+        const int& ii;
+    
+        Person(int i) : i(i), ii(i) {}
+    };
+    ```
+    ```shell
+    $ g++s main.cpp
+    # no error and warning
+    ```
+
+    但是后面这个代码，明显`i`是一个局部变量，然后`ii`字段拿了它的引用，在函数调
+    用结束后，`ii`就是悬垂指针了阿
+
+    
+
+20. 如果类中有引用的话，编译器就不会自动地给我们生成默认构造函数，因为它不知道
+    将引用和什么东西进行绑定
+
+    ```cpp
+    class Person
+    {
+        const int i;
+        // default constructor is deleted as we have field of type reference
+        const int& ii; 
+    };
+    
+    int main()
+    {
+        Person p;
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ g++ main.cpp
+    main.cpp:77:12: error: use of deleted function ‘Person::Person()’
+       77 |     Person p;
+    ```
