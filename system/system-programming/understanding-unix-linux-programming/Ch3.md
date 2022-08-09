@@ -427,6 +427,12 @@
 	后创建的都是regualr file，看来creat只能用来创建reg file。创建其他类型的文件需要
 	使用其他的syscall
 
+	```
+        socket: socket()
+	dir: mkdir()
+	...
+	```
+
 	
 
 
