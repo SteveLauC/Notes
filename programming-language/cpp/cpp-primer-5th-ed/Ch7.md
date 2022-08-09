@@ -767,3 +767,13 @@
     ```
 
     别用这家伙就对了，感觉是为了和c兼容搞出来的.
+
+26. 类也可以是字面量
+
+    cpp中字面量类型被称为`LiteralType`
+
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-08-09%2018-59-41.png)
+
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-09_19-02-49.jpg)
+
+    是字面量之后，就可以在`constexpr`的上下文中使用了
