@@ -38,30 +38,40 @@
     ```
 
 4. `/etc/passwd`文件格式
-    `steve:x:1000:1000:Steve:/home/steve:/usr/bin/zsh`
+
+    ```
+    steve:x:1000:1000:Steve:/home/steve:/usr/bin/zsh
+    _flatpak:x:122:130:Flatpak system-wide installation helper,,,:/nonexistent:/usr/sbin/nologin
+    ```
 
     * user name
     * x 代表着一个加密的密码被存储到了`/etc/shadow`文件之中
     * user id
     * group id
-    * comment field: 注释字段，用来对用户补充一些额外信息
+    * comment field: 注释字段，用来对用户补充一些额外信息，比如`flatpak`中写的是
+    `system-wide installation helper`
     * home dir
     * shell
+
+    > flatpak的homedir是`nonexistent`，login shell是`/usr/sbin/nologin`
 
     > [understanding-etcpasswd-file-format](https://www.cyberciti.biz/faq/understanding-etcpasswd-file-format/)
 
 5. soft link
+
    在多数情况下，对soft link的调用会被自动替换为其指向的文件，这一过程会递归进
    行，直到所有的soft link均被替换。但为了应对循环引用，内核对替换的次数做了限
    制
    
 6. 文件名
+
    在大多数Linux的文件系统中，文件名最多长`255`个字符。可以包含除了`/`和`\0`的
    所有字符。但只建议使用字母(26*2=52，大小写)、数字(10)、下划线、点以及`-`，
    这些总共65个符号，被SUSv3称为portable filename character set。此外还应避免`-`
    作为文件名的开始，避免被shell当成命令参数
 
 7. 文件的换行符及结束符
+
    * 换行符是`\n(ascii: 10)`
    * UNIX没有文件结束符的概念，读取文件时如无数据返回，则认定达到EOF
    > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
@@ -81,6 +91,7 @@
    [[system/system-programming/understanding-unix-linux-programming/Ch3#^a5a1a3]]
 
 9. init进程
+
     内核在启动时，会创建一个名为`init`的特殊进程，为所有进程的父进程
     其程序文件`/sbin/init`，其PID通常是1
 
@@ -91,9 +102,11 @@
     ```
 
 10. 子进程会默认继承父进程的环境变量
+
     当使用`exec()`对子进程进行替换时，可以使用参数选择换掉或者不换掉环境变量
 
 11. 资源限制
+
     每个进程都会消耗资源，可以使用`setrlimit`函数来为进程可消耗资源设置上限。
     限制包括2项，soft limit以及hard limit，soft limit是用来设置进程消耗资源
     的上限的，而hard limit则是设置soft limit的上限的。非特选进程(EUID!=0)的
@@ -105,17 +118,22 @@
     > shell资源消耗的限制可以使用`ulimit`命令进行调整
 
 12. object library
-    UNIX中有2中Object library
-    1. static library(aka archives)
-    起初是UNIX上唯一的library类型。在链接时进行调用，linker会将static library中
-    的函数拷贝到最终生成的二进制文件中去。这样链接而成的程序称其是statically linked
 
-    由于静态链接会对所需要的东西进行拷贝，所以其有以下2个缺点:
-        1. 浪费磁盘和内存
-        2. 如果static library被修改了，为了让最终生成的链接文件的被链接部分也被修改
-        ，需要重新链接
+    UNIX中有2中Object library
+
+    1. static library(aka archives)
+
+       起初是UNIX上唯一的library类型。在链接时进行调用，linker会将static library中
+       的函数拷贝到最终生成的二进制文件中去。这样链接而成的程序称其是statically linked
+
+       由于静态链接会对所需要的东西进行拷贝，所以其有以下2个缺点:
+       
+       1. 浪费磁盘和内存
+       2. 如果static library被修改了，为了让最终生成的链接文件的被链接部分也被修改
+       ，需要重新链接
 
     2. shared library
+
     shared libraryd就是为了解决static library的问题才出现的。首先说一下static library
     为什么static，因为其是在编译时进行拷贝(从static library拷贝到最终的可执行文件，想
     一下rust的编译期的静态检查)。而shared library则是在运行时(runtime)才将所需要用到的
@@ -136,11 +154,13 @@
     pending状态，直到其被从signal mask中移除
 
 15. thread的内存共享
+
     同一个process中的threads是共享heap和data area的，但是每一个thread都有自己独
     立的stack
 
 
 16. process group and shell job control
+
     除了sh，其他的shell都有一个特性叫做shell job control。这一特性允许用户同时
     执行多个shell命令，并且这些被创建出来的众多命令子进程处于一个process group
     或者叫作job之中。每一个process group都有一个process group id，是其中的某一
@@ -149,12 +169,14 @@
     > 目前还没感觉出这一特性的作用
 
 17. session
+
     一个session是一组process group(job)，每一个session都有一个session id，是创建
     此session的process的PID
 
     > TLPI section 2.14 俺没读懂
 
 18. 进程占用的时间
+
     * real time: 从进程被创建到进程结束真正占用了多少时间
     * process time(cpu time): 指进程真正占用CPU的时间
         * system CPU time: 进程在kernel mode下执行所花时间
@@ -176,4 +198,5 @@
     ```
 
 19. real time operating system
+
     Linux本是一个分时系统，但其在不断的改进中，已经完全支持real time 

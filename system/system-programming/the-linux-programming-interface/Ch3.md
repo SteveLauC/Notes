@@ -1,4 +1,5 @@
 1. syscall调用的步骤(i386)
+
     1. invoke the wrapper function from the c library
     2. the wrapper function copies the provided arguments from the stack to some spicific
     registers
@@ -119,28 +120,29 @@
 
 9. 在`fork`得到的子进程中，退出子进程应该使用`exit()`还是`_exit()`
    
-    应该使用`_exit()`，因为:
-    1. `fork`得到的子进程继承了父进程的I/O buffer(这个buffer是c的机制，而不是os的)
-    2. `exit()`会调用其handler函数，从而与父进程的外部数据发生冲突
+   应该使用`_exit()`，因为:
+   1. `fork`得到的子进程继承了父进程的I/O buffer(这个buffer是c的机制，而不是os的)
+   2. `exit()`会调用其handler函数，从而与父进程的外部数据发生冲突
 
-    > [link](https://stackoverflow.com/q/5422831/14092446)
+   > [link](https://stackoverflow.com/q/5422831/14092446)
 
-    > 举个例子的代码
+   > 举个例子的代码
 
-    ```c
-    #include <stdio.h>
-    #include <unistd.h>
+   ```c
+   #include <stdio.h>
+   #include <unistd.h>
 
-    int main(void) {
-        printf("hi");
-        fork();
-        // return 会将buffer都给flush掉
-        // 所以`hi`会被输出两遍
-        return 0;
-    }
-    ```
+   int main(void) {
+       printf("hi");
+       fork();
+       // return 会将buffer都给flush掉
+       // 所以`hi`会被输出两遍
+       return 0;
+   }
+   ```
 
 10. POSIX thread api在错误的时候并不返回`-1`，而是errno的值
+
     On success, pthread_create() returns 0; on error, it returns an error number,
     and the contents of *thread are undefined.
 
@@ -191,6 +193,7 @@
     ```
 
 11. 关于errno  
+
     正常的errno都是正数，可以使用`$ errno -l`来查看。errno是thread-local的，每一
     线程有各自的errno
 
