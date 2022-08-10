@@ -426,10 +426,10 @@
 
     int main() {
         std::string a("hello");
-	std::string b = std::move(a);
-	std::cout << a << std::endl;
+        std::string b = std::move(a);
+        std::cout << a << std::endl;
 
-	return 0;
+        return 0;
     }
     ```
 
@@ -494,9 +494,9 @@
     class Person {};
 
     int main() {
-	// To be compatible with C: struct MyStruct s; ?
-	class Person p; // is equivalent to the following one
-	Person pp;
+        // To be compatible with C: struct MyStruct s; ?
+        class Person p; // is equivalent to the following one
+        Person pp;
         return 0;
     }
     ```
@@ -608,7 +608,7 @@
         int32_t i;
         int32_t j;
     
-	// j is uninitialized when used here
+        // j is uninitialized when used here
         Foo(int32_t val) : j(val), i(j) {}
     };
     
@@ -751,7 +751,7 @@
     ```cpp
     struct Person{
         std::string name;
-	uint32_t age;
+        uint32_t age;
     }
     ```
 
@@ -770,7 +770,7 @@
 
 26. 类也可以是字面量
 
-    cpp中字面量类型被称为`LiteralType`
+    cpp中字面量类型被称为[`LiteralType`](https://en.cppreference.com/w/cpp/named_req/LiteralType)
 
     ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-08-09%2018-59-41.png)
 
