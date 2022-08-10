@@ -1,4 +1,7 @@
 1. selection sort: swap the ith smallest item with s[i]
+   
+   > spatial complexity: O(1)  
+   > time complexity: O(N^2)
 
    ```rust
    fn selection_sort<T: PartialOrd>(s: &mut [T]) {
@@ -52,6 +55,9 @@
       2. It only moves data n times(exclusive to selection sort)
 
 2. insertion sort
+   
+   > spatial complexiry: O(1)  
+   > time complexity: O(N^2)
 
    Use a pointer i to iterate over the array from the first element, we assume 
    that all the elements in the left of this pointer are ordered. For the 
@@ -161,6 +167,9 @@
       ```
 
 3. shell sort
+
+   > spatial complexity: O(1)  
+   > time complexity: depends on the value of `h` and how it changes
 
    Before we dive into the shell sort, let's write a generic `insertion sort`
    where we can specify the `start` point and the `step`. In our previous
@@ -324,11 +333,10 @@
 
 4. top-down merge sort
 
-   The core operation of `merge sort` is merge two disjoint ordered array. And
-   merge sort is recursive, if you wanna sort a big array, you have to sort the
-   left half side, then sort the right half side, and combine these two parts
-   together.
+   > spatial complexity: O(N)  
+   > time complexity: O(NlogN)
 
+   The core operation of `merge sort` is merging two disjoint ordered array. 
    ```rust
    fn merge<T: Copy + Ord>(a: &mut [T], mid: usize) {
        let aux: Vec<T> = a.to_vec();
@@ -355,7 +363,13 @@
            a[p..len].clone_from_slice(&aux[j..len]);
        }
    }
-   
+   ```
+
+   Merge sort is recursive, if you wanna sort a big array, you have to sort the
+   left half side, then sort the right half side, and combine these two parts
+   together.
+
+   ```rust
    fn merge_sort<T: Copy + Ord>(a: &mut [T]) {
        // already ordered
        if a.len() <= 1 {
@@ -370,17 +384,41 @@
    }
    ```
 
-   Why it works? Let's give a simple example:
+   Why it works? Let's take a look at a simple example:
+
+   We have a array whose value is just `[2, 1]`, to sort such an array, we have
+   to sort `[2]` and `[1]` first, then merge them. As the lengths of `[2]` and 
+   `[1]` are both `1`, which means these sub-arrays are already ordered. So we
+   can directly merge them, then we will get `[1, 2]`, sorting is done.
+
+   > In the above example, the `merge` operation looks like a `swap` operation,
+   > don't get confused, it's merging instead of simply swaping.
    
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-08_20-03-12.jpg)
 
-   When the length is 2, left part and righ part both have only 1 element, which
-   is already ordered, so these two calls directly return. Then we merge
-   them, moving items around and making the whole array in order. If the target 
-   array's length is longer than 2, nothing complex, just make the `process
+   If the array's length is longer than 2, nothing complex, just make the `process
    tree` deeper.
 
    So the `merging operation` is the part that *moves* things, all those preceding
-   recursive calls do is to just halve the length until it reaches 2.
+   recursive calls do is to just halve the length until it reaches 2
 
    ![a deeper process tree](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-08_20-14-59.jpg)
+
+   The process of `merge sort` is to traverse this tree. We first traverse down 
+   as we recursively call `merge_sort`, then we merge sub-arrays, move from 
+   child nodes to parent node.
+
+
+   1. analysis
+      
+      1. spatial complexity: 
+
+         To simplify the case, we take the value of N to be 16 (a power of 2, so 
+	 that the process can be easily analysed)
+
+
+         ![a deeper process tree](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-10_20-33-49.jpg)
+
+         The depth of the `process tree` is `lg(N) + 1`, but only the last `lg(N)`
+	 layers are memory-allocated. Each layer will allocate `N` items, so that
+	 the space used is `lg(N) * N`
