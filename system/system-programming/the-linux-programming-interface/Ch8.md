@@ -39,7 +39,7 @@ group IDs(real, effective, saved)
    > on a remote system.
 
 
-   > [uulp ch4 note 4](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch2.md)
+   > [uulp ch2 note 4](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch2.md)
 
 4. The shadow password file: `/etc/shadow`
 
@@ -187,7 +187,7 @@ group IDs(real, effective, saved)
        pub gid: Gid,
        pub gecos: CString,
        pub dir: PathBuf,
-        pub shell: PathBuf,
+       pub shell: PathBuf,
    }
    pub struct Group {
        pub name: String,
@@ -265,6 +265,8 @@ group IDs(real, effective, saved)
    // This is the function behind `User::from_name`
    // and `User::from_uid`
 
+   // link: https://github.com/nix-rust/nix/blob/master/src/unistd.rs
+
    fn from_anything<F>(f: F) -> Result<Option<Self>>
    where
        F: Fn(*mut libc::passwd,
@@ -301,4 +303,83 @@ group IDs(real, effective, saved)
            }
        }
    }
+   ```
+
+8. sequentially scan `/etc/passwd` and `/etc/group`
+
+   ```c
+   #include <sys/types.h>
+   #include <pwd.h>
+   
+   // continueously return a pointer pointing to a user entry
+   // from `/etc/passwd`, NIS and LDAP
+   // returns NULL when there are no more records (or an error occurs)
+   struct passwd *getpwent(void);
+
+   // rewind the pointer to the start 
+   void setpwent(void);
+   
+   // close file when `getpwent` is finished
+   void endpwent(void);
+
+   The return value may point to a static area, and may be **overwritten** by 
+   subsequent calls to getpwent(), getpwnam(3), or getpwuid(3).  (Do not  
+   pass  the  returned pointer to free(3).)
+
+   And endpwent() is necessary so that any subsequent getpwent() (in other parts
+   of our program or in the library we used in current program) will reopen the 
+   file and read from the beginning.
+   ```
+
+   Note: If you wanna read `/etc/passwd` twice, do not do this:
+
+   ```c
+   getpwent(); // first read
+   setpwent();
+
+   // update `/etc/pwsswd`
+
+   getpwent(); // second read
+   endpwent();
+   ```
+
+   The second call  of `getpwent()` won't touch `/etc/passwd` again as it already
+   did that. So if you update `/etc/passwd`, the changes will not be reflected on
+   you second `getpwent()`. [More info](https://stackoverflow.com/q/60058907/14092446)
+
+   You should use `endpwent()` instead of `setpwent()`
+
+   ```c
+   getpwent(); // first read
+   endpwent();
+
+   // update `/etc/pwsswd`
+
+   getpwent(); // second read
+   endpwent();
+   ```
+
+   ```c
+   // print all user names
+
+   #include <stdio.h>
+   #include <stdlib.h>
+   #include <pwd.h>
+   
+   int main(void)
+   {
+           struct passwd *buf;
+           while ((buf = getpwent()) != NULL) {
+                   printf("%s\n", buf->pw_name);
+           }
+           endpwent();
+           exit(EXIT_SUCCESS);
+   }
+   ```
+
+   ```c
+   #include <pwd.h>
+
+   int getpwent_r(struct passwd *pwbuf, char *buf, size_t buflen, 
+                  struct passwd **pwbufp);
    ```
