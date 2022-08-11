@@ -141,3 +141,164 @@ group IDs(real, effective, saved)
       docker
       ```
 6. retrieve user and group information
+
+   ```c
+   struct passwd* getpwnam(const char* name);
+   struct passwd* getpwuid(uid_t uid);
+
+   struct group *getgrnam(const char *name);
+   struct group *getgrgid(gid_t gid);
+   ```
+
+   ```rust
+   // impl User
+   pub fn from_name(name: &str) -> Result<Option<Self>>
+   pub fn from_uid(uid: Uid) -> Result<Option<Self>>
+
+   // impl Group
+   pub fn from_gid(gid: Gid) -> Result<Option<Self>>
+   pub fn from_name(name: &str) -> Result<Option<Self>>
+   ```
+
+   ```rust
+   #[repr(C)]
+   pub struct passwd {
+       pub pw_name: *mut c_char,
+       pub pw_passwd: *mut c_char,
+       pub pw_uid: uid_t,
+       pub pw_gid: gid_t,
+       pub pw_gecos: *mut c_char,
+       pub pw_dir: *mut c_char,
+       pub pw_shell: *mut c_char,
+   }
+
+   #[repr(C)]
+   pub struct group {
+       pub gr_name: *mut c_char,
+       pub gr_passwd: *mut c_char,
+       pub gr_gid: gid_t,
+       pub gr_mem: *mut *mut c_char,
+   }
+
+   pub struct User {
+       pub name: String,
+       pub passwd: CString,
+       pub uid: Uid,
+       pub gid: Gid,
+       pub gecos: CString,
+       pub dir: PathBuf,
+        pub shell: PathBuf,
+   }
+   pub struct Group {
+       pub name: String,
+       pub passwd: CString,
+       pub gid: Gid,
+       pub mem: Vec<String>,
+   }
+   ```
+
+   > The weird name of `pw_gecos` comes from an eraly UNIX implementation, P157.
+
+   NOTE: The structure returned by these functins are statically allocated. And
+   the memory pointed by fields like `pw_name`/`pw_passwd`... are also static.
+   
+
+
+7. use `getpwnam_r`, `getpwuid_r`, `getgrnam_r` and `getgruid_r` instead
+   
+   ```c
+   int getpwnam_r(const char *name, struct passwd *pwd, char *buf, size_t buflen,
+                  struct passwd **result);
+
+   int getpwuid_r(uid_t uid, struct passwd *pwd, char *buf, size_t buflen, 
+                  struct passwd **result);
+
+
+   int getgrnam_r(const char *name, struct group *grp,
+                  char *buf, size_t buflen, struct group **result);
+
+   int getgrgid_r(gid_t gid, struct group *grp,
+                  char *buf, size_t buflen, struct group **result);
+   ```
+
+   These functions' arguments contain a `passwd/group` structure, and a buffer to store
+   the `string` fields.
+
+   The recommended additional buffer size can be retrieved through 
+   `sysconf(_SC_GETPW_R_SIZE_MAX)/sysconf(_SC_GETGR_R_SIZE_MAX)`.
+
+   ```c
+   // Usage demo
+   #include <stdio.h>
+   #include <stdlib.h>
+   #include <unistd.h>
+   #include <pwd.h>
+   
+   int main(void)
+   {
+           long buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+           if (buf_size == -1) {
+                   exit(EXIT_FAILURE);
+           }
+           struct passwd buf;
+           char string_buf[buf_size];
+           struct passwd *result = NULL;
+   
+           // On success: return 0, result is not NULL
+           // Not found: return 0, result is NULL
+           // On error: return errno, result is NULL
+           int res = getpwnam_r("steve", &buf, string_buf, buf_size, &result);
+   
+           if (res == 0 && result != NULL) {
+                   printf("Found: %s\n", buf.pw_name);
+           } else if (res == 0 && result == NULL) {
+                   printf("User not found\n");
+           } else {
+                   fprintf(stderr, "Error occured\n");
+           }
+   
+           exit(EXIT_SUCCESS);
+   }
+   ```
+
+   ```rust
+   // This is the function behind `User::from_name`
+   // and `User::from_uid`
+
+   fn from_anything<F>(f: F) -> Result<Option<Self>>
+   where
+       F: Fn(*mut libc::passwd,
+             *mut c_char,
+             libc::size_t,
+             *mut *mut libc::passwd) -> libc::c_int
+   {
+       let buflimit = 1048576;
+
+       // retrieve the buffer size
+       let bufsize = match sysconf(SysconfVar::GETPW_R_SIZE_MAX) {
+           Ok(Some(n)) => n as usize,
+           Ok(None) | Err(_) => 16384,
+       };
+
+       let mut cbuf = Vec::with_capacity(bufsize);
+       let mut pwd = mem::MaybeUninit::<libc::passwd>::uninit();
+       let mut res = ptr::null_mut();
+
+       loop {
+           let error = f(pwd.as_mut_ptr(), cbuf.as_mut_ptr(), cbuf.capacity(), &mut res);
+           if error == 0 {
+               if res.is_null() {
+                   return Ok(None);
+               } else {
+                   let pwd = unsafe { pwd.assume_init() };
+                   return Ok(Some(User::from(&pwd)));
+               }
+           } else if Errno::last() == Errno::ERANGE {
+               // Trigger the internal buffer resizing logic.
+               reserve_double_buffer_size(&mut cbuf, buflimit)?;
+           } else {
+               return Err(Errno::last());
+           }
+       }
+   }
+   ```
