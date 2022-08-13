@@ -377,9 +377,88 @@ group IDs(real, effective, saved)
    }
    ```
 
+
+   ```c
+   // These functions are analogous except they are for group file
+
+   #include <sys/types.h>
+   #include <grp.h>
+   
+   struct group *getgrent(void);
+   void setgrent(void);
+   void endgrent(void);
+   ``` 
+
+
    ```c
    #include <pwd.h>
 
    int getpwent_r(struct passwd *pwbuf, char *buf, size_t buflen, 
                   struct passwd **pwbufp);
    ```
+
+9. retrieve records from the shadow password file
+
+   ```c
+   #include <shadow.h>
+
+   // Returns pointer on success, or NULL on not found or error
+   struct spwd *getspnam(const char* name);
+
+   strcut spwd *getspent(void);
+   void setspent(void);
+   void endspent(void);
+   ```
+
+   ```c
+   #[repr(C)]
+   pub struct spwd {
+       pub sp_namp: *mut c_char, // Login name (username)
+       pub sp_pwdp: *mut c_char, // Encrypted password
+
+       // Remaining fields support `password aging`, an optional
+       // feature that forces users to regularly change their passwords
+       pub sp_lstchg: c_long,
+       pub sp_min: c_long,
+       pub sp_max: c_long,
+       pub sp_warn: c_long,
+       pub sp_inact: c_long,
+       pub sp_expire: c_long,
+       pub sp_flag: c_ulong,
+   }
+   ```
+
+10. Password encryption
+
+    UNIX uses a `one-way` encryption algorithm, which means there is no way of
+    recreating the original password from its encrypted foam. The only way of
+    validating a candidate password is to encrypt it and see if the encrypted
+    result matches the value stored in `/etc/shadow`.
+
+    ```c
+    // Functions used to encrypt passwords
+
+    #include <crypt.h>
+    
+    char * crypt(const char *phrase, const char *setting);
+    char * crypt_r(const char *phrase, const char *setting, struct crypt_data *data);
+    char * crypt_rn(const char *phrase, const char *setting, struct crypt_data *data, int size);
+    char * crypt_ra(const char *phrase, const char *setting, void **data, int *size);
+    ```
+
+11. use `getpass` to prompt user to input a password
+   
+    ```c
+    #include <unistd.h>
+
+    char *getpass(const char *prompt);
+    ```
+    > The  getpass()  function opens /dev/tty (the controlling terminal of
+    > the process), outputs the string prompt, turns off echoing, reads one 
+    > line (the "password"), restores the terminal state and closes /dev/tty
+    > again.
+
+    > This function is **obsolete**.  Do not use it.  If you want to read input 
+    > without terminal echoing enabled, see the description of the ECHO flag
+    > in termios(3).
+
