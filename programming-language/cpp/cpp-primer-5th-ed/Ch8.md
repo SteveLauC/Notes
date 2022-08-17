@@ -308,13 +308,13 @@
    > use std::io::stdin;
    >
    > fn main() {
-   > print!("Type someting: ");
+   >     print!("Type someting: ");
    >
-   > let mut buf: String = String::new();
-   > stdin().read_line(&mut buf).unwrap();
-   > buf.truncate(buf.len()-1);
+   >     let mut buf: String = String::new();
+   >     stdin().read_line(&mut buf).unwrap();
+   >     buf.truncate(buf.len()-1);
    >
-   > println!("{}", buf);
+   >     println!("{}", buf);
    > }
    > ```
    >
@@ -350,11 +350,11 @@
    void open( const std::string &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
    ```
 
-   设置还有这种重载
+   甚至还有这种重载
 
    ```cpp
    // (since C++17)
    void open( const std::filesystem::path &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
    ```
 
-   当一个`fstream`被销毁时，会自动地调用`close` (RAII)
+9. 当一个`fstream`被销毁时，会自动地调用`close` (RAII)
