@@ -76,7 +76,7 @@
 
    > 可以使用上面3种stream来做读写，目前还没有搞懂，先跳过。
 
-   比较有意思的是，`fstream`是继承自`istream`的，所以所有`istream`支持的操作，
+   比较有意思的是，`fstream`是继承自`iostream`的，所以所有`iostream`支持的操作，
    `fstream`都可以做。比如使用`getline`从文件中读一行
 
    ```cpp
@@ -236,3 +236,125 @@
        return 0;
    }
    ```
+
+
+   在Rust中读写返回`Ok(n)`表示此次读写是成功的，如果是`Ok(0)`则表示遇到了EOF。
+   所以正常的读写应该这么些
+
+
+5. 刷新缓冲区
+   
+   由于stdout在指向终端的时候是`line-buffered`，所以可以使用`std::endl`来刷新缓
+   冲区。
+
+   除此之外，还有2个显式地不打印还行符号来刷新的
+
+   ```cpp
+   std::flush;
+   std::ends;
+   ```
+
+   ```rust
+   // std::io::Write
+
+   fn flush(&mut self) -> Result<()>;
+   ```
+
+   自动刷新
+
+   ```cpp
+   // Defined in header <ios>		
+
+   std::ios_base& unitbuf( std::ios_base& str );
+   std::ios_base& nounitbuf( std::ios_base& str );
+   ```
+
+   ```cpp
+   // enable automatic flushing for stdout
+   std::cout << std::unitbuf;
+
+   std::cout << "hello";
+
+   // disable it
+   std::cout << std::nounitbuf;
+   ```
+
+6. 关联输入和输出
+  
+   当一个输入流被关联到输出流时，任何试图从输入流读取数据的操作都会先刷新关联的
+   输出流。cpp将`cin`和`cout`关联到一起了，所以从`cin`读东西会flush到`cout`
+
+   ```cpp
+   #include <iostream>
+   
+   int main() {
+       std::cout << "Type something: ";
+   
+       std::string input;
+       std::cin >> input; // flush stdout
+   
+       std::cout << input << std::endl;
+   }
+   ```
+
+   ```shell
+   $ g++s main.cpp && ./a.out
+   Type something: hello
+   hello
+   ```
+
+   > 这和Rust就不一样了
+   > ```rust
+   > use std::io::stdin;
+   >
+   > fn main() {
+   > print!("Type someting: ");
+   >
+   > let mut buf: String = String::new();
+   > stdin().read_line(&mut buf).unwrap();
+   > buf.truncate(buf.len()-1);
+   >
+   > println!("{}", buf);
+   > }
+   > ```
+   >
+   > ```shell
+   > $ cargo r -q
+   > h
+   > Type something: h
+   > ```
+
+7. 读写文件
+
+   fstream继承于`iostream`，但除了继承于`iostream`的行为，它还定义了自己的行为
+
+   ```cpp
+   fstream fs; // 未绑定到文件的
+
+   fstream fs("main.cpp"); // 绑定到`main.cpp`，默认mode是读写
+
+   fstream fs("main.cpp", mode); // 以`mode`打开main.cpp
+
+   is_open(); // checks if the stream has an associated file
+ 
+   open(); // opens a file and associates it with the stream
+ 
+   close(); // close the associated file
+   ```
+
+   `fstream fs('<name>')`以及`open(<name>)`中的`<name>`在c++11后既可以是c风格字符
+   又可以是`std::string`，这是用函数重载实现的
+
+   ```cpp
+   // (since C++11)
+   void open( const std::string &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
+   ```
+
+   设置还有这种重载
+
+   ```cpp
+   // (since C++17)
+   void open( const std::filesystem::path &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
+   ```
+
+   当一个`fstream`被销毁时，会自动地调用`close` (RAII)
