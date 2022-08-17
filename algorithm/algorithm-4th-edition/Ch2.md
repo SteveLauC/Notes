@@ -413,23 +413,23 @@
       1. spatial complexity: 
 
          To simplify the case, we take the value of N to be 16 (a power of 2, so 
-	 that the process can be easily analysed)
+         that the process can be easily analysed)
 
 
          ![a deeper process tree](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-10_20-33-49.jpg)
 
          The depth of the `process tree` is `lg(N) + 1`, but only the last `lg(N)`
-	 layers are memory-allocated. Each layer will allocate `N` items, so that
-	 the space used is `lg(N) * N`
+         layers are memory-allocated. Each layer will allocate `N` items, so that
+         the space used is `lg(N) * N`
 
       2. time complexity:
 
          1. the number of compares:
 
-	    First we should consider the number of compares to `merge` an array of
-	    length `N`.
+            First we should consider the number of compares to `merge` an array of
+            length `N`.
 
-	    ```rust
+            ```rust
             while i < mid && j < len {
                 if aux[i] < aux[j] {
                     a[p] = aux[i];
@@ -440,62 +440,62 @@
                 }
                 p += 1;
             }
-	    ```
+            ```
 
-	    It's easy to find that after each compare, `i` or `j` will be added 1,
-	    so `(i+j)-(0+mid)` is the answer. The max value is `N`, in this case,
-	    when while loop exits, `i` will be `mid` and `j` will be `len`. The min
-	    value is `N/2`, in this case, one half is smaller than the other one,
-	    so when while loop exits, one of `i` and `j` will reach its threshold,
-	    and the other one remains its original value.
+            It's easy to find that after each compare, `i` or `j` will be added 1,
+            so `(i+j)-(0+mid)` is the answer. The max value is `N`, in this case,
+            when while loop exits, `i` will be `mid` and `j` will be `len`. The min
+            value is `N/2`, in this case, one half is smaller than the other one,
+            so when while loop exits, one of `i` and `j` will reach its threshold,
+            and the other one remains its original value.
  
-	    Now that the above conclusion is made, and since `merge sort` is a 
-	    recursive algorithm, we can write a recurisve equation like this:
+            Now that the above conclusion is made, and since `merge sort` is a 
+            recursive algorithm, we can write a recurisve equation like this:
 
-	    ```
-	    C(N) <= C(N/2) + C(N/2) + N
-	    C(N) >= C(N/2) + C(N/2) + N/2
-	    ```
+            ```
+            C(N) <= C(N/2) + C(N/2) + N
+            C(N) >= C(N/2) + C(N/2) + N/2
+            ```
 
-	    `C(N)` is used to denote the number of compares to sort this array,
-	    the first two terms on the right side are the number of compares
-	    to sort the left and right halves. The last term on the right side 
-	    is the number of compares consumed by the merge operation.
+            `C(N)` is used to denote the number of compares to sort this array,
+            the first two terms on the right side are the number of compares
+            to sort the left and right halves. The last term on the right side 
+            is the number of compares consumed by the merge operation.
 
-	    We can not derive an exact solution for all the N values, but if N
-	    is a power of 2 (say 2^n) and the equality of our first equation
-	    holds, then:
+            We can not derive an exact solution for all the N values, but if N
+            is a power of 2 (say 2^n) and the equality of our first equation
+            holds, then:
 
-	    ```
-	    C(N) = 2C(N/2) + N
-	    // replace N with 2^n
-	    C(2^n) = 2C(2^n-1) + 2^n
-	    // devide both sides by 2^n
-	    C(2^n)/2^n = C(2^n-1)/2^n-1 + 1
+            ```
+            C(N) = 2C(N/2) + N
+            // replace N with 2^n
+            C(2^n) = 2C(2^n-1) + 2^n
+            // devide both sides by 2^n
+            C(2^n)/2^n = C(2^n-1)/2^n-1 + 1
 
-	    // we can name a function F(n) = C(2^n)/2^n, then
-	    F(n) = F(n-1) + 1
+            // we can name a function F(n) = C(2^n)/2^n, then
+            F(n) = F(n-1) + 1
 
-	    // repeatedly substitute the first item on the right side with the left side, until
-	    F(n) = F(0) + n
-	    // then substitute F(n) with C(2^n)/2^n
-	    C(2^n)/2^n = C(2^0)/2^0 + n
-	    C(2^n)/2^n = C(1) + n
-	    // Obviously, C(0) = C(1) = 0
-	    C(2^n)/2^n = 0 + n
-	    // Multiply both sides by 2^n
-	    C(2^n) = n * 2^n
-	    // replace 2^n with N
-	    C(N) = lgN * N = NlgN
-	    ```
+            // repeatedly substitute the first item on the right side with the left side, until
+            F(n) = F(0) + n
+            // then substitute F(n) with C(2^n)/2^n
+            C(2^n)/2^n = C(2^0)/2^0 + n
+            C(2^n)/2^n = C(1) + n
+            // Obviously, C(0) = C(1) = 0
+            C(2^n)/2^n = 0 + n
+            // Multiply both sides by 2^n
+            C(2^n) = n * 2^n
+            // replace 2^n with N
+            C(N) = lgN * N = NlgN
+            ```
 
-	    > There is a conslusion that the number of compares is between 
-	    > `NlgN/2` and `NlgN` (page 272)
-	    > But the precise proof is not provided
+            > There is a conslusion that the number of compares is between 
+            > `NlgN/2` and `NlgN` (page 272)
+            > But the precise proof is not provided
 
          2. the number of array accesses 
-	    
-	    At most 6NlgN array accesses to sort an array of length N
+            
+            At most 6NlgN array accesses to sort an array of length N
 
-	    2N for the copy
-	    at most 2N for compares
+            2N for the copy
+            at most 2N for compares

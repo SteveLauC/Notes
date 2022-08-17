@@ -28,14 +28,14 @@
 
    ```cpp
    std::ios_base::iostate
-		
+                
    Specifies stream state flags. It is a BitmaskType, the following constants are defined:
    
-   Constant	Explanation
-   goodbit	no error
-   badbit	irrecoverable stream error
-   failbit	input/output operation failed (formatting or extraction error)
-   eofbit	associated input sequence has reached end-of-file
+   Constant        Explanation
+   goodbit        no error
+   badbit        irrecoverable stream error
+   failbit        input/output operation failed (formatting or extraction error)
+   eofbit        associated input sequence has reached end-of-file
    ```
 
    如果遇到了`EOF`，`iostate`的`eofbit`会被设置，可以让调用者对其进行检查
@@ -65,13 +65,13 @@
 
    ```cpp
    /// Class for @c char input file streams.
-   typedef basic_ifstream<char> 		ifstream;
+   typedef basic_ifstream<char>                 ifstream;
 
    /// Class for @c char output file streams.
-   typedef basic_ofstream<char> 		ofstream;
+   typedef basic_ofstream<char>                 ofstream;
 
    /// Class for @c char mixed input and output file streams.
-   typedef basic_fstream<char> 		fstream;
+   typedef basic_fstream<char>                 fstream;
    ```
 
    > 可以使用上面3种stream来做读写，目前还没有搞懂，先跳过。
@@ -263,7 +263,7 @@
    自动刷新
 
    ```cpp
-   // Defined in header <ios>		
+   // Defined in header <ios>                
 
    std::ios_base& unitbuf( std::ios_base& str );
    std::ios_base& nounitbuf( std::ios_base& str );
