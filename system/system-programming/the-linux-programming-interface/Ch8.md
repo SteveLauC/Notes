@@ -446,19 +446,26 @@ group IDs(real, effective, saved)
     char * crypt_ra(const char *phrase, const char *setting, void **data, int *size);
     ```
 
-11. use `getpass` to prompt user to input a password
+    > On other OSes, these functions may be marked as deprecated.
+
+11. use `getpass` to prompt user to input a password (obsolete)
    
     ```c
     #include <unistd.h>
 
     char *getpass(const char *prompt);
     ```
+
     > The  getpass()  function opens /dev/tty (the controlling terminal of
-    > the process), outputs the string prompt, turns off echoing, reads one 
-    > line (the "password"), restores the terminal state and closes /dev/tty
-    > again.
+    > the process), outputs the string prompt, turns off echoing, ignore the
+    > signal of `SIGINT`, reads one line (the "password"), restores the 
+    > terminal state and closes /dev/tty again.
 
-    > This function is **obsolete**.  Do not use it.  If you want to read input 
-    > without terminal echoing enabled, see the description of the ECHO flag
-    > in termios(3).
+    > This function is **obsolete**.  Do not use it. Consider writing your own
+    > one.
 
+12. retrieve maximum login username length
+
+    ```c
+    long max_len = sysconf(_SC_LOGIN_NAME_MAX);	
+    ```
