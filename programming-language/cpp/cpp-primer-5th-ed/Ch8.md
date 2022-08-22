@@ -97,7 +97,7 @@
    //// a type to represent person
    ```
 
-   或者这样向文件写(会truncate掉文件)
+   或者这样向文件写(会truncate掉文件) (见笔记14条，以out模式打开，默认truncate)
 
    ```cpp
    #include <fstream>
@@ -120,13 +120,13 @@
    > 有点那种抽象的味道了
 
 
-2. 流是无法拷贝的
+3. 流是无法拷贝的
    
    > Ch7.md: 3
 
    通常都是传递可变引用，因为IO会改变流的状态
 
-3. IO状态
+4. IO状态
 
    就是第1点说的那个`iostate`
 
@@ -357,9 +357,9 @@
    void open( const std::filesystem::path &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
    ```
 
-9. 当一个`fstream`被销毁时，会自动地调用`close` (RAII)
+8. 当一个`fstream`被销毁时，会自动地调用`close` (RAII)
 
-10. split一个string
+9. split一个string
     
     ```cpp
     #include <iostream>
@@ -387,19 +387,197 @@
         }
     
         return res;
-     }
+    }
      
-     int main()
-     {
-         std::string buf("hello world");
-         for (const string& item : split(buf, " "))
-         {
-             std::cout << item << std::endl;
-         }
-     }
-     ```
-     ```shell
-     $ g++ main.cpp && ./a.out
-     hello
-     world
-     ```
+    int main()
+    {
+        std::string buf("hello world");
+        for (const string& item : split(buf, " "))
+        {
+            std::cout << item << std::endl;
+        }
+    }
+    ```
+    ```shell
+    $ g++ main.cpp && ./a.out
+    hello
+    world
+    ```
+
+10. `string_view` (since c++17)
+    
+    > 和Rust中的`&str`很像，只不过没有`lifetime`的概念在里面
+
+    对原字符串(c风格字符串/std::string/char array)只读的胖指针(首地址+size)
+
+    ```cpp
+    // 从char array生成string_view
+    constexpr basic_string_view( const CharT* s, size_type count );
+
+    // 从c字符串生成string_view
+    constexpr basic_string_view( const CharT* s );
+
+    // 从迭代器生成string_view
+    template< class It, class End >
+    constexpr basic_string_view( It first, End last );
+    ```
+
+    ```cpp
+    // string to string_view
+
+    // 目前没看懂这个是怎么转化的
+    // 非explicit的单参数的构造函数 (见Ch7.md 24)
+    constexpr basic_string_view( const CharT* s );
+
+    string s("hello");
+    string_view v = s;
+    ```
+
+    ```
+    // string_view to string
+
+    // explicit constructor 所以不可以隐式地类型转换，只能用constructor建造或者用static_cast<string>()
+    // 不过诡异的是explicit不是应该给单参数的构造函数用的吗？？？
+    // 怎么这个2个参数也可以用，因为它另一个参数有默认值...
+    // 
+    template< class StringViewLike >
+    explicit basic_string( const StringViewLike& t, const Allocator& alloc = Allocator() );
+    ```
+
+
+    ```cpp
+    string owned_str1("hello");
+
+    string_view view_str = owned_str1; // implicit conversion
+    string_view view_str2(owned_str1); // or explicitly call that constructor
+
+
+    string owned_str2(view_str); // call the converting constructor
+    string owned_str3 = static_cast<string>(view_str); // using static_cast
+    ```
+
+    > 在Rust里面，`String`倒是不可以隐式转换为`&str`，但是`&String`可以
+
+11. `at()`
+    
+    
+    `string`和`string_view`都重载了`operator[]`，但此操作在运行时并不会做bound 
+    checking，所以在数组越界时会发生UB
+
+    而`at()`函数则会进行运行时检查，和Rust中的`Index/IndexMut`类似。
+
+    `at()`返回的是可变或只读的引用
+
+    ```rust
+    // Index/IndexMut返回的类型是`Output`
+
+    pub trait Index<Idx> 
+    where
+        Idx: ?Sized, 
+    {
+        type Output: ?Sized;
+    
+        fn index(&self, index: Idx) -> &Self::Output;
+    }
+    ```
+
+    ```cpp
+    string owned_str1("hello");
+    for (std::string::size_type i = 0; i < owned_str1.size(); i+=1) {
+        owned_str1.at(i) = 'O';
+    }
+
+    std::cout << owned_str1 << std::endl;
+    ```
+
+    ```shell
+    $ ./a.out
+    OOOOO
+    ```
+
+12. 文件的打开模式
+
+    ```
+    in 只读
+    out 只写
+    app 等价于O_APPEND 每次写之前offset都移到末尾
+    ate 打开文件后定位到文件末尾
+    truc O_TRUNCATE
+    binary 二进制I/O
+    ```
+
+    > Rust里面`OpenOptions`中的`append()`方法也是写前append，等价于`O_APPEND`
+    > ```rust
+    > use std::fs::{File, OpenOptions};
+    >
+    > fn main() {
+    >     let f: File = OpenOptions::new().append(true).open("test").unwrap();
+    > }
+    > ```
+    > 
+    > 可以使用`strace`来查看一下
+    >
+    > ```shell
+    > $ cargo b -q
+    > $ strace ./target/debug/t
+    > openat(AT_FDCWD, "test", O_WRONLY|O_APPEND|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+    > ```
+
+    不同的文件stream是有默认的文件打开方式的，构造函数有默认参数
+
+    ```cpp
+    // fstream
+    explicit basic_fstream( const char* filename, std::ios_base::openmode mode = ios_base::in|ios_base::out );
+
+    // ifstream
+    explicit basic_ifstream( const char* filename, std::ios_base::openmode mode = ios_base::in );
+
+    // ofstream
+    explicit basic_ofstream( const char* filename, std::ios_base::openmode mode = ios_base::out );
+    ```
+
+    > 这个`std::ios_base::openmode`是class`std::ios_base`的member type，其中的
+    > 另一个我们熟知的member type是`iostate`。
+
+13. IO类的继承关系
+   
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/io-class.svg)
+
+    > `std::ios_base`居然是最大的基类 
+
+14. 默认情况下，没有指定`truc`的openmode，使用`out`打开文件还是会截断
+
+    > 这解释了本条笔记第2点中代码`f << buf << std::endl;`为什么会truncate掉
+    > back.cpp
+
+    ```cpp
+    #include <fstream>
+    #include <iostream>
+    
+    using std::ofstream;
+    
+    int main()
+    {
+        ofstream fd("test");
+        if (fd.is_open())
+        {
+            fd.write("12345", 5);
+        }
+    }
+    ```
+
+    ```shell
+    $ g++s main.cpp
+    $ echo "helloworld" >> test
+    $ ./a.out
+    $ cat test
+    12345 # 而不是12345world
+    ```
+
+    为什么会这样呢，因为C的`fopen(filepath, "w")`也是写的方式打开，也会默认truncate
+    掉文件，cpp为了和它保持一致。
+
+    [link](https://stackoverflow.com/a/57070159/14092446)
+
+    POSIX open(2)和Rust的`OpenOptions::new().write(true)`均不会这样。Rust中的
+    `std::fs::write`会truncate掉。
