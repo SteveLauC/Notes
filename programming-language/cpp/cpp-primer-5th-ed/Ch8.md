@@ -361,45 +361,45 @@
 
 10. split一个string
     
-   ```cpp
-   #include <iostream>
-   #include <string>
-   #include <vector>
-   
-   using std::string;
-   using std::vector;
-   
-   vector<string> split(const std::string& source, const std::string& delim)
-   {
-       vector<string> res;
-       string::size_type start_idx = 0;
-       string::size_type found = source.find(delim, start_idx);
-   
-       while (found != string::npos)
-       {
-           res.push_back(source.substr(start_idx, found - start_idx));
-           start_idx = found + delim.size();
-           found = source.find(delim, start_idx);
-       }
-       if (start_idx != source.size())
-       {
-           res.push_back(source.substr(start_idx, source.size() - start_idx));
-       }
-   
-       return res;
-    }
+    ```cpp
+    #include <iostream>
+    #include <string>
+    #include <vector>
     
-    int main()
+    using std::string;
+    using std::vector;
+    
+    vector<string> split(const std::string& source, const std::string& delim)
     {
-        std::string buf("hello world");
-        for (const string& item : split(buf, " "))
+        vector<string> res;
+        string::size_type start_idx = 0;
+        string::size_type found = source.find(delim, start_idx);
+    
+        while (found != string::npos)
         {
-            std::cout << item << std::endl;
+            res.push_back(source.substr(start_idx, found - start_idx));
+            start_idx = found + delim.size();
+            found = source.find(delim, start_idx);
         }
-    }
-    ```
-    ```shell
-    $ g++ main.cpp && ./a.out
-    hello
-    world
-    ```
+        if (start_idx != source.size())
+        {
+            res.push_back(source.substr(start_idx, source.size() - start_idx));
+        }
+    
+        return res;
+     }
+     
+     int main()
+     {
+         std::string buf("hello world");
+         for (const string& item : split(buf, " "))
+         {
+             std::cout << item << std::endl;
+         }
+     }
+     ```
+     ```shell
+     $ g++ main.cpp && ./a.out
+     hello
+     world
+     ```
