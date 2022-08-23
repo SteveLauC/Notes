@@ -468,12 +468,12 @@
             merge operation.
 
             We can not derive an **exact solution** for all the N values, but 
-            if N is a power of 2 (say 2^n) and the equality of our first equation
+	    if N is a power of 2 (say 2^n) and the equality of our first equation
             holds, then:
 
             ```
             C(N) = C(N/2) + C(N/2) + N
-            // merge the 2 items on the right
+	    // merge the 2 items on the right
             C(N) = 2C(N/2) + N
             // replace N with 2^n
             C(2^n) = 2C(2^n-1) + 2^n
@@ -498,75 +498,11 @@
 
             > There is a conslusion that the number of compares is between 
             > `NlgN/2` and `NlgN` (page 272)
-            > But an precise proof is not provided
+            > But the precise proof is not provided
 
          2. the number of array accesses 
             
             At most 6NlgN array accesses to sort an array of length N
-        
-            Same process as we analyze the number of compares. First, we calculate
-            the max and min number of compares in `merge`:
-            1. 2N for copying from `a` to `aux`
-            2. 2N for assignment (`a[p] = aux[i];` or `a[p] = aux[j];`)
-            3. the number of compare is in range [N/2, N]. Two accesses for one
-               compare, so the range for this is [N, 2N].
 
-            ```
-            C(N) <= C(N/2) + C(N/2) + 2N + 2N + 2N
-            C(N) >= C(N/2) + C(N/2) + 2N + 2N + N
-            ```
-
-            Take the value of `N` as `2^n` and the equality of our first equation
-            holds:
-
-            ```
-            C(N) = C(N/2) + C(N/2) + 2N + 2N + 2N
-            C(N) = 2C(N/2) + 6N
-            C(2^n) = 2C(2^n-1) + 6 * 2^n
-            C(2^n)/2^n = C(2^n-1)/2^n-1 + 6
-            F(n) = F(n-1) + 6
-            F(n) = F(0) + 6n
-            C(2^n)/2^n = C(2^0)/2^0 + 6n
-            C(2^n)/2^n = C(1) + 6n
-            C(2^n)/2^n = 0 + 6n
-            C(2^n) = 6n * 2^n
-            C(N) = 6 * logN * N = 6NlogN
-            ```
-        
-         > The analysis of the number of compares and accesses tells us the time
-         > complexity of `merge sort` is proportional to `NlogN`.
-
-   2. Improve top-down merge sort
-
-      `Insertion sort` can be very quick when the length of array is small,
-      we can test this using our `mst`:
-
-      ```shell
-      $ mst 10 insertion
-      Use <insertion sort> to sort 10 random numbers, consuming 2.652µs
-      
-      $ mst 10 merge
-      Use <merge sort> to sort 10 random numbers, consuming 17.408µs
-      ```
-
-      ```rust
-      fn merge_sort<T: Copy + Ord>(a: &mut [T]) {
-          // already ordered
-          if a.len() <= 1 {
-              return;
-          }
-
-          // use insertion sort for small arrays
-          if a.len() <= 15 {
-              insertion_sort(a);
-          }
-      
-          let mid: usize = a.len() / 2;
-      
-          merge_sort(&mut a[..mid]);
-          merge_sort(&mut a[mid..]);
-          merge(a, mid);
-      }
-      ```
-
-      > Most recursive algorithms can be improved by handling small cases differently
+            2N for the copy
+            at most 2N for compares
