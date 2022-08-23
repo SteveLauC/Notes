@@ -469,3 +469,7 @@ group IDs(real, effective, saved)
     ```c
     long max_len = sysconf(_SC_LOGIN_NAME_MAX);	
     ```
+
+13. Most Linux distros use `yescrypt` as their default shadow hasing method.
+
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-08-23%2008-45-20.png)

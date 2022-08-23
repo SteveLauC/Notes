@@ -581,3 +581,11 @@
 
     POSIX open(2)和Rust的`OpenOptions::new().write(true)`均不会这样。Rust中的
     `std::fs::write`会truncate掉。
+
+15. `sizeof(reference)`
+
+    标准指定了`sizeof(reference)`会返回被引用的类型的大小
+
+    ```cpp
+    sizeof(T&) returns sizeof(T)
+    ```
