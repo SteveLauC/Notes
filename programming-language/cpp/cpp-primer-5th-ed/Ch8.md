@@ -752,3 +752,15 @@
 	    return EXIT_SUCCESS;
     }
     ```
+
+19. I/O 类继承关系
+
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/io-class.svg)
+    ![inheritance](https://github.com/SteveLauC/pic/blob/main/std-basic_stringstream-inheritance.svg)
+    ![di](https://github.com/SteveLauC/pic/blob/main/ifstream.png)
+    ![di](https://github.com/SteveLauC/pic/blob/main/ofstream.png)
+    ![di](https://github.com/SteveLauC/pic/blob/main/istringstream.png)
+    ![di](https://github.com/SteveLauC/pic/blob/main/ostringstream.png)
+
+    > 我傻傻地以为`fstream`是`ifstream`和`ofstream`的基类；`stringstream`是
+    > `istringstream`和`ostringstream`的基类
