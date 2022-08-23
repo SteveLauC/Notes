@@ -97,7 +97,7 @@
    //// a type to represent person
    ```
 
-   或者这样向文件写(会truncate掉文件) (见笔记14条，以out模式打开，默认truncate)
+   或者这样向文件写
 
    ```cpp
    #include <fstream>
@@ -547,9 +547,6 @@
 
 14. 默认情况下，没有指定`truc`的openmode，使用`out`打开文件还是会截断
 
-    > 这解释了本条笔记第2点中代码`f << buf << std::endl;`为什么会truncate掉
-    > back.cpp
-
     ```cpp
     #include <fstream>
     #include <iostream>
@@ -574,6 +571,7 @@
     12345 # 而不是12345world
     ```
 
+
     为什么会这样呢，因为C的`fopen(filepath, "w")`也是写的方式打开，也会默认truncate
     掉文件，cpp为了和它保持一致。
 
@@ -582,10 +580,175 @@
     POSIX open(2)和Rust的`OpenOptions::new().write(true)`均不会这样。Rust中的
     `std::fs::write`会truncate掉。
 
+    ```cpp
+    // 这3种打开方式都会truncate掉文件
+    ofstream of1("test");
+    ofstream of2("test", ofstream::out);
+    ofstream of3("test", ofstream::out | ofstream::trunc);
+    ```
+
+    如果想使用`ofstream`打开文件并且**不**truncate掉，只能在打开时同时指定上
+    `ios_base::out|ios_base::app` (不过这样每次写都是追加)。或者使用`fstream`
+    ，因为mode中既有in又有out。
+
+    ```cpp
+    // 验证fstream默认不会truncate
+
+    fstream f("test");
+    f.write("12345", 5);
+    ```
+    ```shell
+    $ echo "helloworld" > test
+    $ g++s main.cpp && ./a.out
+    $ cat test
+    12345world
+    ```
+
+    > ```cpp
+    > ofstream("test", fstream::app); 
+    > ```
+    > 上面的代码手动指定了mode，但却没有指定`out`，如果这样写的话，则`out`是隐
+    > 式指定的。目前不清楚这语法是怎么来的，但我写的话，肯定不要这样写。
+
 15. `sizeof(reference)`
 
     标准指定了`sizeof(reference)`会返回被引用的类型的大小
 
     ```cpp
     sizeof(T&) returns sizeof(T)
+    ```
+
+16. fstream的`open`函数
+
+    一个流可以在构造的时候指定绑定的文件，也可以在`open`是指定。
+
+    ```cpp
+    void open( const char *filename, ios_base::openmode mode = ios_base::in|ios_base::out );
+    void open( const std::filesystem::path::value_type *filename, ios_base::openmode mode = ios_base::in|ios_base::out );
+    void open( const std::string &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
+    void open( const std::filesystem::path &filename, ios_base::openmode mode = ios_base::in|ios_base::out );
+    ```
+
+    它还有一个`close`函数，cpp的RAII使得我们并不需要手动地关闭文件。所以这个函数
+    并不是让我们用来关闭文件的，而是更换文件。当想要更换与流相绑定的文件时，我们
+    需要先`close`再`open`。
+
+17. string流
+
+    > string流指的是包含一个String作为缓冲区的流
+
+    ```cpp
+    stringstream   // 流中的string buffer，既可读又可写
+    istringstream  // 可以从流中的string buffer读
+    ostringstream  // 可以向流中的string buffer写
+    ```
+
+    ![inheritance](https://github.com/SteveLauC/pic/blob/main/std-basic_stringstream-inheritance.svg)
+
+    stringstream特有的一些操作
+
+    1. 创建时同时初始化内置buffer
+
+       ```cpp
+       string buf("Hello world");
+       // 创建ss时，初始化其内置stringbuf的内容为buf的内容
+       stringstream ss(buf);
+
+       // 构造函数 3
+       explicit basic_stringstream( const std::basic_string<CharT,Traits,Allocator>& str, std::ios_base::openmode mode = std::ios_base::in | std::ios_base::out );
+       ```
+
+    2. 返回内置buffer的拷贝 string
+
+       ```cpp
+       stringstream ss;
+       ss.str();
+
+       std::basic_string<CharT,Traits,Allocator> str() const; (until C++20)
+       std::basic_string<CharT,Traits,Allocator> str() const&; (since C++20)
+       template<class SAlloc>
+       std::basic_string<CharT,Traits,SAlloc> str( const SAlloc& a ) const;
+       ```
+    3. 使用其他string替换内置buffer
+       
+       ```cpp
+       string new_buf("World")
+       stringstream ss;
+       ss.str(new_buf); // 
+
+       void str( const std::basic_string<CharT,Traits,Allocator>& s ); (4)	
+       template<class SAlloc>                                          (5)
+       void str( const std::basic_string<CharT,Traits, SAlloc>& s );
+       ```
+
+18. 使用ostringstream将整个文件读到一个string中去
+
+    ```cpp
+    #include <fstream>
+    #include <iostream>
+    #include <sstream>
+    using std::cout;
+    using std::endl;
+    using std::fstream;
+    using std::ostringstream;
+    
+    int main()
+    {
+        ostringstream buf;
+        fstream f("test");
+        buf << f.rdbuf();
+        cout << buf.str() << endl;
+    }
+    ```
+
+    ```shell
+    $ echo "Hello" > test
+    $ g++s main.cpp && ./a.out
+    Hello
+    ```
+
+    ```rust
+    // 等同的rust操作
+    use std::fs::{File, OpenOptions};
+    use std::io::Read;
+    
+    fn main() {
+        let mut f: File = OpenOptions::new().read(true).open("test").unwrap();
+    
+        let mut buf: String = String::new();
+        f.read_to_string(&mut buf).unwrap();
+        println!("{}", buf);
+    }
+    ```
+
+    ```c
+    // 相同的C操作
+    #include <assert.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <stdint.h>
+    
+    int main(void)
+    {
+	    int32_t fd = open("test", O_RDONLY);
+	    assert(fd != -1);
+    
+	    char buf[BUFSIZ];
+	    ssize_t total_num_read = 0;
+	    ssize_t num_read =
+		    read(fd, buf + total_num_read, BUFSIZ - total_num_read);
+    
+	    while (num_read != 0) {
+		    total_num_read += num_read;
+		    num_read =
+			    read(fd, buf + total_num_read, BUFSIZ - total_num_read);
+	    }
+    
+	    buf[total_num_read] = '\0';
+	    printf("%s\n", buf);
+    
+	    return EXIT_SUCCESS;
+    }
     ```
