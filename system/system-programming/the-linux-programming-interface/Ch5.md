@@ -298,7 +298,7 @@
     off_t lseek(int fd, off_t offset, int whence);
     ```
   
-    `off_t`, an alias to `i32`, whose max value is `2GB`, limit the max file
+    `off_t`, an alias to `i32`, whose max value is `2GB`, limits the max file
     size to 2GB. If you wanna create a file larger than 2GB(large files), you 
     need Large File Summit(LFS)
 

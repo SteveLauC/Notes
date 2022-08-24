@@ -21,6 +21,8 @@
 2. 在Linux上，`sh`是用`bash`仿真实现的
 
 3. 用户的组ID是用户第一个组的组ID
+   
+   > For more information about group, see [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
     
     ```shell
     $ id
@@ -38,6 +40,8 @@
     ```
 
 4. `/etc/passwd`文件格式
+
+   > For more information about `passwd`, see [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
 
     ```
     steve:x:1000:1000:Steve:/home/steve:/usr/bin/zsh
@@ -77,6 +81,8 @@
    > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
 
 8. 进程的RUID，EUID以及SUID(以及RGIP, EGID, SGID)
+   
+   > For more info about process credentials, see [Ch9](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9.md)
 
    > 判断进程有没有权限做一个件事，是看其EUID和EGID的
 

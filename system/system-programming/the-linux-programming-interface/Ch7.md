@@ -150,3 +150,5 @@
    And stack allocation has several advantages over the heap:
    1. It is faster cause all it has done is simply adjusting the sp
    2. Does not need to be freed.
+
+   > Variable-length array in C99 is implemented using this.
