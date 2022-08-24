@@ -293,43 +293,39 @@
         ```
 
 17. 拿到了UID/GID，怎么拿到用户名和组名呢
+
+    > Use the functions with `_r` suffix instead of these following ones
+    > cause the structs returned by them are static.
+
     ```c
-        // 通过UID就可以拿到下面的结构体
-        struct passwd *getpwuid(uid_t uid);
-        ``` 
-        ```c
-        struct passwd {
-            char   *pw_name;       /* username */ // 我们要的用户名
-            char   *pw_passwd;     /* user password */
-            uid_t   pw_uid;        /* user ID */
-            gid_t   pw_gid;        /* group ID */
-            char   *pw_gecos;      /* user information */
-            char   *pw_dir;        /* home directory */
-            char   *pw_shell;      /* shell program */
-        };
-        ```
+    // 通过UID就可以拿到下面的结构体
+    struct passwd *getpwuid(uid_t uid);
+    ``` 
 
-        ```c
-        struct group *getgrgid(gid_t gid);
-        ```
+    ```c
+    struct passwd {
+        char   *pw_name;       /* username */ // 我们要的用户名
+        char   *pw_passwd;     /* user password */
+        uid_t   pw_uid;        /* user ID */
+        gid_t   pw_gid;        /* group ID */
+        char   *pw_gecos;      /* user information */
+        char   *pw_dir;        /* home directory */
+        char   *pw_shell;      /* shell program */
+    };
+    ```
 
-        ```c
-        struct group {ERRORS
-       These functions are always successful.
-失败的syscall会对errno进行赋值，而成功的syscall则不会。所以errno的值应该是上
-一个失败的syscall设置的，我们在#include <errno.h>来检查errno时应先确保此syscall
-确实失败了(对errno进行了赋值)
+    ```c
+    struct group *getgrgid(gid_t gid);
+    ```
 
-极少数的syscall可以在成功时返回-1(比如getpriority)，对于这种syscall，想要
-检查其是否出错需要先将errno设置为0，然后调用它，再看errno是否为0，如果非0则是
-出错了
-            char   *gr_name;        /* group name */
-            char   *gr_passwd;      /* group password */
-            gid_t   gr_gid;         /* group ID */
-            char  **gr_mem;         /* NULL-terminated array of pointers
-                                       to names of group members */
-        };
-        ```
+    ```c
+    struct group {
+        char   *gr_name;        /* group name */
+        char   *gr_passwd;      /* group password */
+        gid_t   gr_gid;         /* group ID */
+        char  **gr_mem;         /* NULL-terminated array of pointers to names of group members */
+    };
+    ```
 
 18. `stdio.h`中的`sprintf()`函数
     可以将任何东西拼成字符串，和rust中的`format!()`有点类似。
@@ -394,7 +390,7 @@
 
 20. 当SUID被设置时，owner中的执行权限变为了's'；当SGID被设置时，group的执行权限变
     为了's'；当sticky bit别设置时，other的执行权限变为了't';
- ^a5a1a3
+
 21. 文件一旦被创建，其文件类型就不可以被更改。
         比如我们先使用`creat()`创建一个reg文件，然后调用`chmod`来修改它，在其文件类型
         那4位上做一些改变。
