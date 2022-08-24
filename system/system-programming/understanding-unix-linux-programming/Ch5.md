@@ -353,7 +353,7 @@
     int main (int argc, char **argv)
     {
         struct winsize w;
-	// STDOUT_FILENO = 1
+        // STDOUT_FILENO = 1
         ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); // 没做error handling
 
         printf ("lines %d\n", w.ws_row);

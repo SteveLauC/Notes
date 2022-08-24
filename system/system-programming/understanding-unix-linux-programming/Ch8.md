@@ -257,16 +257,16 @@
     这些结果和nix中`WaitStatus`的封装是对应的。
 
     ```rust
-   	pub enum WaitStatus {
-		Exited(Pid, i32),
-		Signaled(Pid, Signal, bool),
-		Stopped(Pid, Signal),
-		PtraceEvent(Pid, Signal, c_int),
-		PtraceSyscall(Pid),
-		Continued(Pid),
-		StillAlive,
-	} 
-	```
+           pub enum WaitStatus {
+                Exited(Pid, i32),
+                Signaled(Pid, Signal, bool),
+                Stopped(Pid, Signal),
+                PtraceEvent(Pid, Signal, c_int),
+                PtraceSyscall(Pid),
+                Continued(Pid),
+                StillAlive,
+        } 
+        ```
 
 11. zombie process僵尸进程
     指的是进程已经退出，但是仍然存在在进程的表格中的进程。之所以它存在在进程表格 
