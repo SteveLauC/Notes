@@ -418,9 +418,22 @@
 
          ![a deeper process tree](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-10_20-33-49.jpg)
 
-         The depth of the `process tree` is `lg(N) + 1`, but only the last `lg(N)`
-         layers are memory-allocated. Each layer will allocate `N` items, so that
-         the space used is `lg(N) * N`
+         WRONG ANALYSIS: The depth of the `process tree` is `lg(N) + 1`, but 
+	 only the last `lg(N)` layers are memory-allocated. Each layer will 
+	 allocate `N` items, so that the space used is `lg(N) * N`
+
+	 This is a recursive algorithm, what you did above is calculating the total
+	 space consumption through the whole execution.
+
+	 ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-24_20-06-45.jpg)
+	  
+	 What you calculated is the area of the `pink area`, but the `green line`
+	 is what we actually want. Note: this curse is not exact as the memory
+	 consumption is not continuous.
+
+	 CORRECT ANALYSIS: So what is the maximum memory usage during the execution?
+	 Apparently it should be `N` as we will consume the most memory in our last
+	 merge.
 
       2. time complexity:
 
