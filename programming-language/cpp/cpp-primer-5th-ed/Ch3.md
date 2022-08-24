@@ -243,6 +243,9 @@
     }
     ```
 
+    > One should use `.at(idx)` instead of `operator[]` to add runtime bound 
+    > check.
+
 12. `std::vector`中的范型不可以是引用，因为引用不是对象
 
      初始化:  
@@ -342,6 +345,19 @@
 
     其中`std::is_same<T, U>::value`的返回类型是bool
 
+    在C++17中，引入了一个语法糖:
+
+    ```cpp
+    template< class T, class U >
+    inline constexpr bool is_same_v = is_same<T, U>::value; (since C++17)
+    ```
+
+    所以我们可以直接使用
+
+    ```cpp
+    cout << std::is_same_v<int, int> << endl;
+    ```
+
 15. 迭代器的类型(begin end返回什么)
 
     我们可以不用关心其具体的返回类型，就像我们不关心`std::string::size()`的具体
@@ -385,7 +401,7 @@
     ```
 
     迭代器支持像上面的那样的`p += n`这样的批量移动的操作，但在批量移动的时候千万
-    小心，别刚好错过`end`变成非法的迭代器
+    **小心**，别刚好**错过`end`**变成非法的迭代器
 
     ```
     $ g++ main.cpp && ./a.out
@@ -400,7 +416,7 @@
 
     或许把循环的条件改为`p <= end`则不会有问题，但是如果越界了拿到非法的迭代器
     再去和`end`比较谁知道会不会是正常的呢?书上说参与比较的两个迭代器必须是同一
-    容器中的元素或者尾元素的下一位置(a.k.a. end())
+    容器中的元素或者尾元素的下一位置(a.k.a. end())，也就是要求迭代器是合法的。
 
     
 17. 两个迭代器相减的类型
@@ -434,17 +450,29 @@
 19. 使用数组初始化vector
 
     ```cpp
-    #include <cassert>
+    // constructor used in this operation
+
+    template< class InputIt >
+    vector( InputIt first, InputIt last, const Allocator& alloc = Allocator() ); (until C++20)
+    template< class InputIt >
+    constexpr vector( InputIt first, InputIt last, const Allocator& alloc = Allocator() ); (since C++20)
+    ```
+
+    ```cpp
     #include <cstdint>
     #include <iostream>
-    #include <iterator>
     #include <vector>
     
     using std::vector;
     
     int main() {
       int32_t v[] = {1, 2, 3};
+
+      // std::begin(array) returns the beginning pointer
+      // and you can treat pointer as iterator
       auto vv = vector<int32_t>(std::begin(v), std::end(v));
+      // alternative approach
+      // auto vv = vector<int32_t>(v, std::end(v));
     
       for (const int32_t &v : vv) {
         std::cout << v << std::endl;

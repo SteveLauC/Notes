@@ -691,6 +691,8 @@
     > 这个还挺有意思的，封装起来备用的感觉
 
 24. 转换构造函数 (converting constructor)
+    
+    > [converting constructor](https://en.cppreference.com/w/cpp/language/converting_constructor)
    
     当一个类的构造函数只接受一个实参(或者多个参数，其他的参数有默认值，只有一个
     没有)的时候，此构造函数就是转换构造函数。然后实参的类型就可以隐式转换为这个

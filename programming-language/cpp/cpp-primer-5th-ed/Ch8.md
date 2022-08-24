@@ -636,6 +636,9 @@
 17. string流
 
     > string流指的是包含一个String作为缓冲区的流
+    >
+    > 其实就是in memory buffer，在Rust中和它比较接近的是
+    > [`std::io::Cursor`](https://doc.rust-lang.org/std/io/struct.Cursor.html)
 
     ```cpp
     stringstream   // 流中的string buffer，既可读又可写
@@ -764,3 +767,45 @@
 
     > 我傻傻地以为`fstream`是`ifstream`和`ofstream`的基类；`stringstream`是
     > `istringstream`和`ostringstream`的基类
+
+20. stringstream在内部的buffer被读完后，其`eof` bit 会被设置
+    
+    ```cpp
+    #include <iostream>
+    #include <sstream>
+    #include <string>
+    using std::cout;
+    using std::endl;
+    using std::istringstream;
+    using std::string;
+    int main()
+    {
+        string contents("this is a string");
+        istringstream is(contents);
+    
+        string new_str;
+        while (!is.eof())
+        {
+    
+            is >> new_str;
+            cout << new_str << endl;
+        }
+    
+        if (is.eof())
+        {
+            cout << "Reaches EOF" << endl;
+        }
+    }
+    ```
+
+    ```shell
+    $ g++s main.cpp && ./a.out
+    this
+    is
+    a
+    string
+    Reaches EOF
+    ```
+
+21. 感觉`stringstream`就是为了让`string`可以使用`<< >>`等操作的语法糖。那么Rust
+    中的`Cursor`也是这样的。
