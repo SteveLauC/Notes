@@ -80,21 +80,25 @@
    * UNIX没有文件结束符的概念，读取文件时如无数据返回，则认定达到EOF
    > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
 
-8. 进程的RUID，EUID以及SUID(以及RGIP, EGID, SGID)
+8. 进程的RUID，EUID以及saved-set-UID(以及RGIP, EGID, saved-set-GID)
    
-   > For more info about process credentials, see [Ch9](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9.md)
+   > For more info about process credentials, see
+   > [Ch9](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9.md)
 
    > 判断进程有没有权限做一个件事，是看其EUID和EGID的
 
-   每一个进程都有一个RUID和RGID，继承自父进程。EUID和EGID默认等于RUID和RGID，但
-   是有时普通用户需要更高权限，此时可以更改EUID来获取更高权限。比如设置了setuid
-   位的程序，在运行时，其EUID会被设置为程序的UID而不是用户的UID。SUID是为了解
-   决有高权限的进程在短暂地处理不需要高权限的任务为设计的，在这时，其EUID先会被
-   赋给SUID，然后EUID会变为权限更低的ID，等到低权限任务完成后，EUID会将原来的UID
-   从SUID中读取出来
+   每一个进程都有一个RUID和RGID，继承自父进程 (login shell 从/etc/passwd中读登陆
+   用户的uid和gid并设置为RUID和RGID)。EUID和EGID默认等于RUID和RGID，但
+   是有时普通用户需要更高权限，此时可以更改EUID来获取更高权限。通过:
+   1. [seteuid和setegid](https://man7.org/linux/man-pages/man2/seteuid.2.html)
+   2. set-UID 和set-GID机制
+
+   比如设置了set-UID位的可执行程序，在运行时，其EUID会被设置为可执行程序文件的
+   UID而不是父进程的UID。(see Ch9 3/4)
 
 
-   [[system/system-programming/understanding-unix-linux-programming/Ch3#^a5a1a3]]
+   For info about `saved-set-UID`, see Ch9: 5.
+
 
 9. init进程
 
