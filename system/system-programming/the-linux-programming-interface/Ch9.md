@@ -187,8 +187,8 @@
 6. filesystem user ID and group ID (Linux specific)
 
    On Linux, whether a file system operation (e.g. open a file/change permission/change 
-   ownership) can performed is determined by `file system user ID (and group ID)` 
-   instead of EUID (and EGID).
+   ownership) can be performed is determined by `file system user ID (and group ID)` 
+   instead of `EUID` (and `EGID`).
 
    > Operations not related to file system relies on EUID (and EGID)
 
@@ -204,8 +204,92 @@
    2. [setfsgid(2)](https://man7.org/linux/man-pages/man2/setfsgid.2.html)
 
    So in most cases, the `file-system user ID and group ID` will just have the
-   same values as `EUID and EGID`, why does Linux need this:
+   same values as `EUID and EGID`, why does Linux need this. Well, this is a 
+   historical problem (page 171). And nowadays, this problem has alredy been 
+   resolved so there is no need to mention these two specific IDs.
 
-   Well, this is a historical problem (page 171). And nowadays, this problem 
-   has alredy been resolved so there is no need to mention these two specific
-   IDs.
+7. Supplementary goup IDs
+
+   This is a set of additional groups to which a process belongs. Login shell
+   obtains its supplementary group IDs from `/etc/group` (check out 
+   [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md):
+   5 to see how to get all the groups a user belongs to), and a child process
+   get this from its parent process just like `RUID` and `RGID`.
+
+   This is used in conjunctino with `EUID (EGID)` and `file-system user ID 
+   (file-system group ID)` to determine permissions for accessing various
+   system resources.
+
+   > This corresponds to the fact that a user can belong to muliple groups
+
+8. syscalls (or lib functions) for retrieving and modifying these process 
+   credentials
+
+   > In addition to the syscalls described below, one can also get these info
+   > through `/proc/$PID/status`
+   > ```
+   > Name: zsh
+   > Umask: 0002
+   > State: S (sleeping)
+   > Tgid: 7376
+   > Ngid: 0
+   > Pid: 7376
+   > PPid: 7375
+   > TracerPid: 0
+   > Uid: 1000 1000 1000 1000 # RUID EUID saved-set-UID filesystemUID
+   > Gid: 1000 1000 1000 1000 # RGID EGID saved-set-GID filesystemGID
+   > FDSize: 64
+   > Groups: 4 27 121 999 1000 
+   > NStgid: 7376
+   > NSpid: 7376
+   > NSpgid: 7376
+   > NSsid: 7376
+   > VmPeak:    22088 kB
+   > VmSize:    21704 kB
+   > VmLck:        0 kB
+   > VmPin:        0 kB
+   > VmHWM:    10128 kB
+   > VmRSS:     9676 kB
+   > RssAnon:     4496 kB
+   > ```
+
+
+   ```c
+   #include <unistd.h>
+   #include <sys/types.h>
+
+   uid_t getuid(void);  // retrieve RUID
+   uid_t geteuid(void); // retrieve EUID
+
+   gid_t getgid(void);  // retrieve RGID
+   gid_t getegid(void); // retrieve EGID
+
+   // Linux-specific
+   #define _GNU_SOURCE         /* See feature_test_macros(7) */
+   #include <unistd.h>
+   // retrieve real effective saved-set UID
+   int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+   // retrieve real effective saved-set GID
+   int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
+   ```
+
+   ```c
+   # include <unistd.h>
+
+   // change the EUID to `uid`. If the process is priviledged (more specifically,
+   // has CAP_SETUID), then `RUID` and `saved set-UID` will also be set.
+   int setuid(uid_t uid);
+   int setgid(gid_t gid);
+
+   // And these two calls can only set EUID to either RUID or saved set-UID.
+   // If not, it will return -1 and set errno to EPERM.
+   // For a unpriviledged process, RUID, EUID and saved set-UID all have the same
+   // value, this call is useless.
+
+   // For a priviledged process, these calls are a one-way trip. If `uid` is not 0,
+   // RUID, EUID and saved set-UID all will be set to the value specified in `uid`.
+   // thus losing the priviledge.
+
+   // setgid works similarly to setuid except group 0 does not have priviledge
+   // so one process can freely change its GIDs.
+   ```
