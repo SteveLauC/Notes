@@ -168,7 +168,9 @@
       of the UID (GID) of that executable file.
    3. The value of saved set-UID (saved set-GID) copies from EUID (EGID). This
       operation happens **regardless of** whether the set-UID (set-GID) is set.
-
+      
+      > It seems this copy opreation only happens once when the program executed.
+      > So EUID can differ from saved set-UID, for example, through `setuid/seteuid`
    
    Let's give an example:
    We have a set-UID-root program, user (UID: 1000) executes this binary, then
@@ -254,42 +256,114 @@
    > ```
 
 
-   ```c
-   #include <unistd.h>
-   #include <sys/types.h>
+   1. retrieve RUID and EUID
 
-   uid_t getuid(void);  // retrieve RUID
-   uid_t geteuid(void); // retrieve EUID
+      ```c
+      #include <unistd.h>
+      #include <sys/types.h>
+   
+      uid_t getuid(void);  // retrieve RUID
+      uid_t geteuid(void); // retrieve EUID
+   
+      gid_t getgid(void);  // retrieve RGID
+      gid_t getegid(void); // retrieve EGID
+      ```
 
-   gid_t getgid(void);  // retrieve RGID
-   gid_t getegid(void); // retrieve EGID
+   2. Modify **EUID**
 
-   // Linux-specific
-   #define _GNU_SOURCE         /* See feature_test_macros(7) */
-   #include <unistd.h>
-   // retrieve real effective saved-set UID
-   int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
-   // retrieve real effective saved-set GID
-   int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
-   ```
+      ```c
+      # include <unistd.h>
+   
+      int setuid(uid_t uid);
+      int setgid(gid_t gid);
+      ```
 
-   ```c
-   # include <unistd.h>
+      What effect these two syscalls have depends on whether the process is
+      priviledged (priviledged means EUID==0, or more precisely, it has CAP_SETUID
+      set):
+      1. If unpriviledged, EUID is set to arg `uid`. And the `uid` is either 
+         `RUID` or `saved set-UID` (you can set it to EUID, though meaningless).
 
-   // change the EUID to `uid`. If the process is priviledged (more specifically,
-   // has CAP_SETUID), then `RUID` and `saved set-UID` will also be set.
-   int setuid(uid_t uid);
-   int setgid(gid_t gid);
+	 For a normal process, `RUID`, `EUID` and `saved set-UID` all have the same
+	 value. So this syscall is useful *only* in the case where this process is
+	 spawned from a `set-UID` program (so that RUID differs from EUID and saved
+	 set-UID).
 
-   // And these two calls can only set EUID to either RUID or saved set-UID.
-   // If not, it will return -1 and set errno to EPERM.
-   // For a unpriviledged process, RUID, EUID and saved set-UID all have the same
-   // value, this call is useless.
+      2. If priviledged and `uid` is not zero, `RUID/EUID/saved set-UID` are all
+         set to `uid`. THIS IS A ONE-WAY TRIP since, once executed, the priviledge
+	 is dropped, and for a unpriviledged process, it can only set EUID to either
+	 RUID or saved set-UID, which are obviously not `0`. So no way back.
 
-   // For a priviledged process, these calls are a one-way trip. If `uid` is not 0,
-   // RUID, EUID and saved set-UID all will be set to the value specified in `uid`.
-   // thus losing the priviledge.
+	 > If you wanna a priviledged process to change just the `EUID`, use `seteuid(2)`
+	 > instead.
 
-   // setgid works similarly to setuid except group 0 does not have priviledge
-   // so one process can freely change its GIDs.
-   ```
+      > `setgid()` does a similar job and the above rules still apply except:
+      > In rule 2, `RGID/EGID/saved set-GID` will be changed to `uid`. But EUID
+      > remains unchanged so this process is **still** `priviledged`, so this 
+      > is **NOT** a one-way trip.
+
+      Example: a set-UID-root program drop its priviledge
+
+      ```c
+      // get current RUID
+      uid_t cur_r_uid = getuid();
+
+      setuid(cur_r_uid);
+      ```
+      
+   3. Modify EUID and EGID (preferred way)
+      
+      ```c
+      #include <unistd.h>
+
+      int seteuid(uid_t euid);
+      int setegid(gid_t egid);
+      ```
+
+      1. If unpriviledged, `EUID` can be set to either `RUID` or `saved set-UID`.
+         Same as `setuid(2)`
+      2. If priviledged, `EUID` can be set to any value. If this value is non-zero,
+         then priviledge is dropped. But you can regain the priviledge through 
+	 `seteuid(2)` cause saved set-UID is still `0` so `0` is a valid argument
+	 for a unpriviledged process.
+
+      ```rust
+      use nix::unistd::{getresuid, seteuid, ResUid, Uid};
+      
+      fn main() {
+          println!("This is a set-UID-root program");
+          let mut res_uid: ResUid = getresuid().unwrap();
+          println!(
+              "Current RUID/EUID/saved set-UID {} {} {}",
+              res_uid.real, res_uid.effective, res_uid.saved
+          );
+      
+          println!("Drop priviledge");
+          seteuid(res_uid.real).unwrap();
+          res_uid = getresuid().unwrap();
+          println!(
+              "Current RUID/EUID/saved set-UID {} {} {}",
+              res_uid.real, res_uid.effective, res_uid.saved
+          );
+      
+          println!("Regain priviledge");
+          seteuid(Uid::from(0)).unwrap();
+          res_uid = getresuid().unwrap();
+          println!(
+              "Current RUID/EUID/saved set-UID {} {} {}",
+              res_uid.real, res_uid.effective, res_uid.saved
+          );
+      }
+      ```
+      ```shell
+      $ cargo b -q
+      $ sudo chown root target/debug/rust
+      $ sudo chmod u+s target/debug/rust
+      $ ./target/debug/rust
+      This is a set-UID-root program
+      Current RUID/EUID/saved set-UID 1000 0 0
+      Drop priviledge
+      Current RUID/EUID/saved set-UID 1000 1000 0
+      Regain priviledge
+      Current RUID/EUID/saved set-UID 1000 0 0
+      ```
