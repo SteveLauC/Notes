@@ -284,18 +284,18 @@
       1. If unpriviledged, EUID is set to arg `uid`. And the `uid` is either 
          `RUID` or `saved set-UID` (you can set it to EUID, though meaningless).
 
-	 For a normal process, `RUID`, `EUID` and `saved set-UID` all have the same
-	 value. So this syscall is useful *only* in the case where this process is
-	 spawned from a `set-UID` program (so that RUID differs from EUID and saved
-	 set-UID).
+         For a normal process, `RUID`, `EUID` and `saved set-UID` all have the same
+         value. So this syscall is useful *only* in the case where this process is
+         spawned from a `set-UID` program (so that RUID differs from EUID and saved
+         set-UID).
 
       2. If priviledged and `uid` is not zero, `RUID/EUID/saved set-UID` are all
          set to `uid`. THIS IS A ONE-WAY TRIP since, once executed, the priviledge
-	 is dropped, and for a unpriviledged process, it can only set EUID to either
-	 RUID or saved set-UID, which are obviously not `0`. So no way back.
+         is dropped, and for a unpriviledged process, it can only set EUID to either
+         RUID or saved set-UID, which are obviously not `0`. So no way back.
 
-	 > If you wanna a priviledged process to change just the `EUID`, use `seteuid(2)`
-	 > instead.
+         > If you wanna a priviledged process to change just the `EUID`, use `seteuid(2)`
+         > instead.
 
       > `setgid()` does a similar job and the above rules still apply except:
       > In rule 2, `RGID/EGID/saved set-GID` will be changed to `uid`. But EUID
@@ -324,8 +324,8 @@
          Same as `setuid(2)`
       2. If priviledged, `EUID` can be set to any value. If this value is non-zero,
          then priviledge is dropped. But you can regain the priviledge through 
-	 `seteuid(2)` cause saved set-UID is still `0` so `0` is a valid argument
-	 for a unpriviledged process.
+         `seteuid(2)` cause saved set-UID is still `0` so `0` is a valid argument
+         for a unpriviledged process.
 
       ```rust
       use nix::unistd::{getresuid, seteuid, ResUid, Uid};
