@@ -227,6 +227,9 @@
 8. syscalls (or lib functions) for retrieving and modifying these process 
    credentials
 
+   > If the syscall changes multiple identifiers, then there are only 2 results
+   > all of these changes are set, or non of them apply. (atomicity)
+
    > In addition to the syscalls described below, one can also get these info
    > through `/proc/$PID/status`
    > ```
@@ -269,7 +272,7 @@
       gid_t getegid(void); // retrieve EGID
       ```
 
-   2. Modify **EUID**
+   2. Modify **EUID** and possibly RUID and saved set-UID
 
       ```c
       # include <unistd.h>
@@ -316,8 +319,8 @@
       ```c
       #include <unistd.h>
 
-      int seteuid(uid_t euid);
-      int setegid(gid_t egid);
+      int seteuid(uid_t euid); // impl using `setreesuid(-1, e, -1)`
+      int setegid(gid_t egid); // impl using `setresgid(-1, e, -1)`
       ```
 
       1. If unpriviledged, `EUID` can be set to either `RUID` or `saved set-UID`.
@@ -326,6 +329,7 @@
          then priviledge is dropped. But you can regain the priviledge through 
          `seteuid(2)` cause saved set-UID is still `0` so `0` is a valid argument
          for a unpriviledged process.
+
 
       ```rust
       use nix::unistd::{getresuid, seteuid, ResUid, Uid};
@@ -366,4 +370,154 @@
       Current RUID/EUID/saved set-UID 1000 1000 0
       Regain priviledge
       Current RUID/EUID/saved set-UID 1000 0 0
+      ```
+
+   4. Modify RUID and EUID
+
+      ```c
+      #include <unistd.h>
+
+      int setreuid(uid_t ruid, uid_t euid);
+      int setregid(gid_t rgid, gid_t egid);
+      ``` 
+
+      If we wanna change only one of these credentials, then we can pass `-1`
+      for the other argument.
+      ```c
+      setreuid(-1, euid); // change EUID
+      setreuid(ruid, -1); // change RUID
+      ```
+      For these two syscalls, the following rules apply:
+      1. If unpriviledged, `ruid` can be either `current RUID` or `current EUID`.
+         `euid` can be `current RUID/current EUID/current saved set-UID`.
+      2. If priviledged, `ruid` and `euid` can be any value.
+      3. If `ruid` is not `-1` or `euid` does not equal to current `RUID`, then
+         the `saved set-UID` is set to the `euid`.
+
+         > What is `ruid` is `current RUID` and `euid` is `-1`, theoretically the 
+         > third rule should apply, but no new `EUID` is set:
+         > ```c
+         > #define _GNU_SOURCE 
+         > #include <stdio.h> 
+         > #include <unistd.h>
+         > int main(void)
+         > {
+         >         int res = setreuid(1000, -1);
+         >         printf("%d\n", res);
+         >
+         >         uid_t r_uid = 0;
+         >         uid_t e_uid = 0;
+         >         uid_t s_uid = 0;
+         >         getresuid(&r_uid, &e_uid, &s_uid);
+         >         printf("R: %d E: %d S: %d\n", r_uid, e_uid, s_uid);
+         >         return 0;
+         > }
+         > ```
+         > ```shell
+         > $ gccs main.c && ./a.out
+         > 0
+         > R: 1000 E: 1000 S: 1000
+         > ```
+
+         The third rule provides a way for set-UID-root program to permanently
+         drop its priviledge. `euid` is a value other than old EUID, so save
+         set-UID is also updated to it.
+
+         ```c
+         setreuid(getuid(), getreuid);
+         ```
+
+   5. Retrieve RUID, EUID, saved set-UID (Linux-specific)
+      
+      ```c
+      #define _GNU_SOURCE         /* See feature_test_macros(7) */
+      #include <unistd.h>
+
+      int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+      int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
+      ```
+   6. Modify RUID, EUID, saved set-UID
+      
+      ```c
+      #define _GNU_SOURCE         /* See feature_test_macros(7) */
+      #include <unistd.h>
+
+      int setresuid(uid_t ruid, uid_t euid, uid_t suid);
+      int setresgid(gid_t rgid, gid_t egid, gid_t sgid);
+      ``` 
+
+      Spicify `-1` as the argument to make that ID unchanged. 
+
+      1. A unpriviledged process can set any of its RUID, EUID and saved set-UID
+         to any of the values currently in its current RUID, EUID, and saved set-UID.
+      2. A priviledged process can make arbitrary changes to these IDs.
+      3. The file-system UID always have the same value as EUID.
+
+   7. Retrieve file-system UID (Linux-specific)
+
+      All the syscalls change EUID/EGID will change fs UID and GID. But these
+      is still a dedicated syscall for changing **just** file-system UID/GID
+
+      ```c
+      #include <sys/fsuid.h>
+
+      int setfsuid(uid_t fsuid);
+      ```
+
+      > These syscalls always return the peivious file-system UID or GID regradless
+      > of if it succeeds. (no error checking)
+
+      Rules:
+      1. A unpriviledged process can change its fs-UID to its current 
+         RUID/EUID/SUID/fs-UID
+      2. A priviledged process can make arbitrary changes.
+
+   8. Retrieve supplementary GIDs
+      
+      ```c
+      #include <unistd.h>
+
+      int getgroups(int size, gid_t list[]);
+      ```
+
+      A program should allocate an array of adequate size for storing the result.
+      If the size is too small, an error will occur. To avoid this, one can use
+      the max number of groups constant `NGROUPS_MAX`:
+
+      ```c
+      #include <limit.h>
+      gid_t group_list[NGROUP_MAX+1];
+      getgroups(NGROUP_MAX+1, group_list);
+      ```
+
+      Or we can obtain this limitnation at runtime:
+      ```c
+      sysconf(SSC_NGROUP_MAX)
+      ```
+
+      If `size` is set `0`, then `list` remains unchanged and this function
+      returns the current size of this group list.
+
+      ```c
+      int cur_grp_size = getgroups(0, NULL);
+      ```
+   9. Modify supplementary GIDs 
+
+      A **priviledged** process can change its supplementary GIDs
+
+      ```c
+      #include <grp.h>
+
+      // Replaces the process's supplementary GIDs with `list`
+      int setgroups(size_t size, const gid_t *list);
+      ```
+
+      ```c
+      #include <sys/types.h>
+      #include <grp.h>
+
+      // construct a list by reading all groups of which `user` is a member
+      // `group` is also added to this list.
+      // This syscall is typically used by login(1)
+      int initgroups(const char *user, gid_t group);
       ```
