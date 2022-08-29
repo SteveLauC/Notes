@@ -210,7 +210,7 @@
    historical problem (page 171). And nowadays, this problem has alredy been 
    resolved so there is no need to mention these two specific IDs.
 
-7. Supplementary goup IDs
+7. Supplementary group IDs
 
    This is a set of additional groups to which a process belongs. Login shell
    obtains its supplementary group IDs from `/etc/group` (check out 
@@ -470,6 +470,13 @@
       Rules:
       1. A unpriviledged process can change its fs-UID to its current 
          RUID/EUID/SUID/fs-UID
+
+         > We can use this rule to retrieve fs UID
+         >
+         > ```c
+         > // run in a unpriviledged process
+         > uid_t fs_uid = setfsuid(0);
+         > ```
       2. A priviledged process can make arbitrary changes.
 
    8. Retrieve supplementary GIDs
