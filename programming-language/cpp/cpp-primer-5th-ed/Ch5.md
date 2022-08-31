@@ -37,45 +37,45 @@
      } else {
        return a;
      }
-  }
-  ```
+   }
+   ```
 
-  感觉着，一个函数如果要出错就可以`throw`，然后在其调用处可以使用`try`将其包裹，
-  如果函数真的`throw`了，那么就会被`catch`到；如果没有`throw`，就会正常执行
+   感觉着，一个函数如果要出错就可以`throw`，然后在其调用处可以使用`try`将其包裹，
+   如果函数真的`throw`了，那么就会被`catch`到；如果没有`throw`，就会正常执行
   
-  类比rust的话
+   类比rust的话
 
-  ```Rust
-  fn main() {
-      let a: i32 = -1;
-      let b: i32 = 9;
-  
-      let res: i32;
-  
-      match max(a, b) {
-          Ok(m) => res = m,
-          Err(msg) => {
-              println!("an error occured: {}", &msg);
-          }
-      }
-  }
-  
-  fn max(a: i32, b: i32) -> Result<i32, String> {
-      if a < 0 || b < 0 {
-          return Err("must be non-negative".to_owned());
-      }
-  
-      if a < b {
-          Ok(b)
-      } else {
-          Ok(a)
-      }
-  }
-  ```
-
-  不过有一点不同的是，如果一个`throw`，在外部没有`try`包裹它，而它真的出错`throw`
-  了，那么整个函数就会崩溃。
-
+   ```Rust
+   fn main() {
+       let a: i32 = -1;
+       let b: i32 = 9;
+   
+       let res: i32;
+   
+       match max(a, b) {
+           Ok(m) => res = m,
+           Err(msg) => {
+               println!("an error occured: {}", &msg);
+           }
+       }
+   }
+   
+   fn max(a: i32, b: i32) -> Result<i32, String> {
+       if a < 0 || b < 0 {
+           return Err("must be non-negative".to_owned());
+       }
+   
+       if a < b {
+           Ok(b)
+       } else {
+           Ok(a)
+       }
+   }
+   ```
+ 
+   不过有一点不同的是，如果一个`throw`，在外部没有`try`包裹它，而它真的出错`throw`
+   了，那么整个函数就会崩溃。
+ 
 2. catch 具体的错误类
 
    上面的cpp代码catch的是`std::exception`，这是最大的那个父类。可以在catch里面

@@ -289,3 +289,165 @@
     $ g++s main.cpp && ./a.out
     1 2 3 4 5 6 
     ```
+
+15. emplace操作
+
+    C++11引入了3个新成员
+
+    ```
+    emplace  -  insert
+    emplace_front - push_front
+    emplace_back - push_back
+    ```
+
+    和他们之前对应的函数不同的是，这些函数是**构造**而不是
+    插入现成的元素。其参数是相应元素的构造函数的参数。
+
+    ```cpp
+    #include <string>
+    #include <vector>
+    #include <iostream>
+    
+    using std::string;
+    using std::vector;
+    using std::cout;
+    using std::endl;
+    
+    struct Person {
+        string name;
+        int32_t age;
+    
+        Person(string name, int32_t age) : name(name), age(age) {
+            cout << "I am constructed:" << endl;
+            cout << this->name;
+            cout << this->age;
+            cout << endl;
+        }
+    };
+    
+    
+    int main() {
+        vector<Person> t;
+        t.emplace_back("steve", 18);
+        return 0;
+    }
+    ```
+
+    ```shell
+    I am constructed:
+    steve18
+    ```
+
+    奇怪的是，下面的代码通不过编译，明明vector有传两个迭
+    代器的构造函数
+
+    ```
+    #include <array>
+    #include <string>
+    #include <vector>
+    #include <iostream>
+    
+    using std::array;
+    using std::string;
+    using std::vector;
+    using std::cout;
+    using std::endl;
+    
+    int main() {
+        array<int32_t, 1> a = {1};
+        vector<int32_t> t;
+        
+        t.emplace_back(a.begin(), a.end());
+        return 0;
+    }
+    ```
+
+    ```
+    In template: excess elements in scalar initializer
+    ```
+
+16. List的迭代器没有`+=operator`运算符
+
+    [这里](https://stackoverflow.com/a/43637819/14092446)有一个表格，很好
+
+    上面问题ac的答案说list的iterator是`BirdirectionalIterator`，所
+    以不支持`+=`的操作，然而好像并没有说为什么不支持这样
+    的操作
+
+17. 访问容器的元素
+
+    顺序容器(包含array)都有一个`front()`成员函数，除了`forward_list`
+    之外的容器都有一个`back()`函数。
+
+    这两个函数会返回最前和最后元素的可变或不可变引用
+
+    NOTE: 对一个空容器调用`front()/end()`是UB。
+
+    正确的用法是在调用`front()/end()`前先检查容器是否非空
+
+    ```cpp
+    if (!c.empty()) {
+        c.front();
+        c.end();
+    }
+    ```
+
+    还有一个访问的操作是使用`operator[]`， 如果越界就是UB。
+    应该使用`.at(idx)`，这样越界会抛出`our_of_range`的异常。
+
+    ```cpp
+    int main() {
+        vector<int32_t > a = {1};
+        try {
+            cout << a.at(10);
+        // 这里直接使用的`std::exception`的子类
+        }catch (const std::out_of_range& invalid_index) {
+            cout << invalid_index.what() << endl;
+        }
+        return 0;
+    }
+    ```
+
+    ```shell
+    $ ./a.out
+    vector::_M_range_check: __n (which is 10) >= this->size() (which is 1)
+    ```
+
+    上面的这4种操作返回的都是容器中元素的引用。如果容器
+    是const的，则返回const引用；若不是，则返回普通引用。
+    
+    > 有点死板阿，如果引用作右值的话不就只读就可以了吗？
+    > `front()`和`end()`要是把权限分开的话感觉比较好
+
+18. 删除容器中的元素
+
+    > array因为是固定大小，所以没有这些API
+    >
+    > forward_list有特殊的`std::erase, std::erase_if (filter)`
+    > vector与string只支持pop_back()操作，因为pop前面的不高效
+
+    ```cpp
+    void pop_back(); // 删除尾部的元素 若容器为空,UB
+    void pop_front(); // 删除首部的元素 若容器为空UB
+    iterator erase( iterator pos ); // 删除`pos`的元素，返回其后的迭代器 pos是end()UB
+    iterator erase( iterator first, iterator last ); // 删除[first, last)的元素，返回其后的迭代器
+    void clear(); // 清除容器内的所有元素
+    ```
+
+    > 关于erase的返回值，在写之前可以去[cppreference](https://en.cppreference.com/w/cpp/container/vector/erase)
+    > Return value
+    > 
+    > Iterator following the last removed element.
+    >
+    > * If pos refers to the last element, then the end() iterator is returned.
+    > * If last==end() prior to removal, then the updated end() iterator is returned.
+    > * If [first, last) is an empty range, then last is returned.
+
+    > Rust中的`pop_back`是这样设计的:
+    >
+    > ```rust
+    > pub fn pop(&mut self) -> Option<T>
+    > ```
+    > 用返回值是否为`None`来标识是否删除成功
+
+    > C++和Rust的dequeue都支持`pop_front`和`pop_back`
