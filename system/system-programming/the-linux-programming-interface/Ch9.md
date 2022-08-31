@@ -18,6 +18,7 @@
 2. What are real UID and GID
    
    The real UID and GID identify the user and group to which a process belongs.
+   The owner of that process.
 
    1. A `log in` shell gets its real UID and GID from `/etc/passwd`.
 
@@ -48,7 +49,8 @@
    EUID and EGID, in conjunction with supplementary group IDs, are used to determine
    the permissions granted to a process when performing various operations (i.e. syscalls).
 
-   A process with EUID 0 is a `priviledged process`.
+   A process with EUID 0 is a `priviledged process` and thus can be exempt from
+   many of the permission checks.
 
    Normally, EUID and EGID have the same values as RUID and RGID. But this can
    be changed through:
@@ -383,7 +385,9 @@
 
       If we wanna change only one of these credentials, then we can pass `-1`
       for the other argument.
-      ```c
+      > `uid_t` and `gid_t` are unsigned numbers, so `-1` means the max value.
+
+       ```c
       setreuid(-1, euid); // change EUID
       setreuid(ruid, -1); // change RUID
       ```
@@ -447,6 +451,7 @@
       ``` 
 
       Spicify `-1` as the argument to make that ID unchanged. 
+      > -1 means the max value of `uid_t` and `gid_t`
 
       1. A unpriviledged process can set any of its RUID, EUID and saved set-UID
          to any of the values currently in its current RUID, EUID, and saved set-UID.
@@ -492,7 +497,7 @@
       the max number of groups constant `NGROUPS_MAX`:
 
       ```c
-      #include <limit.h>
+      #include <linux/limit.h>
       gid_t group_list[NGROUP_MAX+1];
       getgroups(NGROUP_MAX+1, group_list);
       ```
@@ -508,6 +513,9 @@
       ```c
       int cur_grp_size = getgroups(0, NULL);
       ```
+
+      NOTE: It's unspecified wheterh `EGID` is included in the reulst `list`
+
    9. Modify supplementary GIDs 
 
       A **priviledged** process can change its supplementary GIDs
@@ -519,12 +527,18 @@
       int setgroups(size_t size, const gid_t *list);
       ```
 
+      A process can drop its supplementary GIDs using:
+      ```c
+      setgroups(0, NULL);
+      ```
+
       ```c
       #include <sys/types.h>
       #include <grp.h>
 
-      // construct a list by reading all groups of which `user` is a member
-      // `group` is also added to this list.
+      // set the supplementary GIDs of the calling process to the groups of 
+      // which `user` is a member. `group` is also added to this list.
+      //
       // This syscall is typically used by login(1)
       int initgroups(const char *user, gid_t group);
       ```
