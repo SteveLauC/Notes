@@ -430,7 +430,7 @@
     void pop_back(); // 删除尾部的元素 若容器为空,UB
     void pop_front(); // 删除首部的元素 若容器为空UB
     iterator erase( iterator pos ); // 删除`pos`的元素，返回其后的迭代器 pos是end()UB
-    iterator erase( iterator first, iterator last ); // 删除[first, last)的元素，返回其后的迭代器
+    iterator erase( iterator first, iterator last ); // 删除[first, last)的元素，如果`first==last`什么也不做，返回其后的迭代器
     void clear(); // 清除容器内的所有元素
     ```
 
@@ -441,7 +441,7 @@
     >
     > * If pos refers to the last element, then the end() iterator is returned.
     > * If last==end() prior to removal, then the updated end() iterator is returned.
-    > * If [first, last) is an empty range, then last is returned.
+    > * If [first, last) is an empty range, then last is returned
 
     > Rust中的`pop_back`是这样设计的:
     >
@@ -451,3 +451,89 @@
     > 用返回值是否为`None`来标识是否删除成功
 
     > C++和Rust的dequeue都支持`pop_front`和`pop_back`
+
+    由于`pop`返回`void`，所以如果你要使用这个值的话，必须在`pop`前使用它
+
+19. 容器的各种写操作会不会invalidate迭代器与指针或引用
+    
+    [answer](https://stackoverflow.com/a/54004916/14092446)
+
+    比较好的是，这些写操作的返回值会返回新的合法的迭代器
+
+    ```cpp
+    vector<int32_t> v = {1, 2, 3};
+
+    for (auto i = v.cbegin(); i < v.cend();) {
+        if (*i % 2 == 0) {
+            i = v.erase(i);
+        } else {
+            i += 1;
+        }
+    }
+    ```
+
+    比如cppreference给出的这个，去除容器内的偶数，在erase后,
+    在此处和后面的迭代器都会失效，所以需要更新下`i`。还有
+    就是`cend()`是每次循环都会被更新的，所以不需要我们去
+    手动更新。
+
+20. forward_list的独有的迭代器
+    
+    ```cpp
+    std::forward_list<T,Allocator>::before_begin
+    std::forward_list<T,Allocator>::cbefore_begin
+    ```
+
+    Returns an iterator to the element before the first element of the container.
+    This element acts as a placeholder, **attempting to access it results in 
+    undefined behavior**. The only usage cases are in functions insert_after(),
+    emplace_after(), erase_after(), splice_after() and the increment operator:
+    incrementing the before-begin iterator gives exactly the same iterator as 
+    obtained from begin()/cbegin().
+
+21. forward_list独有的modifier
+
+    ```cpp
+    insert_after (C++11) inserts elements after an element
+    emplace_after (C++11) constructs elements in-place after an element
+    erase_after (C++11) erases an element after an element
+    push_front (C++11) inserts an element to the beginning
+    emplace_front (C++11) constructs an element in-place at the beginning (public member function)
+    pop_front (C++11) removes the first element
+    ```
+
+    和一般的容器不一样，由于单链表的特殊属性，添加一个
+    元素需要改变此元素的前置元素，所以我们的API的名字都
+    是`xx_after`
+
+    `20`说的那两个特别的迭代器就是为了这样的API而设计的
+
+    比如删除`forward_list`中的奇数元素，在学数据结构的时候,
+    在用C的单链表来写这题时，也是用两个指针
+
+    ```cpp
+    forward_list<int32_t> l = {1, 2, 3, 4, 5};
+
+    auto prev = l.cbefore_begin();
+    auto begin = l.cbegin();
+
+    while (begin != l.cend()) {
+        if (*begin % 2 == 1) {
+	    // 注意这里
+            begin = l.erase_after(prev);
+        } else {
+            prev = begin;
+            std::advance(begin, 1);
+        }
+    }
+
+    for (auto const &item: l) {
+        cout << item << " ";
+    }
+    cout << endl;
+    ```
+
+    ```shell
+    $ g++ main.cpp && ./a.out
+    2 4
+    ```
