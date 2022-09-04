@@ -6,8 +6,7 @@
    The core operation of `merge sort` is merging two disjoint ordered array. 
 
    ```rust
-   fn merge<T: Copy + Ord>(a: &mut [T]) {
-       let mid: usize = a.len() / 2;
+   fn merge<T: Copy + Ord>(a: &mut [T], mid: usize) {
        let aux: Vec<T> = a.to_vec();
        let len: usize = a.len();
        let mut i: usize = 0;
@@ -49,7 +48,7 @@
    
        merge_sort(&mut a[..mid]);
        merge_sort(&mut a[mid..]);
-       merge(a);
+       merge(a, mid);
    }
    ```
 
@@ -261,4 +260,56 @@
 #### 5. Bottom-up merge sort
 
 ```rust
+fn bottom_up_merge_sort<T: Copy + Ord>(a: &mut [T]) {
+    if a.len() <= 1 {
+        return;
+    }
+
+    let len: usize = a.len();
+    let mut sub_array_size: usize = 1;
+    while sub_array_size < len {
+        let mut start_index: usize = 0;
+        // still have more than one sub-arrays to sort
+        while len - start_index > sub_array_size {
+            let end_idx: usize = if start_index + 2 * sub_array_size > len {
+                len
+            } else {
+                start_index + 2 * sub_array_size
+            };
+            // merge a[start_index..start_index+sub_array_size] and a[start_index+sub_array_size, end_idx]
+            // NOTE: mid is a relative index number starting from `start_index`
+            merge(&mut a[start_index..end_idx], sub_array_size);
+            // update `start_index` to merge the next sub-arrays
+            start_index = end_idx;
+        }
+        sub_array_size *= 2;
+    }
+}
+```
+```rust
+fn merge<T: Copy + Ord>(a: &mut [T], mid: usize) {
+    let aux: Vec<T> = a.to_vec();
+    let len: usize = a.len();
+    let mut i: usize = 0;
+    let mut j: usize = mid;
+    let mut p: usize = 0;
+
+    while i < mid && j < len {
+        if aux[i] < aux[j] {
+            a[p] = aux[i];
+            i += 1;
+        } else {
+            a[p] = aux[j];
+            j += 1;
+        }
+        p += 1;
+    }
+
+    if i < mid {
+        a[p..len].clone_from_slice(&aux[i..mid]);
+    }
+    if j < len {
+        a[p..len].clone_from_slice(&aux[j..len]);
+    }
+}
 ```

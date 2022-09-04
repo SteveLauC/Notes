@@ -475,7 +475,7 @@
     比如cppreference给出的这个，去除容器内的偶数，在erase后,
     在此处和后面的迭代器都会失效，所以需要更新下`i`。还有
     就是`cend()`是每次循环都会被更新的，所以不需要我们去
-    手动更新。
+    手动更新。(不要保存尾后迭代器)
 
 20. forward_list的独有的迭代器
     
@@ -536,4 +536,56 @@
     ```shell
     $ g++ main.cpp && ./a.out
     2 4
+    ```
+
+22. 改变容器的大小
+    
+    ```cpp
+    void resize( size_type count ); (1)
+    void resize( size_type count, const value_type& value ); (2)
+    ```
+
+    和rust中`std::vec::Vec::resize`是一样的
+
+    ```
+    pub fn resize(&mut self, new_len: usize, value: T)
+    ```
+
+    如果容器的当前大小大于`count`，则直接shrink；如果小于
+    `count`，如果调用的是`1`，则填充默认值，如果是`2`，则填充
+    `value`.
+
+    ```cpp
+    int main() {
+        vector<int32_t > v;
+        v.resize(3);
+    
+        for(const auto& item: v) {
+            cout << item << " ";
+        }
+        cout << endl;
+    }
+    ```
+    ```shell
+    $ g++s main.cpp && ./a.out
+    0 0 0 
+    ```
+
+    > 这个我感觉Rust的API有点傻，在要shrink的情况下仍需要提供`new_value`
+
+23. 管理vector/string容量的成员函数
+
+    ```cpp
+    void shrink_to_fit(); // 请求让cap和size一样大，但不一定成功
+    size_type capacity() const; // 返回容量
+    void reserve( size_type new_cap ); // 让cap大于等于`new_cap`
+    ``` 
+
+    > Rust的`pub fn reserve(&mut self, additional: usize)`和C++中的语义
+    > 是相同的，都是至少分配多少空间
+
+24. string的substr操作
+    
+    ```cpp
+    basic_string substr( size_type pos = 0, size_type count = npos ) const;
     ```
