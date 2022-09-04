@@ -4,8 +4,10 @@
    > time complexity: O(NlogN)
 
    The core operation of `merge sort` is merging two disjoint ordered array. 
+
    ```rust
-   fn merge<T: Copy + Ord>(a: &mut [T], mid: usize) {
+   fn merge<T: Copy + Ord>(a: &mut [T]) {
+       let mid: usize = a.len() / 2;
        let aux: Vec<T> = a.to_vec();
        let len: usize = a.len();
        let mut i: usize = 0;
@@ -37,7 +39,7 @@
    together.
 
    ```rust
-   fn merge_sort<T: Copy + Ord>(a: &mut [T]) {
+   fn top_down_merge_sort<T: Copy + Ord>(a: &mut [T]) {
        // already ordered
        if a.len() <= 1 {
            return;
@@ -47,7 +49,7 @@
    
        merge_sort(&mut a[..mid]);
        merge_sort(&mut a[mid..]);
-       merge(a, mid);
+       merge(a);
    }
    ```
 
@@ -90,14 +92,15 @@
          only the last `lg(N)` layers are memory-allocated. Each layer will 
          allocate `N` items, so that the space used is `lg(N) * N`
 
-         This is a recursive algorithm, what you did above is calculating the total
-         space consumption through the whole execution.
+         This is a recursive algorithm, what you did above is calculating the **total
+         space consumption** through the **whole** execution.
 
          ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-24_20-06-45.jpg)
           
          What you calculated is the area of the `pink area`, but the `green line`
-         is what we actually want. Note: this curse is not exact as the memory
-         consumption is not continuous.
+         (limit of memory usage) is what we actually want. 
+
+	 > Note: this curse is not exact as the memory consumption is not continuous.
 
          CORRECT ANALYSIS: So what is the maximum memory usage during the execution?
          Apparently it should be `N` as we will consume the most memory in our last
@@ -131,8 +134,8 @@
             It's easy to find that `i` or `j` will be added 1 after each compare,
             so `(i+j)-(0+mid)` is the answer. The max value is `N`, in this case,
             when while loop exits, `i` will be `mid` and `j` will be `len`. The min
-            value is `N/2`, in this case, one half is smaller than the other one,
-            so when while loop exits, one of `i` and `j` will reach its threshold 
+            value is `N/2`, in this case, one half is smaller than the other half,
+            so when while loop exits, `i` or `j` will reach its threshold 
             (mid or len), and the other one remains its initial value.
  
             Now that we know the maximum and minimal number of compares used 
@@ -182,17 +185,17 @@
 
             > There is a conslusion that the number of compares is between 
             > `NlgN/2` and `NlgN` (page 272)
-            > But an precise proof is not provided
+            > But a precise proof is not provided
 
          2. the number of array accesses 
             
             At most 6NlgN array accesses to sort an array of length N
         
-            Same process as we analyze the number of compares. First, we calculate
+            Same process as we analyzed the number of compares. First, we calculate
             the max and min number of compares in `merge`:
             1. 2N for copying from `a` to `aux`
             2. 2N for assignment (`a[p] = aux[i];` or `a[p] = aux[j];`)
-            3. the number of compare is in range [N/2, N]. Two accesses for one
+            3. the number of compare is in range [N/2, N]. Two accesses used for one
                compare, so the range for this is [N, 2N].
 
             ```
@@ -234,7 +237,7 @@
       ```
 
       ```rust
-      fn merge_sort<T: Copy + Ord>(a: &mut [T]) {
+      fn top_down_merge_sort<T: Copy + Ord>(a: &mut [T]) {
           // already ordered
           if a.len() <= 1 {
               return;
@@ -254,3 +257,8 @@
       ```
 
       > Most recursive algorithms can be improved by handling small cases differently
+
+#### 5. Bottom-up merge sort
+
+```rust
+```
