@@ -240,6 +240,30 @@
     }
     ```
 
+    又或者从`vector<char>`到string
+
+    ```cpp
+    int main() {
+        vector<char> v = {'a', 'b'};
+        string s;
+        s.assign(v.cbegin(), v.cend());
+        cout << s << endl;
+    }
+    ```
+    直接用构造函数也可以
+
+    ```cpp
+    int main() {
+        vector<char> v = {'a', 'b'};
+        string s(v.cbegin(), v.cend());
+        cout << s << endl;
+    }
+    ```
+
+    > Rust的话，可以用`v.iter().collect<String>()`或者`String::from_iter(v)`
+    > 
+    > 前者的collect其实就是调用的`FromIterator`的`from_iter`，两者是一样的。
+
 13. swap操作是否会invalidate iterator
     
 
@@ -588,4 +612,25 @@
     
     ```cpp
     basic_string substr( size_type pos = 0, size_type count = npos ) const;
+    ```
+
+    如果`pos` > `str.size()`，会抛出`out_of_range`的异常。如果`pos+count`
+    超过了`str.size()`，则只拷贝到字符串的末尾。
+
+25. Rust中的String有`push`和`push_str`
+
+    前者是`push`字符，后者是push &str.
+
+    C++ string有一个单独的`push_back`用来push char到后面，然后还
+    有一个append函数，实现了N多的重载，什么都可以append
+
+26. string的搜索函数
+
+    ```
+    find // 找第一个子串
+    rfind // 找最后一个子串
+    find_first_of // 找到第一个存在于参数字符串的字符的位置
+    find_last_of // 找到最后一个存在于参数字符串的字符的位置
+    find_fist_not_of // find_first_of的相反函数
+    find_last_not_of // find_last_of的相反函数
     ```
