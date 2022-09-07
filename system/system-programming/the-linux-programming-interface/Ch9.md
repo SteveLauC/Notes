@@ -1,7 +1,7 @@
 ### Ch9: Process Credentials
 
-* introduce the purpose of these crdentials
-* syscalls used to retrieve and modify them
+> introduce the purpose of these crdentials and syscalls used to retrieve and 
+> modify them
 
 > $ [man 7 credentials](https://man7.org/linux/man-pages/man7/credentials.7.html)
 > Seems this page lists all the IDs a process can have.
@@ -483,6 +483,8 @@
          > uid_t fs_uid = setfsuid(0);
          > ```
       2. A priviledged process can make arbitrary changes.
+         > For a priviledged process, `setfsuid(0)` can be executed so we can not
+	 > use this to retrieve it. Use `setfsuid(-1)`;
 
    8. Retrieve supplementary GIDs
       

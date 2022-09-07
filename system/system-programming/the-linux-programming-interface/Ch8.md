@@ -1,3 +1,11 @@
+#### Ch8: Users and Groups
+
+> 1. Purpose of introducing Users and Groups
+> 2. `/etc/passwd` and `/etc/group` databases
+> 3. functions for retrieving user and group infos
+> 4. `/etc/shadow` how is password stored (crypt) on Linux 
+> 5. How does the verification happen when you are asked to input your password
+
 1. the primary purpose of user and group IDs is to determine ownership of 
 various system resourses and to control the permissions granted to processes
 accessing those resourses.

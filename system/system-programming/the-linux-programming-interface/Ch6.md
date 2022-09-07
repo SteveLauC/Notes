@@ -1,3 +1,13 @@
+#### Ch6: Processes
+
+> 1. get parent process pid
+> 2. virtual memory layout and page table
+> 3. cli arguments and environment variables
+> 4. `/proc/self/cmdline` and `/proc/self/envrion`
+> 5. functions used to set or get or clear the env vars (setenv/getenv/unsetenv)
+> 6. two jump function: `setjmp` and `longjmp`
+
+
 1. executable file formats: 
 	1. assember output(a.out, this is the file format, not a execatable file name)(obsolete)
 	2. common object file format(COFF)(obsolete)
@@ -197,7 +207,8 @@
       ```
    
    There is an upper limit on the maximum number of bytes that can be stored
-   in the top most area:
+   in the top most area: (see [Ch11](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch11.md): 
+   system limits and options)
 
    ```c
    #include <stdio.h>

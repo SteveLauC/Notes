@@ -1,3 +1,10 @@
+#### Ch7: Memory allocation
+
+> 1. program break: the mechanism behand `malloc`
+> 2. two syscalls used to adjust the program break (brk and sbrk)
+> 3. aligned memory
+> 4. alloca(3) allocate memory on the stack, VLC in C.
+
 1. what is program break
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-08-02_09-40-52.jpg)

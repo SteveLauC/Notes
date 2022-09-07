@@ -543,7 +543,7 @@
 
     while (begin != l.cend()) {
         if (*begin % 2 == 1) {
-	    // 注意这里
+            // 注意这里
             begin = l.erase_after(prev);
         } else {
             prev = begin;
@@ -634,3 +634,64 @@
     find_fist_not_of // find_first_of的相反函数
     find_last_not_of // find_last_of的相反函数
     ```
+
+27. string有一个compare函数，这些函数和c中string.h的`strcmp`很类似
+
+    ```cpp
+    constexpr int compare( const basic_string& str ) const noexcept;
+    constexpr int compare( size_type pos1, size_type count1, const basic_string& str ) const;
+    constexpr int compare( size_type pos1, size_type count1, 
+                           const basic_string& str, size_type pos2, size_type count2 = npos ) const;
+    ```
+
+28. 数字转字符串
+    
+    ```cpp
+    std::string to_string( int value ); (1)        (since C++11)
+    std::string to_string( long value ); (2)        (since C++11)
+    std::string to_string( long long value ); (3)        (since C++11)
+    std::string to_string( unsigned value ); (4)        (since C++11)
+    std::string to_string( unsigned long value ); (5)        (since C++11)
+    std::string to_string( unsigned long long value ); (6)        (since C++11)
+    std::string to_string( float value ); (7)        (since C++11)
+    std::string to_string( double value ); (8)        (since C++11)
+    std::string to_string( long double value ); (9)        (since C++11)
+    ```
+
+29. 字符串转数字
+
+    ```cpp
+    // string to integer
+    // relies on the `strtol` and `strtoll` of C
+
+    int       stoi( const std::string& str, std::size_t* pos = nullptr, int base = 10 );
+    int       stoi( const std::wstring& str, std::size_t* pos = nullptr, int base = 10 );
+    long      stol( const std::string& str, std::size_t* pos = nullptr, int base = 10 );
+    long      stol( const std::wstring& str, std::size_t* pos = nullptr, int base = 10 );
+    long long stoll( const std::string& str, std::size_t* pos = nullptr, int base = 10 );
+    long long stoll( const std::wstring& str, std::size_t* pos = nullptr, int base = 10 );
+    ```
+
+    ```cpp
+    // string to floating numbers
+    // relies on the `strtod`, `strtof` and `strtold` of C
+
+    float       stof( const std::string& str, std::size_t* pos = nullptr );
+    float       stof( const std::wstring& str, std::size_t* pos = nullptr );
+    double      stod( const std::string& str, std::size_t* pos = nullptr );
+    double      stod( const std::wstring& str, std::size_t* pos = nullptr );
+    long double stold( const std::string& str, std::size_t* pos = nullptr );
+    long double stold( const std::wstring& str, std::size_t* pos = nullptr );
+    ```
+
+30. 容器适配器 (container adapter)
+
+    1. std::stack (#include <stack>)
+    2. std::queue (#include <queue>)
+    3. std::priority_queue (#include <priority_queue>)
+
+    本质上，容器迭代器就是用那些顺序容器实现的另外一些
+    数据结构。就比如，用vector实现stack
+
+
+31. 在C++里面，`for(item: c)`貌似也是迭代器的语法糖
