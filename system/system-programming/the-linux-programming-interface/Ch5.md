@@ -332,11 +332,8 @@
 16. `/dev/fd`
 
     Ther kernel maintains such a diretory for each process using soft link(link
-    to `/proc/self/fd`, which is also a soft link linking to `/proc/PID/fd`)
+    to `/proc/self/fd`, which is also a soft link to `/proc/PID/fd`)
     The files under this directory is named `n` where n is an open file descriptor.
-
-    > `/dev/stdin|/dev/stdout|/dev/stderr` are provided as soft links respectively
-    to `fd/0|1|2`
 
     If we open such a file using `fd = open()` then we are actually duplicating it.
 
@@ -345,6 +342,37 @@
     // is equivalent to 
     fd = dup(0);
     ```
+
+    ```shell
+    $ cd /dev/fd
+    $ l
+    Permissions Size User  Group Date Modified Name
+    lrwx------@   64 steve steve  8 Sep 06:18  0 -> /dev/pts/8
+    lrwx------@   64 steve steve  8 Sep 07:26  1 -> /dev/pts/8
+    lrwx------@   64 steve steve  8 Sep 07:26  2 -> /dev/pts/8
+    lrwx------@   64 steve steve  8 Sep 07:26  10 -> /dev/pts/8
+    
+    $ cd ..
+    $ l|grep fd
+    lrwxrwxrwx@     13 root  root     8 Sep 06:16  fd -> /proc/self/fd
+
+    $ l stdin
+    Permissions Size User Group Date Modified Name
+    lrwxrwxrwx@   15 root root   8 Sep 06:16  stdin -> /proc/self/fd/0
+    
+    $ l stdout
+    Permissions Size User Group Date Modified Name
+    lrwxrwxrwx@   15 root root   8 Sep 06:16  stdout -> /proc/self/fd/1
+    
+    $ l stderr
+    Permissions Size User Group Date Modified Name
+    lrwxrwxrwx@   15 root root   8 Sep 06:16  stderr -> /proc/self/fd/2
+    ```
+
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-09-08%2008-29-43.png)
+
+    > For more information about `/proc/self/fd`, 
+    > go [here](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch12.md)
 
 17. weird behavior when `ls` `/proc/self/fd`
    

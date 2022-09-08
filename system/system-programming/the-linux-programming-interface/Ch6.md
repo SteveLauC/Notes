@@ -167,7 +167,7 @@
     
       fn main() {
            let mut cmdline: File = File::open("/proc/self/cmdline").expect("open");
-    
+
            let mut buf: String = String::with_capacity(512);
            cmdline.read_to_string(&mut buf).unwrap();
     
@@ -193,9 +193,9 @@
       
       int main(void)
       {
-	      printf("%s\n", program_invocation_name);
-	      printf("%s\n", program_invocation_short_name);
-	      return EXIT_SUCCESS;
+              printf("%s\n", program_invocation_name);
+              printf("%s\n", program_invocation_short_name);
+              return EXIT_SUCCESS;
       }
       ```
    
@@ -217,8 +217,8 @@
    
    int main(void)
    {
-    printf("%d\n", ARG_MAX);
-    return EXIT_SUCCESS;
+       printf("%d\n", ARG_MAX);
+       return EXIT_SUCCESS;
    }
    ```
    ```shell
@@ -238,34 +238,48 @@
    the content is still the old one.
 
    ```rust
-    use std::{
-        env::{set_var, var},
-        fs::{File, OpenOptions},
-        io::{Read, Seek},
-    };
-    
-    fn main() {
-        let mut f: File = OpenOptions::new()
-            .read(true)
-            .open("/proc/self/environ")
-            .unwrap();
-    
-        let mut buf: String = String::new();
-        f.read_to_string(&mut buf).unwrap();
-    
-        println!("{}", buf.trim().split('\0').count());
-    
-        set_var("new_val", "new_val");
-        assert!(var("new_val").is_ok());
-    
-        buf.clear();
-        print!("\n");
-    
-        f.rewind().unwrap();
-        f.read_to_string(&mut buf).unwrap();
-    
-        println!("{}", buf.trim().split('\0').count());
+   use std::{
+       env::{set_var, var, vars},
+       fs::{File, OpenOptions},
+       io::{Read, Seek},
+   };
+   
+   fn main() {
+       let mut f: File = OpenOptions::new()
+           .read(true)
+           .open("/proc/self/environ")
+           .unwrap();
+   
+       let mut buf: String = String::new();
+       f.read_to_string(&mut buf).unwrap();
+   
+       // remove the tailing '\0'
+       buf.truncate(buf.len() - 1);
+       println!("{} envs from /proc/self/environ", buf.split('\0').count());
+       println!("{} envs from vars()", vars().count());
+   
+       set_var("new_val", "new_val");
+       assert!(var("new_val").is_ok());
+   
+       buf.clear();
+       print!("\n");
+   
+       f.rewind().unwrap();
+       f.read_to_string(&mut buf).unwrap();
+   
+       // remove the tailing '\0'
+       buf.truncate(buf.len() - 1);
+       println!("{} envs from /proc/self/environ", buf.split('\0').count());
+       println!("{} envs from vars()", vars().count());
    }
+   ```
+   ```shell
+   $ cargo r -q
+   88 envs from /proc/self/environ
+   88 envs from vars()
+   
+   88 envs from /proc/self/environ
+   89 envs from vars()
    ```
 
 
@@ -273,12 +287,12 @@
 
    ```c
    int main(int ac, char *av[], char *envp[]) {
-   	char **p = envp;
-	while(*p != NULL) {
-		puts(*p);
-		p += 1;
-	}
-	return 0;
+       char **p = envp;
+       while(*p != NULL) {
+           puts(*p);
+           p += 1;
+           }
+       return 0;
    }
    ```
 
@@ -299,9 +313,9 @@
 
     int main(void) {
         char new_env[] = "a=b";
-	putenv(new_env);
+        putenv(new_env);
         // we are actually modifying the environment variable
-	new_env[0] = 'A'; 
+        new_env[0] = 'A'; 
     }
     // When the stack frame of main is deallocated, the pointer stored in environ
     // becomes a dangling pointer
