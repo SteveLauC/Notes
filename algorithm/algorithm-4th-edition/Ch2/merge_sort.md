@@ -323,5 +323,38 @@ sub_array_size: 8
    
    1. time complexity
       
-      <!-- Use the result of our previous analysis, the number of compares in `merge`
-      is in range [N/2, N]; -->
+      1. the number of compares
+
+         Use the result of our previous analysis, the number of compares comsumed in mergeing 
+         an array with `N` items is in range [N/2, N]
+
+         So in first outer while loop, we try to merge an array of length `2`
+         (sub_array_size=1), and repeat this process `N/2` times. So the number
+         of compares is `N/2 * [2/2, 2] = [N/2, N]`. Similar process applies to
+         second loop, which is `N/4 * [4/2, 4] = [N/2, N]`.
+
+         We will find the number of compares will always have the same value for all
+         ourter while loop, which is `[N/2, N]`. Now the question is how many loops
+         do we have?
+
+         The condition of outer while loop is `sub_array_size < len`, and the evolution
+         of `sub_array_size` is `1, 2, 4, 8, ...`. In the previous example, `N` is `10`,
+         and we have `4` loops, we can infer the number of loops is `F(lgN)`, where 
+         function `F` is used to find out minimal integer which is just bigger than `lgN`.
+
+         So the total number of compares used in bottom-up merge sort is `F(lgN)*[N/2, N]
+         ~[1/2 NlgN, NlgN]`.
+
+      2. the number of accesses
+
+         The number of compares used for merging an array with size `N` is the sum of:
+
+         1. 2N for copying from a to aux
+         2. 2N for assignment (a[p] = aux[i]; or a[p] = aux[j];)
+         3. the number of compare is in range [N/2, N]. Two accesses used for 
+	    one compare, so the range for this is [N, 2N].
+	 
+	 which is `[5N, 6N]`.
+
+	 And for each outer while loop is also `[5N, 6N]`. So the total number of compares
+	 is `[5N, 6N] * F(lgN) ~ [5NlgN, 6NlgN]`.
