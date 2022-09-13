@@ -405,6 +405,14 @@ group IDs(real, effective, saved)
                   struct passwd **pwbufp);
    ```
 
+   > NOTE: these functions are unsafe if we have multiple `setpwent/getpwent/endpwent` 
+   > instances running as `setpwent/endpwent` will modify a global state which
+   > makes instances collide between each other.
+   >
+   > [rust-users impl of these syscalls](https://docs.rs/users/0.11.0/users/fn.all_users.html)
+   >
+   > [related issue in rust-users](https://github.com/ogham/rust-users/issues/34#issuecomment-473574328)
+
 9. retrieve records from the shadow password file
 
    ```c

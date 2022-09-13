@@ -73,6 +73,9 @@
     |O_PATH||
     |O_SYNC or O_FSYNC or O_RSYNC|make file writes synchronous|
 
+    > File writes are asynchronous by default cause the existance of `buffer cache`.
+    > see [Ch13](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch13.md)
+
 6. 5中的`flags`可以被大致分为3组:
     1. file access mode flags: `O_RDONLY/O_WDONLY/O_RDWR` 可以在`fcntl`中使用
     `F_GETFL`(get flag)来拿到

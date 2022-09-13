@@ -1,3 +1,6 @@
+Both `top-down merge sort` and `bottom-up merge sort` are `divide-and-conquer` 
+algorithms
+
 #### 4. top-down merge sort
 
 > spatial complexity: O(N)  
@@ -32,6 +35,11 @@ fn merge<T: Copy + Ord>(a: &mut [T], mid: usize) {
     }
 }
 ```
+
+> The `mid` argument can be omitted when used just for `top-down merge sort`
+> cause it will always be `a.len()/2`. For `bottom-down merge sort`, `mid`
+> needs to be manually passed cause the lenght of left half and right half
+> can be different.
 
 Merge sort is recursive, if you wanna sort a big array, you have to sort the
 left half side, then sort the right half side, and combine these two parts
@@ -352,9 +360,19 @@ sub_array_size: 8
          1. 2N for copying from a to aux
          2. 2N for assignment (a[p] = aux[i]; or a[p] = aux[j];)
          3. the number of compare is in range [N/2, N]. Two accesses used for 
-	    one compare, so the range for this is [N, 2N].
-	 
-	 which is `[5N, 6N]`.
+            one compare, so the range for this is [N, 2N].
+         
+         which is `[5N, 6N]`.
 
-	 And for each outer while loop is also `[5N, 6N]`. So the total number of compares
-	 is `[5N, 6N] * F(lgN) ~ [5NlgN, 6NlgN]`.
+         And for each outer while loop is also `[5N, 6N]`. So the total number of compares
+         is `[5N, 6N] * F(lgN) ~ [5NlgN, 6NlgN]`.
+
+   2. spatial complexity:
+      
+      The analysis of spatial complexity for `bottom-up merge sort` is same as the 
+      previous one for `top-down merge sort`.
+
+
+When the array lenght is a power of 2, `top-down merge sort` and 
+`bottom-up merge sort` perform precisely same amount of compares and accesses, just
+in a different order.
