@@ -66,15 +66,18 @@
     |O_APPEND|writes are always appended to end of file|
     |O_ASYNC| generate a signal when I/O is possible|
     |O_DIRECT |FILE I/O bypasses buffer (kernel) cache|
-    |O_DSYNC|provide synchronized I/O data intergrity|
+    |O_DSYNC|provide `synchronized I/O data intergrity`|
     |O_LARGEFILE|used on 32-bit systems to open large files|
     |O_NOATIME| don't update atime on read(2)|
     |O_NONBLOCK or O_NDELAY| open in non-blocking mode|
     |O_PATH||
-    |O_SYNC or O_FSYNC or O_RSYNC|make file writes synchronous|
+    |O_SYNC or O_FSYNC(just an alias to O_SYNC ) or O_RSYNC (O_RSYNC is not supported under Linux, just an alias to O_SYNC)|make file writes synchronous (synchronized I/O file integrity completion)|
 
     > File writes are asynchronous by default cause the existance of `buffer cache`.
-    > see [Ch13](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch13.md)
+    >
+    > To find out what are `synchronized I/O data integrity completion` and 
+    > `synchronized I/O file integrity completion`, see 
+    > [Ch13: 6](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch13.md)
 
 6. 5中的`flags`可以被大致分为3组:
     1. file access mode flags: `O_RDONLY/O_WDONLY/O_RDWR` 可以在`fcntl`中使用
