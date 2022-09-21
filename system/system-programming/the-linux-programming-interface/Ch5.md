@@ -90,8 +90,10 @@
    
    * the per-process file descriptor table
    * system-wide table of open file descriptions
-   > A table of all the open files
+     > A table of all the open files
    * file system i-node table
+     > For more info about i-node table, see 
+     > [Ch14: 5/6](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch14.md)
 
    ![illustration](https://github.com/SteveLauC/pic/blob/main/relation_between_fd_and_open_files.jpeg)
 
