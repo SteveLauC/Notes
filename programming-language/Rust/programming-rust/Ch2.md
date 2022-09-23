@@ -1,5 +1,10 @@
 1. rustc用来编译代码，rustdoc用来编译文档，但是我们通过让cargo来调用他们。
 
+   ```shell
+   $ cargo b
+   $ cargo doc
+   ```
+
 2. unlike c and cpp, in which assertions can be skipped, Rust always checks
    assertions regardless of the how the programm was compiled. There is also
    a `debug_assert!` macro, whose assertions are skipped when the programm is
@@ -65,7 +70,8 @@
    在堆上进行了额外的内存分配。
 
 10. 字符串的寻找
-    str提供了`find`和`rfind`两种方法，可以返回子串在母串的最左和最右的第一个字符
+
+    str提供了`find`和`rfind`两种方法，可以返回子串在母串的最左和最右的第一个字节
     的索引值.
 
     ```rust
@@ -80,7 +86,64 @@
     where
         P: Pattern<'a>,
     ```
+
+    or you can use `position/rposition` exposed by `Iterator`:
+    
+    ```rust
+    fn main() {
+        let str = "hello";
+        let left_find_res = str.chars().position(|item| item == 'l');
+        let right_find_res = str.chars().rposition(|item| item == 'l');
+    
+        println!("{:?} {:?}", left_find_res, right_find_res);
+    }
+    ```
+
+    ```shell
+    $ cargo b
+    error[E0277]: the trait bound `Chars<'_>: ExactSizeIterator` is not satisfied
+        --> src/main.rs:4:38
+         |
+    4    |     let right_find_res = str.chars().rposition(|item| item == 'l');
+         |                                      ^^^^^^^^^ the trait `ExactSizeIterator` is not implemented for `Chars<'_>`
+         |
+         = help: the following other types implement trait `ExactSizeIterator`:
+                   &mut I
+                   Args
+                   ArgsOs
+                   ArrayChunks<'_, T, N>
+                   ArrayChunksMut<'_, T, N>
+                   ArrayWindows<'_, T, N>
+                   Box<I, A>
+                   Chunks<'_, T>
+                 and 109 others
+    note: required by a bound in `rposition`
+        --> /home/steve/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:2879:23
+         |
+    2879 |         Self: Sized + ExactSizeIterator + DoubleEndedIterator,
+         |                       ^^^^^^^^^^^^^^^^^ required by this bound in `rposition`
+    
+    For more information about this error, try `rustc --explain E0277`.
+    error: could not compile `rust` due to previous error
+    ```
+
+    `position` can be used but `rposition` needs the iterator to be 
+    `ExactSizeIterator` and `DoubleEndedIterator`
+
+    ```rust
+    fn rposition<P>(&mut self, predicate: P) -> Option<usize>
+    where
+        P: FnMut(Self::Item) -> bool,
+        Self: ExactSizeIterator + DoubleEndedIterator, 
+    ```
+
+
 11. 当我们在`cargo.toml`中指明版本是`1`时，cargo会自动帮我们选出在`2`之前的最新版本
     因为`2`的主版本号变动了，所以crate作者可以引入不兼容的API。
 
+    semantic versioning
+
 12. 在终端实现彩色的输出，有一个`text-colorizer`的crate可以帮忙做到。
+
+13. `std::debug_assert!()` just like `assert`, but will only be evaluated in 
+    development build.
