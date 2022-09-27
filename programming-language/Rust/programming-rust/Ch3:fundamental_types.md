@@ -85,7 +85,8 @@
    2. Wrapping operations
 
       When the result can not be represented in that type, module it and return.
-      This is the default behavior in release build.
+
+      > This is the default behavior in release build.
 
    3. Saturating operations
 
@@ -110,8 +111,8 @@
 
    4. overflowing operations
 
-      Overflowing operations return a tuple (T, bool), where `T` is the wrapping
-      value of that operation, the `bool` value is used to indicate whether overflow
+      Overflowing operations return a tuple (T, bool), where `T` is the **wrapping
+      value** of that operation, the `bool` value is used to indicate whether overflow
       happens or not.
    
       ```rust
@@ -135,7 +136,7 @@
    like `is_subnormal()` to check if a float belongs to the subnormal (subset of
    denormalized numbers) category.
 
-   > Currently IDK what are subnormal number actually.
+   > Currently IDK what are subnormal numbers actually.
 
    > We don't have `ZERO` and `NEG_ZERO` in Rust, but in the underlying 
    > binary representation, they are different.
@@ -195,7 +196,7 @@
    TAU        The full circle constant (τ)
    ```
 
-5. `as` operator
+6. `as` operator
    
    `as` can only be used with **primitive types**. And can perform either 
    [coercion](https://doc.rust-lang.org/reference/type-coercions.html#coercion-types)
@@ -214,11 +215,19 @@
    * In number conversions, `From` must be loseless (From<i32> for i64). Using `as`
      you can convert a `i64` to a `i32` (forced type conversion).
 
-6. char literal
+7. char literal
   
-   Like byte literal, you can use `'\xHH'` to create a literal from a hex value.
-   Different from byte literal, char literal is not requested to be a valid ASCII
-   (00-7f) character.
+   Like byte literal (note 1), you can use `'\xHH'` to create a literal from a
+   hex value.
+
+   char literal is also requested to be a valid ASCII (00-7f) character.
+   ```
+   error: out of range hex escape
+    --> src/main.rs:5:14
+     |
+   5 |     let c = '\xAA';
+     |              ^^^^ must be a character in the range [\x00-\x7f]
+   ```
 
    A valid Unicode code point always has range `[0x0000, 0xD7FF]` and 
    `[0xE000, 0x10FFFF]`, so you can write a char literal like:
@@ -239,7 +248,7 @@
    ಠ_ಠ
    ```
    
-   `u8` is the only type the `as` operator will convert to `char`:
+   `u8` is the only type the `as` operator (infailable) will convert to `char`:
 
    ```rust
    fn main() {
@@ -251,7 +260,7 @@
    }
    ```
 
-7. some intersting methods on `char`
+8. some intersting methods on `char`
 
    ```rust
    // Encodes this character as UTF-8 into the provided byte buffer, and then 
@@ -281,7 +290,7 @@
    [240, 159, 166, 184]
    ```
 
-8. Tuple can only be indexed by `integer literal`, neither integer variable nor
+9. Tuple can only be indexed by `integer literal`, neither integer variable nor
    `constants` is allowed.
 
    ```rust
@@ -332,7 +341,7 @@
    [1, 2]
    ```
 
-9. `slice::split_at(&sefl, mid: usize)` will panic if `mid` is not a char boundary.
+10. `slice::split_at(&sefl, mid: usize)` will panic if `mid` is not a char boundary.
 
    > Panics if mid is not on a UTF-8 code point boundary, or if it is past the 
    > end of the last code point of the string slice.
@@ -370,7 +379,7 @@
    '我' (bytes 0..3) of `我`', library/core/src/str/mod.rs:127:5
    ```
 
-10. Rust permits an extra tailing `comma` everywhere commas are used:
+11. Rust permits an extra tailing `comma` everywhere commas are used:
     
     ```rust
     let t1 = (1, 2, 3);
@@ -421,7 +430,7 @@
     TypeId { t: 14418814694218527669 } TypeId { t: 9611275717051495212 }
     ```
 
-11. Any type which is allocated on the heap will involve `std::alloc::Allocator`
+12. Any type which is allocated on the heap will involve `std::alloc::Allocator`
 
     ```rust
     // Box
@@ -443,3 +452,213 @@
     { /* private fields */ }
     ```
 
+13. `String` and `Vec` are considered to be smart pointers, and thus they have
+    `std::ops::Deref` and `std::ops::Drop` implemented.
+
+14. array has a lot of slice methods because:
+    
+    > This is **WRONG**
+    >
+    > ```rust
+    > impl<T, const N: usize> AsRef<[T]> for [T; N]
+    > impl<T, const N: usize> AsMut<[T]> for [T; N]
+    > ```
+    > 
+    > ```rust
+    > // Used to do a cheap reference-to-reference conversion.
+    > 
+    > pub trait AsRef<T> 
+    > where
+    >     T: ?Sized, 
+    > {
+    >     fn as_ref(&self) -> &T;
+    > }
+    > 
+    > 
+    > // Used to do a cheap mutable-to-mutable reference conversion.
+    > 
+    > pub trait AsMut<T> 
+    > where
+    >     T: ?Sized, 
+    > {
+    >     fn as_mut(&mut self) -> &mut T;
+    > }
+    > ```
+
+    [A unsized coercion in the `method lookup algorithm`](https://stackoverflow.com/a/58886793/14092446)
+
+    ```rust
+    fn main() {
+        let array = [1, 2, 3];
+        assert!(array.starts_with(&[1]));
+        assert!(array.as_ref().starts_with(&[1]));
+    }
+    ```
+
+14. return type of `Index/IndexMut` on `[T; N]/[T]; Vec<T>`
+
+    The return type are the same `SliceIndex<[T]>::output`
+
+    ```rust
+    // impl for [T]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+    impl<T, I> const ops::Index<I> for [T]
+    where
+        I: ~const SliceIndex<[T]>,
+    {
+        type Output = I::Output;
+    
+        #[inline]
+        fn index(&self, index: I) -> &I::Output {
+            index.index(self)
+        }
+    }
+
+
+    // impl for [T; N]
+    #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+    impl<T, I, const N: usize> const Index<I> for [T; N]
+    where
+        [T]: ~const Index<I>,
+    {
+	// You can see that the implementation for `[T;N]` relies on the impl
+	// for `[T]`
+        type Output = <[T] as Index<I>>::Output;
+    
+        #[inline]
+        fn index(&self, index: I) -> &Self::Output {
+            Index::index(self as &[T], index)
+        }
+    }
+
+
+    // impl for `Vec<T>`
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_on_unimplemented(
+        message = "vector indices are of type `usize` or ranges of `usize`",
+        label = "vector indices are of type `usize` or ranges of `usize`"
+    )]
+    impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
+        type Output = I::Output;
+    
+        #[inline]
+        fn index(&self, index: I) -> &Self::Output {
+            Index::index(&**self, index)
+        }
+    }
+    ```
+
+    And here is a import `trait`: `std::slice::SliceIndex`
+
+    ```rust
+    //  for str
+    impl SliceIndex<str> for Range<usize>
+    impl SliceIndex<str> for RangeFrom<usize>
+    impl SliceIndex<str> for RangeFull
+    impl SliceIndex<str> for RangeInclusive<usize>
+    impl SliceIndex<str> for RangeTo<usize>
+    impl SliceIndex<str> for RangeToInclusive<usize>
+
+    // for slice [T]
+    impl<T> SliceIndex<[T]> for (Bound<usize>, Bound<usize>)
+    impl<T> SliceIndex<[T]> for usize
+    impl<T> SliceIndex<[T]> for Range<usize>
+    impl<T> SliceIndex<[T]> for RangeFrom<usize>
+    impl<T> SliceIndex<[T]> for RangeFull
+    impl<T> SliceIndex<[T]> for RangeInclusive<usize>
+    impl<T> SliceIndex<[T]> for RangeTo<usize>
+    impl<T> SliceIndex<[T]> for RangeToInclusive<usize>
+
+
+    // No wonder `str` and `[T]` are both called `slice`
+    ```
+
+15. range types in `std::ops`
+   
+    ```
+    Range	A (half-open) range bounded inclusively below and exclusively above (start..end).
+    RangeFrom	A range only bounded inclusively below (start..).
+    RangeFull	An unbounded range (..).
+    RangeInclusive	A range bounded inclusively below and above (start..=end).
+    RangeTo	A range only bounded exclusively above (..end).
+    RangeToInclusive	A range only bounded inclusively above (..=end).
+    ``` 
+
+16. The impl of `Index` for `String` manually impl:
+
+    ```rust
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::Range<usize>> for String {
+        type Output = str;
+    
+        #[inline]
+        fn index(&self, index: ops::Range<usize>) -> &str {
+            &self[..][index]
+        }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::RangeTo<usize>> for String {
+        type Output = str;
+    
+        #[inline]
+        fn index(&self, index: ops::RangeTo<usize>) -> &str {
+            &self[..][index]
+        }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::RangeFrom<usize>> for String {
+        type Output = str;
+    
+        #[inline]
+        fn index(&self, index: ops::RangeFrom<usize>) -> &str {
+            &self[..][index]
+        }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::RangeFull> for String {
+        type Output = str;
+    
+        #[inline]
+        fn index(&self, _index: ops::RangeFull) -> &str {
+            unsafe { str::from_utf8_unchecked(&self.vec) }
+        }
+    }
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
+    impl ops::Index<ops::RangeInclusive<usize>> for String {
+        type Output = str;
+    
+        #[inline]
+        fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
+            Index::index(&**self, index)
+        }
+    }
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
+    impl ops::Index<ops::RangeToInclusive<usize>> for String {
+        type Output = str;
+    
+        #[inline]
+        fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
+            Index::index(&**self, index)
+        }
+    }
+    ```
+
+    instead of:
+
+    ```rust
+    impl<I> ops::Index<I> for String
+        where: I: slice::SliceIndex<str>
+    {
+        type Output = <I as slice::SliceIndex<str>>::Output; 
+
+	#[inline]
+	fn index(&self, index: I) -> &Self::Output{
+	    Index::index(&**self, I)
+	}
+    }
+    ```
+
+    perhaps for the reason that `String` is not a kind of slice. They wanna 
+    perserve
