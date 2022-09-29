@@ -495,7 +495,7 @@
     }
     ```
 
-14. return type of `Index/IndexMut` on `[T; N]/[T]; Vec<T>`
+15. return type of `Index/IndexMut` on `[T; N]/[T]; Vec<T>`
 
     The return type are the same `SliceIndex<[T]>::output`
 
@@ -575,7 +575,7 @@
     // No wonder `str` and `[T]` are both called `slice`
     ```
 
-15. range types in `std::ops`
+16. range types in `std::ops`
    
     ```
     Range	A (half-open) range bounded inclusively below and exclusively above (start..end).
@@ -586,7 +586,7 @@
     RangeToInclusive	A range only bounded inclusively above (..=end).
     ``` 
 
-16. The impl of `Index` for `String` manually impl:
+17. The impl of `Index` for `String` manually impl:
 
     ```rust
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -662,3 +662,40 @@
 
     perhaps for the reason that `String` is not a kind of slice. They wanna 
     perserve
+
+18. `std::primitive` module
+
+    This module is basically a `re-exports` of those primitive types.
+
+    Used for explicitly use the primitive types that are possibly shadowed by
+    user programm:
+
+    ```rust
+    #![allow(unused)]
+    struct Foo;
+    type i32 = Foo;
+    
+    fn main() {
+        // error
+        // let i: i32 = 9;
+        let i: std::primitive::i32 = 9;
+    }
+    ```
+
+19. `std::stringify()` macro
+    
+    Turn its arguments into a `&'static str`
+
+    ```rust
+    #![allow(unused)]
+    
+    struct Foo;
+    
+    fn main() {
+	// NOTE: It has no concept of variables
+        let f = Foo;
+        let res = stringify!(1, 3, f);
+    
+        assert_eq!(res, "1, 3, f");
+    }
+    ```
