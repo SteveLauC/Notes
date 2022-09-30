@@ -379,6 +379,34 @@
    '我' (bytes 0..3) of `我`', library/core/src/str/mod.rs:127:5
    ```
 
+   If you wanna subslice a `&str` without runtime panic, use:
+
+   ```rust
+   pub fn get<I>(&self, i: I) -> Option<&<I as SliceIndex<str>>::Output>
+   where
+       I: SliceIndex<str>, 
+   
+   pub fn get_mut<I>(&mut self, i: I) -> Option<&mut <I as SliceIndex<str>>::Output>
+   where
+       I: SliceIndex<str>, 
+   ```
+
+   ```rust
+   use std::ops::Range;
+   
+   fn main() {
+       let str = "我";
+   
+       let sub_str = str.get(Range{start: 0, end: 1});
+       assert_eq!(sub_str, None);
+   }
+   ```
+   ```shell
+   $ cargo r -q
+
+   $
+   ```
+
 11. Rust permits an extra tailing `comma` everywhere commas are used:
     
     ```rust
@@ -455,7 +483,18 @@
 13. `String` and `Vec` are considered to be smart pointers, and thus they have
     `std::ops::Deref` and `std::ops::Drop` implemented.
 
-14. array has a lot of slice methods because:
+14. array can use a lot of slice methods because, and you can put a ref to array
+    where `slice` is expected.
+
+    > ```rust
+    > array.slice_method()
+    > ```
+    >
+    > ```rust
+    > fn foo<T>(x: &[T]){}
+    > let arr = [T, T, T];
+    > foo(&arr);
+    > ```
     
     > This is **WRONG**
     >
@@ -486,14 +525,11 @@
     > ```
 
     [A unsized coercion in the `method lookup algorithm`](https://stackoverflow.com/a/58886793/14092446)
+    and [unsized coercions](https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions) 
 
-    ```rust
-    fn main() {
-        let array = [1, 2, 3];
-        assert!(array.starts_with(&[1]));
-        assert!(array.as_ref().starts_with(&[1]));
-    }
-    ```
+    `Vec` also has the same functionality as `array` due to the `Deref` and 
+    [`Coercion types`](https://doc.rust-lang.org/reference/type-coercions.html#coercion-types)
+
 
 15. return type of `Index/IndexMut` on `[T; N]/[T]; Vec<T>`
 
@@ -523,8 +559,8 @@
     where
         [T]: ~const Index<I>,
     {
-	// You can see that the implementation for `[T;N]` relies on the impl
-	// for `[T]`
+        // You can see that the implementation for `[T;N]` relies on the impl
+        // for `[T]`
         type Output = <[T] as Index<I>>::Output;
     
         #[inline]
@@ -578,12 +614,12 @@
 16. range types in `std::ops`
    
     ```
-    Range	A (half-open) range bounded inclusively below and exclusively above (start..end).
-    RangeFrom	A range only bounded inclusively below (start..).
-    RangeFull	An unbounded range (..).
-    RangeInclusive	A range bounded inclusively below and above (start..=end).
-    RangeTo	A range only bounded exclusively above (..end).
-    RangeToInclusive	A range only bounded inclusively above (..=end).
+    Range        A (half-open) range bounded inclusively below and exclusively above (start..end).
+    RangeFrom        A range only bounded inclusively below (start..).
+    RangeFull        An unbounded range (..).
+    RangeInclusive        A range bounded inclusively below and above (start..=end).
+    RangeTo        A range only bounded exclusively above (..end).
+    RangeToInclusive        A range only bounded inclusively above (..=end).
     ``` 
 
 17. The impl of `Index` for `String` manually impl:
@@ -653,10 +689,10 @@
     {
         type Output = <I as slice::SliceIndex<str>>::Output; 
 
-	#[inline]
-	fn index(&self, index: I) -> &Self::Output{
-	    Index::index(&**self, I)
-	}
+        #[inline]
+        fn index(&self, index: I) -> &Self::Output{
+            Index::index(&**self, I)
+        }
     }
     ```
 
@@ -667,12 +703,13 @@
 
     This module is basically a `re-exports` of those primitive types.
 
-    Used for explicitly use the primitive types that are possibly shadowed by
+    Used for explicitly using the primitive types that are possibly shadowed in
     user programm:
 
     ```rust
     #![allow(unused)]
     struct Foo;
+    // here, we redefine `i32` to type `Foo`
     type i32 = Foo;
     
     fn main() {
@@ -682,9 +719,12 @@
     }
     ```
 
-19. `std::stringify()` macro
+19. `std::stringify()` and `std::concat()`
     
-    Turn its arguments into a `&'static str`
+    * stringify: turn the `code string` between `()` into a static str.
+
+    * concat: concatenate the `literals` into a static str.
+      > the arguments can only be `literals`.
 
     ```rust
     #![allow(unused)]
@@ -692,10 +732,208 @@
     struct Foo;
     
     fn main() {
-	// NOTE: It has no concept of variables
+        // NOTE: It has no concept of variables
         let f = Foo;
         let res = stringify!(1, 3, f);
     
         assert_eq!(res, "1, 3, f");
+    }
+    ```
+
+    ```rust
+    fn main() {
+        println!("{}", stringify!(1, 2, 3));
+        println!("{}", concat!(1, 2, 3));
+    }
+
+    // 1, 2, 3
+    // 123
+    ```
+
+    ```rust
+    struct Foo;
+    fn main() {
+        let f = Foo;
+        println!("{}", concat!(1, 2, 3, f));
+    }
+    ```
+    ```shell
+    error: expected a literal
+     --> src/main.rs:4:37
+      |
+    4 |     println!("{}", concat!(1, 2, 3, f));
+      |                                     ^
+      |
+      = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+    
+    error: could not compile `rust` due to previous error
+    ```
+
+20. byte string (&[u8; N])
+
+    A string literal with the `b` prefix is a `byte string`:
+
+    ```rust
+    // byte string's actual type is `&[u8; N]`, I cast it to `&[u8]`
+
+    fn main() {
+        let byte_string = b"hello world" as &[u8];
+        let res = <[u8; 11] as TryFrom<&[u8]>>::try_from(byte_string).unwrap();
+        println!("{:?}", res);
+    }
+    ```
+
+    And `Raw byte string` starts with `br`
+
+    ```rust
+    fn main() {
+        let raw_byte_string = br"\n\n";
+        println!("{}", std::str::from_utf8(raw_byte_string).unwrap());
+    }
+    ```
+    ```shell
+    $ cargo r -q
+    \n\n
+    ```
+
+21. the method `len()` on `&str` returns the size of bytes
+     
+    ```rust
+    fn main() {
+        let str = "我";
+    
+        println!("length of bytes: {}", str.len());
+        println!("length of chars: {}", str.chars().count());
+    }
+    ``` 
+
+    ```shell
+    $ cargo r -q
+    length of bytes: 3
+    length of chars: 1
+    ```
+
+22. You can not index a `&str` using a `usize` as there is not impl like:
+
+    ```rust
+    impl SliceIndex<SomeOutput> for usize;
+    ```
+
+    Same goes to `String` as we don't have:
+
+    ```rust
+    impl Index<usize> for String
+    ```
+
+    ```rust
+    fn main() {
+        let mut owned_str = String::from("hello world");
+        let mutable_slice = owned_str.as_str();
+    
+        mutable_slice[0] = 'c';
+        owned_str[0] = 'c';
+    }
+    ```
+
+    ```shell
+    error[E0277]: the type `str` cannot be indexed by `{integer}`
+     --> src/main.rs:5:19
+      |
+    5 |     mutable_slice[0] = 'c';
+      |                   ^ string indices are ranges of `usize`
+      |
+      = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
+      = note: you can use `.chars().nth()` or `.bytes().nth()`
+	      for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+      = help: the trait `SliceIndex<[T]>` is implemented for `usize`
+      = note: required because of the requirements on the impl of `Index<{integer}>` for `str`
+    
+    error[E0277]: the type `String` cannot be indexed by `{integer}`
+     --> src/main.rs:6:5
+      |
+    6 |     owned_str[0] = 'c';
+      |     ^^^^^^^^^^^^ `String` cannot be indexed by `{integer}`
+      |
+      = help: the trait `Index<{integer}>` is not implemented for `String`
+      = help: the following other types implement trait `Index<Idx>`:
+	        <String as Index<RangeFrom<usize>>>
+	        <String as Index<RangeFull>>
+	        <String as Index<RangeInclusive<usize>>>
+	        <String as Index<RangeTo<usize>>>
+	        <String as Index<RangeToInclusive<usize>>>
+	        <String as Index<std::ops::Range<usize>>>
+	        <str as Index<I>>
+    
+    For more information about this error, try `rustc --explain E0277`.
+    error: could not compile `rust` due to 2 previous errors
+    ```
+
+23. type `&mut str` does exist, but it is almost **useless**.
+    
+    `str` is guraanteed to be UTF-8 encoded, and **any operation on UTF-8 will
+    change the size of that string (trigger the reallcoation)**, but `&mut str`
+    can not do this as it is just a borrower.
+
+    Only few methods on `str` has argument `&mut self`, and in between them, only
+    two methods alter that memory in place.
+
+    ```rust
+    pub fn make_ascii_lowercase(&mut self)
+    pub fn make_ascii_uppercase(&mut self)
+    ```
+
+24. comparsion between `String` and `Vec`
+
+    > String is just a UTF-8 encoded `Vec<u8>`
+   
+    ![illustration](https://github.com/SteveLauC/pic/blob/main/photo_2022-09-30_15-17-56.jpg)
+
+25. slice has two methods:
+    
+    1. concat()
+
+       ```rust
+       pub fn concat<Item>(&self) -> <[T] as Concat<Item>>::Output
+       where
+           Item: ?Sized,
+           [T]: Concat<Item>, 
+       ```
+
+       This uses `std::slice::Concat` trait.
+
+    2. join()
+       
+       ```rust
+       pub fn join<Separator>(&self, sep: Separator) -> <[T] as Join<Separator>>::Output
+       where
+           [T]: Join<Separator>, 
+       ```
+
+       Uses `std::slice::Join` trait.
+    
+
+    ```rust
+    fn main() {
+        let v = vec!["a", "b", "c"];
+    
+        println!("{}", v.join("-"));
+        println!("{}", v.concat());
+    }
+    ```
+
+    Currently, there are only three traits in module `std::slice`:
+
+    ```rust
+    ConcatExperimental	Helper trait for [T]::concat.
+    JoinExperimental	Helper trait for [T]::join
+    SliceIndex	A helper trait used for indexing operations.
+    ```
+
+26. `#[derive(Debug)]` is the syntax sugar for that macro
+
+    ```rust
+    // Derive macro generating an impl of the trait Debug.
+    pub macro Debug($item:item) {
+        ...
     }
     ```
