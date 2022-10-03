@@ -51,17 +51,28 @@
        uid_t     st_uid;         /* User ID of owner */
        gid_t     st_gid;         /* Group ID of owner */
        dev_t     st_rdev;        /* Device ID (if target is a device special file) */
+
        off_t     st_size;        /* Total size, in bytes */
-       blksize_t st_blksize;     /* Block size for filesystem I/O */
-       blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
+       // if target is a regular file, then this field is the size of that file
+       // if target is a soft link, then this is the length of the pathname pointed by that link
+       // For a shared memory object, this is the size of that object.
+
+       blksize_t st_blksize;     /* Block size for filesystem `I/O` */
+
+       // Number of 512B blocks allocated for the whole file entry (not just data blks)
+       // see [Ch14:](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch14:file_systems.md)
+       // note 6 and 7.
+       blkcnt_t  st_blocks;    
+       // the unit of 512B is a historical legacy. SUSv3 does not specify this unit.
+       // Most UNIX implementations use 512B, HP-UX11 uses file system-specific units.
 
        /* Since Linux 2.6, the kernel supports nanosecond
           precision for the following timestamp fields.
           For the details before Linux 2.6, see NOTES. */
 
-       struct timespec st_atim;  /* Time of last access */
-       struct timespec st_mtim;  /* Time of last modification */
-       struct timespec st_ctim;  /* Time of last status change */
+       struct timespec st_atim;  /* Time of last access (read) */
+       struct timespec st_mtim;  /* Time of last modification (data/file contents) */
+       struct timespec st_ctim;  /* Time of last status change (metadata) */
 
    #define st_atime st_atim.tv_sec      /* Backward compatibility */
    #define st_mtime st_mtim.tv_sec
@@ -110,8 +121,8 @@
       
       > refer to [uulp Ch3.md: 14](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/understanding-unix-linux-programming/Ch3.md)
 
-      In current implementation, `mode_t` is defined as `u32`. Though it is a
-      32-bit type, only the low 16 bits are used.
+      In current implementation, `mode_t` is defined as `u32`. [Though it is a
+      32-bit type, only the low 16 bits are used](https://stackoverflow.com/q/9602685/14092446)
 
       ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-02_20-54-58.jpg)
 
@@ -209,3 +220,137 @@
                  }
          }
          ```
+
+         > File type `S_IFLNK` is only returned by `lstat(2)` since `stat(2)/fstat(2)`
+         > always follow soft link.
+
+      2. 3 special bits  
+         
+         * set-UID bit
+         * set-GID bit
+         * sticky bit
+
+         ```c
+         #include <sys/stat.h>
+         #include <assert.h>
+         #include <stdio.h>
+         
+         int main(void)
+         {
+                 struct stat buf;
+                 assert(stat("'", &buf) == 0);
+         
+                 mode_t mode = buf.st_mode;
+                 if (mode & S_ISUID) {
+                         printf("set-UID bit is set\n");
+                 }
+         
+                 if (mode & S_ISGID) {
+                         printf("set-GID bit is set\n");
+                 }
+         
+                 if (mode & S_ISVTX) {
+                         printf("sticky bit is set\n");
+                 }
+         }
+         ```
+
+         ```shell
+         $ ls -l \'
+         -rwSr-Sr-T. 1 steve steve 133 Oct  3 07:53 "'"
+ 
+         $ gccs main.c && ./a.out
+         set-UID bit is set
+         set-GID bit is set
+         sticky bit is set
+         ```
+
+      3. permissions for user, group and others
+
+         ```c
+         #include <sys/stat.h>
+         #include <assert.h>
+         #include <stdio.h>
+ 
+         int main(void)
+         {
+                 struct stat buf;
+                 assert(stat("'", &buf) == 0);
+ 
+                 mode_t mode = buf.st_mode;
+ 
+                 {
+                         // owner
+                         printf("Owner: ");
+                         if (mode & S_IRUSR) {
+                                 printf("read ");
+                         }
+                         if (mode & S_IWUSR) {
+                                 printf("write ");
+                         }
+                         if (mode & S_IXUSR) {
+                                 printf("execute");
+                         }
+                         printf("\n");
+                 }
+                 {
+                         // group
+                         printf("Group: ");
+                         if (mode & S_IRGRP) {
+                                 printf("read ");
+                         }
+                         if (mode & S_IWGRP) {
+                                 printf("write ");
+                         }
+                         if (mode & S_IXGRP) {
+                                 printf("execute");
+                         }
+                         printf("\n");
+                 }
+                 {
+                         // other
+                         printf("Other: ");
+                         if (mode & S_IROTH) {
+                                 printf("read ");
+                         }
+                         if (mode & S_IWOTH) {
+                                 printf("write ");
+                         }
+                         if (mode & S_IXOTH) {
+                                 printf("execute");
+                         }
+                         printf("\n");
+                 }
+         }
+         ```
+
+         ```shell
+         $ gccs main.c && ./a.out
+         Owner: read write
+         Group: read
+         Other: read
+         ```
+
+   4. st_blksize is **NOT** the block size of underlying file system. Instead, it
+      is the optimal block size for I/O on files on this file system. 
+
+      This is the development result of Berlekey `fast file system`. 
+
+      Your I/O operation buffer (userspace buffer: std buffer or buffer manually 
+      allcoated by the programmer) size should be at least this value.
+
+      ```rust
+      use nix::sys::stat::stat;
+      
+      fn main() {
+          println!(
+              "file system blk size obtained through `statfs`: {}",
+              stat(".").unwrap().st_blksize
+          );
+      }
+      ```
+
+      ```shell
+      $ cargo r -q
+      file system blk size obtained through `statfs`: 4096
+      ```

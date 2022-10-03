@@ -718,6 +718,7 @@
     ```c
     struct statvfs {
         unsigned long  f_bsize;    /* Filesystem block size */
+
         unsigned long  f_frsize;   /* Fragment size */
         // `f_frsize` and `f_bsize` will have the same value 
 	// under most Linux file systems.
