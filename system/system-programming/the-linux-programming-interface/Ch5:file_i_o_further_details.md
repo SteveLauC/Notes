@@ -181,6 +181,18 @@
     Also note, seeking to `offset` and read/write are performed as an atomic
     operation.
 
+    > Rust: std::os::unix::fs::FileExt
+    >
+    > ```rust
+    > pub trait FileExt {
+    >     fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize>;
+    >     fn write_at(&self, buf: &[u8], offset: u64) -> Result<usize>;
+    >
+    >     fn read_exact_at(&self, buf: &mut [u8], offset: u64) -> Result<()> { ... }
+    >     fn write_all_at(&self, buf: &[u8], offset: u64) -> Result<()> { ... }
+    > }
+    > ```
+
 11. scatter-gather I/O(vectored I/O)
 
 

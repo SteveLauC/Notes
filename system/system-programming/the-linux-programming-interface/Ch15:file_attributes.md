@@ -1,6 +1,9 @@
 #### Ch15: File Attributes
 
 > 1. retrieve file information using `stat(2)/lstat(2)/fstat(2)` from `i-node`
+> 2. `stat` struct
+> 3. get birthtime of a file using `statx(2)`
+> 4. change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens`
 
 1. `stat/fstat/lstat`
    
@@ -8,9 +11,11 @@
    #include <sys/stat.h>
 
    int stat(const char *restrict pathname, struct stat *restrict statbuf);
+   // Rust: std::fs::metadata()
 
    int fstat(int fd, struct stat *statbuf);
    int lstat(const char *restrict pathname, struct stat *restrict statbuf);
+   // Rust: std::fs::symlink_metadata()
    ```
 
    `fstat(2)` is similar to `stat(2)` except the target file is specified using a 
@@ -39,6 +44,10 @@
    > SUSv4 requests `lstat` returns all the fields except `st_mode`.
 
 3. struct stat
+   
+   > In Rust, you should use [`std::os::linux::fs::MetadataExt`](https://doc.rust-lang.org/std/os/linux/fs/trait.MetadataExt.html)
+   > This is slightly different from `std::os::unix::fs::MetadataExt` in the doc
+   > description, though they are the same thing under the hood.
 
    ```c
    // stat struct
@@ -334,6 +343,9 @@
    4. st_blksize is **NOT** the block size of underlying file system. Instead, it
       is the optimal block size for I/O on files on this file system. 
 
+      > The meaning of this field varies across UNIX implementations, at least on
+      > Linux, this is the optimal block size for I/O.
+
       This is the development result of Berlekey `fast file system`. 
 
       Your I/O operation buffer (userspace buffer: std buffer or buffer manually 
@@ -344,7 +356,7 @@
       
       fn main() {
           println!(
-              "file system blk size obtained through `statfs`: {}",
+              "Optimal blk size for I/O: {}",
               stat(".").unwrap().st_blksize
           );
       }
@@ -352,5 +364,194 @@
 
       ```shell
       $ cargo r -q
-      file system blk size obtained through `statfs`: 4096
+      Optimal blk size for I/O: 4096
       ```
+
+4. birthtime (creating time)
+
+   Some BSD systems support this field in struct `stat`. Linux does not.
+
+   But Linux has a extended API `statx(2)`, which is capable of retrieving 
+   this birthtime.
+
+   Currently (2022-10-5), only glibc has a wrapper for this syscall. On other
+   platforms, you have to manually call it through `syscall(2)`.
+
+   ```c
+   int statx(int dirfd, const char *restrict pathname, int flags,
+                 unsigned int mask, struct statx *restrict statxbuf);
+   ```
+
+   ```c
+   struct statx {
+       __u32 stx_mask;        /* Mask of bits indicating
+                                 filled fields */
+       __u32 stx_blksize;     /* Block size for filesystem I/O */
+       __u64 stx_attributes;  /* Extra file attribute indicators */
+       __u32 stx_nlink;       /* Number of hard links */
+       __u32 stx_uid;         /* User ID of owner */
+       __u32 stx_gid;         /* Group ID of owner */
+       __u16 stx_mode;        /* File type and mode */
+       __u64 stx_ino;         /* Inode number */
+       __u64 stx_size;        /* Total size in bytes */
+       __u64 stx_blocks;      /* Number of 512B blocks allocated */
+       __u64 stx_attributes_mask;
+                              /* Mask to show what's supported
+                                 in stx_attributes */
+
+       /* The following fields are file timestamps */
+       struct statx_timestamp stx_atime;  /* Last access */
+       struct statx_timestamp stx_btime;  /* Creation */
+       struct statx_timestamp stx_ctime;  /* Last status change */
+       struct statx_timestamp stx_mtime;  /* Last modification */
+
+       /* If this file represents a device, then the next two
+          fields contain the ID of the device */
+       __u32 stx_rdev_major;  /* Major ID */
+       __u32 stx_rdev_minor;  /* Minor ID */
+
+       /* The next two fields contain the ID of the device
+          containing the filesystem where the file resides */
+       __u32 stx_dev_major;   /* Major ID */
+       __u32 stx_dev_minor;   /* Minor ID */
+       __u64 stx_mnt_id;      /* Mount ID */
+   };
+   ```
+
+   ```c
+   struct statx_timestamp {
+       __s64 tv_sec;    /* Seconds since the Epoch (UNIX time) */
+       __u32 tv_nsec;   /* Nanoseconds since tv_sec */
+   };
+   ```
+
+5. nanosecond accuracy
+
+   Though those time structs `timespec` and `timestamp` have a `nanosecond`
+   field, this is not supported by all file systems.
+
+   For example, `JFS`, `XFS`, `ext4` and `Btrfs` do, but `ext2`, `ext3`
+   and `Reiserfs` do not.
+
+
+6. change atime and mtime using `utime(2)`, `utimes(2)`, `lutimes(2)`, `futimes(2)`,
+   `utimenstat(3)` and `futimens(3)`
+   
+   > This is useful for apps such as `tar(1)` or `unzip(1)`, they use such calls
+   > to reset file timestamps when unpacking an archive.
+
+   1. utime(2)
+
+      > Obsolete
+      
+      > accuracy: second
+
+      ```c
+      #include <utime.h>
+
+      int utime(const char *filename, const struct utimbuf *times);
+      ```
+
+      ```c
+      struct utimbuf {
+          time_t actime;       /* access time */
+          time_t modtime;      /* modification time */
+      };
+      ```
+      
+      Change the atime of `filename` to `times->actime` and `mtime` to 
+      `times->modtime`
+
+      If `times` is `NULL`, then `atime` and `mtime` will be set to the current
+      time.
+
+      NOTE: the accuracy supported by `utime(2)` is 1 second.
+
+   2. utimes(2)
+      
+      > Obsolete
+
+      > accuracy: microsecond
+
+      ```c
+      #include <sys/time.h>
+
+      int utimes(const char *filename, const struct timeval times[2]);
+      ```
+
+      ```c
+      struct timeval {
+          long tv_sec;        /* seconds */
+          long tv_usec;       /* microseconds */
+      };
+      ```
+
+      `utimes(2)` is rather similar to `utime(2)` except that the second argument 
+      changes to an array of `timeval`. Such a change brings higher accuarcy as 
+      `tiemval` has a field for `microsecond`.
+
+      `times[0]` specifies the new `atime`, `times[1]` specifies the new `mtime`.
+
+      > Order of magnitude (time):
+      > (1) second = (10^3) milisecond = (10^6) microsecond = (10^9) nanosecond
+
+      ```c
+      #include <sys/time.h>
+
+      int futimes(int fd, const struct timeval tv[2]);
+      int lutimes(const char *filename, const struct timeval tv[2]);
+      ```
+
+      `futimes(2)` is similar to `utimes(2)`, with the difference that the file
+      whose timestamp is about to be modified is specified via `file descriptor`.
+
+      `lutimes(2)` doesn't follow soft link.
+
+
+   3. utimensat(3) or futimens(3)
+
+      > accuracy: nanosecond
+
+      ```c
+      #include <fcntl.h>            /* Definition of AT_* constants */
+      #include <sys/stat.h>
+
+      int utimensat(int dirfd, const char *pathname,
+                    const struct timespec times[2], int flags);
+      int futimens(int fd, const struct timespec times[2]);
+      ```
+
+      1. utimenstat
+         
+         If `pathname` is a relative path, if `dirfd` is `AT_FDCWD`, then it is relative
+         to the current working directory of the process. Or, it is relative to the 
+         directory specified by `fd`.
+
+         `times[0]` specifies `atime` and `times[1]` specifies `mtime`. If `times` is
+         NULL, then both timestamps will be set to the current time.
+
+         If `tv_nsec` field of any struct is `UTIME_NOW`, then `tv_sec` is ignored and
+         the corresponding timestamp will be set to the current time. If `tv_nsec` field
+         of any struct is `UTIME_OMIT`, the `tv_sec` is ignored and the corresponding
+         timestamp is left unchaged.
+
+         > This is a BIG advantage over `utimes(2)`. Using `utimes(2)`, if you just 
+         > wanna set one timestamp, then you have to retrieve the privious value 
+         > through `stat(2)` or somthing similar. With `utiemnstat(3)`, you can easily
+         > set the `tv_nsec` field of that corresponding timestamp to `UTIME_OMIT`.
+
+         If the `flags` argument is `AT_SYMLINK_NOFOLLOW` and the target file is a soft 
+         link, then this syscall will update the timestamp of that soft link rather than
+         dereferencing it.
+
+      2. futimens(2)
+         
+         Update the timestamps of the target referred to by the open file descriptor `fd`.
+
+         `times[0]` specifies `atime` and `times[1]` specifies `mtime`. If `times` is
+         NULL, then both timestamps will be set to the current time.
+
+         If `tv_nsec` field of any struct is `UTIME_NOW`, then `tv_sec` is ignored and
+         the corresponding timestamp will be set to the current time. If `tv_nsec` field
+         of any struct is `UTIME_OMIT`, the `tv_sec` is ignored and the corresponding
+         timestamp is left unchaged.

@@ -796,7 +796,7 @@
     \n\n
     ```
 
-21. the method `len()` on `&str` returns the size of bytes
+21. the method `len()` on `&str` returns the size in **bytes**
      
     ```rust
     fn main() {
@@ -812,6 +812,11 @@
     length of bytes: 3
     length of chars: 1
     ```
+
+    Same rule applies to the `len()` and `capicity()` of `String`.
+
+    > NOTE: `String` has its own `len()` method, this is not inherented from 
+    > `&str`
 
 22. You can not index a `&str` using a `usize` as there is not impl like:
 
