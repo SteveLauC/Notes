@@ -343,69 +343,69 @@
 
 10. `slice::split_at(&sefl, mid: usize)` will panic if `mid` is not a char boundary.
 
-   > Panics if mid is not on a UTF-8 code point boundary, or if it is past the 
-   > end of the last code point of the string slice.
-
-   If you try to implement it yourself, simply use the `reslicing`, this safety
-   panic will still occur.
-
-   ```rust
-   fn main() {
-       let str = "我";
-       println!("{:?}", split_at(str, 1));
-   }
-   
-   
-   fn split_at(slice: &str, mid: usize) -> (&str, &str) {
-       (&slice[..mid], &slice[mid..])
-   }
-   ```
-
-   ```shell
-   $ cargo r -q
-   thread 'main' panicked at 'byte index 1 is not a char boundary; it is inside 
-   '我' (bytes 0..3) of `我`', library/core/src/str/mod.rs:127:5
-   ```
-
-   ```rust
-   fn main() {
-       let str = "我";
-       println!("{:?}", str.split_at(1));
-   }
-   ```
-   ```shell
-   $ cargo r -q
-   thread 'main' panicked at 'byte index 1 is not a char boundary; it is inside 
-   '我' (bytes 0..3) of `我`', library/core/src/str/mod.rs:127:5
-   ```
-
-   If you wanna subslice a `&str` without runtime panic, use:
-
-   ```rust
-   pub fn get<I>(&self, i: I) -> Option<&<I as SliceIndex<str>>::Output>
-   where
-       I: SliceIndex<str>, 
-   
-   pub fn get_mut<I>(&mut self, i: I) -> Option<&mut <I as SliceIndex<str>>::Output>
-   where
-       I: SliceIndex<str>, 
-   ```
-
-   ```rust
-   use std::ops::Range;
-   
-   fn main() {
-       let str = "我";
-   
-       let sub_str = str.get(Range{start: 0, end: 1});
-       assert_eq!(sub_str, None);
-   }
-   ```
-   ```shell
-   $ cargo r -q
-
-   $
-   ```
+    > Panics if mid is not on a UTF-8 code point boundary, or if it is past the 
+    > end of the last code point of the string slice.
+ 
+    If you try to implement it yourself, simply use the `reslicing`, this safety
+    panic will still occur.
+ 
+    ```rust
+    fn main() {
+        let str = "我";
+        println!("{:?}", split_at(str, 1));
+    }
+    
+    
+    fn split_at(slice: &str, mid: usize) -> (&str, &str) {
+        (&slice[..mid], &slice[mid..])
+    }
+    ```
+ 
+    ```shell
+    $ cargo r -q
+    thread 'main' panicked at 'byte index 1 is not a char boundary; it is inside 
+    '我' (bytes 0..3) of `我`', library/core/src/str/mod.rs:127:5
+    ```
+ 
+    ```rust
+    fn main() {
+        let str = "我";
+        println!("{:?}", str.split_at(1));
+    }
+    ```
+    ```shell
+    $ cargo r -q
+    thread 'main' panicked at 'byte index 1 is not a char boundary; it is inside 
+    '我' (bytes 0..3) of `我`', library/core/src/str/mod.rs:127:5
+    ```
+ 
+    If you wanna subslice a `&str` without runtime panic, use:
+ 
+    ```rust
+    pub fn get<I>(&self, i: I) -> Option<&<I as SliceIndex<str>>::Output>
+    where
+        I: SliceIndex<str>, 
+    
+    pub fn get_mut<I>(&mut self, i: I) -> Option<&mut <I as SliceIndex<str>>::Output>
+    where
+        I: SliceIndex<str>, 
+    ```
+ 
+    ```rust
+    use std::ops::Range;
+    
+    fn main() {
+        let str = "我";
+    
+        let sub_str = str.get(Range{start: 0, end: 1});
+        assert_eq!(sub_str, None);
+    }
+    ```
+    ```shell
+    $ cargo r -q
+ 
+    $
+    ```
 
 11. Rust permits an extra tailing `comma` everywhere commas are used:
     
@@ -849,7 +849,7 @@
       |
       = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
       = note: you can use `.chars().nth()` or `.bytes().nth()`
-	      for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
+              for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
       = help: the trait `SliceIndex<[T]>` is implemented for `usize`
       = note: required because of the requirements on the impl of `Index<{integer}>` for `str`
     
@@ -861,13 +861,13 @@
       |
       = help: the trait `Index<{integer}>` is not implemented for `String`
       = help: the following other types implement trait `Index<Idx>`:
-	        <String as Index<RangeFrom<usize>>>
-	        <String as Index<RangeFull>>
-	        <String as Index<RangeInclusive<usize>>>
-	        <String as Index<RangeTo<usize>>>
-	        <String as Index<RangeToInclusive<usize>>>
-	        <String as Index<std::ops::Range<usize>>>
-	        <str as Index<I>>
+                <String as Index<RangeFrom<usize>>>
+                <String as Index<RangeFull>>
+                <String as Index<RangeInclusive<usize>>>
+                <String as Index<RangeTo<usize>>>
+                <String as Index<RangeToInclusive<usize>>>
+                <String as Index<std::ops::Range<usize>>>
+                <str as Index<I>>
     
     For more information about this error, try `rustc --explain E0277`.
     error: could not compile `rust` due to 2 previous errors
@@ -929,9 +929,9 @@
     Currently, there are only three traits in module `std::slice`:
 
     ```rust
-    ConcatExperimental	Helper trait for [T]::concat.
-    JoinExperimental	Helper trait for [T]::join
-    SliceIndex	A helper trait used for indexing operations.
+    ConcatExperimental        Helper trait for [T]::concat.
+    JoinExperimental        Helper trait for [T]::join
+    SliceIndex        A helper trait used for indexing operations.
     ```
 
 26. `#[derive(Debug)]` is the syntax sugar for that macro

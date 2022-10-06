@@ -3,7 +3,7 @@
 > 1. retrieve file information using `stat(2)/lstat(2)/fstat(2)` from `i-node`
 > 2. `stat` struct
 > 3. get birthtime of a file using `statx(2)`
-> 4. change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens`
+> 4. change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens(3)`
 
 1. `stat/fstat/lstat`
    
@@ -555,3 +555,75 @@
          the corresponding timestamp will be set to the current time. If `tv_nsec` field
          of any struct is `UTIME_OMIT`, the `tv_sec` is ignored and the corresponding
          timestamp is left unchaged.
+
+
+7. When a new file is created, the owner (UID) of that file will be set to the 
+   effective UID of the process that trying to create this file.
+
+   > This `effective UID` should be replaced with `file system UID` to be accurate.
+   > 
+   > For more information, see 
+   > [Ch9: 6](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9:process_credentials.md)
+
+   The GID will be set to the effective GID when system V semantic applies, or 
+   will be set to the GID of the parent directory if BSD semantic applies.
+
+   > `effective GID` should be replaced with `file system GID`.
+
+   > On Linux, the behavior depends on whether the `set-group-ID` mode bit is set
+   > on the parent directory: if that bit  is  set,  then BSD  semantics  apply;
+   > otherwise, System V semantics apply.  For some filesystems, the behavior 
+   > also depends on the bsdgroups and sysvgroups mount options described in mount(8).
+
+   ```rust
+   // Test the default System V behavior
+
+   use nix::unistd::{geteuid, getegid};
+   
+   use std::{env::args, fs::OpenOptions};
+   
+   fn main() {
+       println!("EUID: {} EGID: {}", geteuid(), getegid());
+       let file = args().nth(1).unwrap();
+       OpenOptions::new()
+           .write(true)
+           .create(true)
+           .open(file)
+           .unwrap();
+   }
+   ```
+
+   ```shell
+   $ cargo b -q
+   $ cp target/debug/rust ./
+   $ sudo chown root rust
+   $ sudo chgrp root rust
+   $ sudo chmod +s rust
+
+   $ l rust
+   Permissions Links Size User Group Date Modified Name
+   .rwsr-sr-x@     1 6.2M root root   5 Oct 20:21  rust
+
+   $ ./rust test
+   EUID: 0 EGID: 0
+   $ l test
+   Permissions Links Size User Group Date Modified Name
+   .rw-r--r--@     1    0 root root   5 Oct 20:26  test
+   ```
+
+   ```
+   # Test the BSD semantics
+
+   $ mkdir dir
+   $ chmod g+s dir
+   $ l -i dir
+   Permissions Links Size User  Group Date Modified Name
+   drwxr-sr-x@     1    - steve steve  5 Oct 20:29  dir
+   $ cd dir
+   $ ../rust test
+   EUID: 0 EGID: 0
+
+   $ l test
+   Permissions Links Size User Group Date Modified Name
+   .rw-r--r--@     1    0 root steve  5 Oct 20:29  dir/test
+   ```
