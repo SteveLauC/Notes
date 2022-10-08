@@ -1,9 +1,24 @@
 #### Ch15: File Attributes
 
-> 1. retrieve file information using `stat(2)/lstat(2)/fstat(2)` from `i-node`
+> 1. Retrieve file information using `stat(2)/lstat(2)/fstat(2)` from `i-node`
 > 2. `stat` struct
-> 3. get birthtime of a file using `statx(2)`
-> 4. change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens(3)`
+> 3. Get birthtime of a file using `statx(2)`
+> 4. Change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens(3)`
+>    
+>    You should use `utimensat(3)` or `futimens(3)`
+>
+> 5. The ownership of a new file: EUID, EGID (system V) or GID of parent dir (BSD)
+> 6. Propagation of the `set-GID` bit on directories.
+> 7. Change the ownership using `chown/fchown/lchown/fchownat`
+> 8. Permission on directories
+> 9. Permission checking algorithm
+> 10. Check whether a process has permissions at runtime using `access(2)` or `eaccess(2)`
+>        
+>     > `access(2)` is based on `RUID` and `eaccess(2)` is based on EUID.
+> 11. functionality of `sticky bit`
+> 12. file creatoin mask (umask(1) and umask(2))
+> 13. change file permission (last 12 bits) using `chmod(2)/fchmod(2)/fchmodat(2)`
+> 14. permission of softlink: 0o777
 
 1. `stat/fstat/lstat`
    
@@ -16,6 +31,12 @@
    int fstat(int fd, struct stat *statbuf);
    int lstat(const char *restrict pathname, struct stat *restrict statbuf);
    // Rust: std::fs::symlink_metadata()
+
+   #include <fcntl.h>           /* Definition of AT_* constants */
+   #include <sys/stat.h>
+
+   int fstatat(int dirfd, const char *restrict pathname,
+              struct stat *restrict statbuf, int flags);
    ```
 
    `fstat(2)` is similar to `stat(2)` except the target file is specified using a 
@@ -523,9 +544,11 @@
 
       1. utimenstat
          
-         If `pathname` is a relative path, if `dirfd` is `AT_FDCWD`, then it is relative
+         If `pathname` is a relative path, and if `dirfd` is `AT_FDCWD`, then it is relative
          to the current working directory of the process. Or, it is relative to the 
          directory specified by `fd`.
+
+         If `pathname` is absolute, then `dirfd` is ignored.
 
          `times[0]` specifies `atime` and `times[1]` specifies `mtime`. If `times` is
          NULL, then both timestamps will be set to the current time.
@@ -573,7 +596,7 @@
    > On Linux, the behavior depends on whether the `set-group-ID` mode bit is set
    > on the parent directory: if that bit  is  set,  then BSD  semantics  apply;
    > otherwise, System V semantics apply.  For some filesystems, the behavior 
-   > also depends on the bsdgroups and sysvgroups mount options described in mount(8).
+   > also depends on the `bsdgroups` and `sysvgroups` mount options described in mount(8).
 
    ```rust
    // Test the default System V behavior
@@ -627,3 +650,403 @@
    Permissions Links Size User Group Date Modified Name
    .rw-r--r--@     1    0 root steve  5 Oct 20:29  dir/test
    ```
+
+8. When the `set-GID` bit is set on a directory, then it is also set on its child
+   directories.
+
+   ```shell
+   $ mkdir dir1
+   $ chmod g+s dir1
+   $ l -d dir1
+   Permissions Links Size User  Group Date Modified Name
+   drwxr-sr-x@     1    - steve steve  7 Oct 07:11  dir1
+
+   $ cd dir1
+   $ mkdir dir2
+   $ l -d dir2
+   Permissions Links Size User  Group Date Modified Name
+   drwxr-sr-x@     1    - steve steve  7 Oct 07:13  dir2
+   ```
+
+   This `set-GID` can be propagated.
+
+9. Change the ownership of a file
+
+   > Only  a privileged process (Linux: one with the CAP_CHOWN capability) may 
+   > change the **owner** of a file.  The owner of a file may change the **group** of 
+   > the file to **any group of which that owner is a member**.  A **privileged process
+   > (Linux: with CAP_CHOWN)** may change the group **arbitrarily**.
+   >
+   > If the UID **or** GID of a file is changed, then the `set-UID` **and** `set-GID`
+   > will be discarded (if it has) for security reason. This is actually to 
+   > prevent the case where a normal user has a set-UID program and want to
+   > change the UID of that program to someone with priviledge (e.g., root)
+   > , thereby gaining that priviledge.
+   > 
+   > One exception: When the `group-execute` permission is already turned off
+   > or the file itself is a directory, then changing the ownership of that
+   > file will not turn off the set-GID bit. In both cases, the set-GID is not
+   > used to create a set-GID program, so there is no permission security issue 
+   > here.
+   >
+   > SUSv3 leave it unspecified whether the set-UID and set-GID bits should be
+   > turned off when the ownership is changed by a priviledged user. Linux
+   > does do this.
+
+   > The relationship between the following syscalls are similar to the one in
+   > the `stat()` family.
+   
+   1. chown(2)
+      
+      ```c
+      #include <unistd.h>
+
+      int chown(const char *pathname, uid_t owner, gid_t group);
+      ```
+
+      This call will follow soft link, if `onwer` or `group` is set `-1`, then
+      the corresponding ownership will not be changed.
+
+      > -1 is the maximum value
+
+   2. fchown(2)
+      
+      ```c
+      #include <unistd.h>
+
+      int fchown(int fd, uid_t owner, gid_t group);
+      ```
+
+      If `onwer` or `group` is set `-1`, then the corresponding ownership will 
+      not be changed.
+
+      > -1 is the maximum value
+
+   3. lchown(2)
+      
+      ```c
+      #include <unistd.h>
+
+      int lchown(const char *pathname, uid_t owner, gid_t group);
+      ```
+
+      If `onwer` or `group` is set `-1`, then the corresponding ownership will 
+      not be changed.
+
+      > -1 is the maximum value
+
+      Similar to `chown(2)`, except that this will not follow softlink.
+
+   4. fchownat(2)
+      
+      ```c
+      #include <fcntl.h>           /* Definition of AT_* constants */
+      #include <unistd.h>
+
+      int fchownat(int dirfd, const char *pathname,
+                   uid_t owner, gid_t group, int flags);
+      ```
+
+      If `pathname` is relative, `pathname` is relative to `dirfd`, if `dirfd` 
+      is `AT_FDCWD`, then `pathname` if relative to the current working directory 
+      of the process.
+
+      If pathname is absolute, then dirfd is ignored
+
+      If `onwer` or `group` is set `-1`, then the corresponding ownership will 
+      not be changed.
+
+      > -1 is the max value.
+
+      `flags`:
+
+      * AT_EMPTY_PATH (since Linux 2.6.39): If pathname is an empty string, operate
+        on the file referred to by dirfd (which may have been obtained using the 
+        open(2) O_PATH flag).  In this case, **dirfd can refer to any type of file**, 
+        not just a directory.  If dirfd is AT_FDCWD, the call operates on the current
+        working directory.  This  flag  is  **Linux-specific**; define **_GNU_SOURCE**
+        to obtain its definition.
+
+        > Then why not use `fchown(2)`? the `fd` argument of `fchown(2)` has to be an
+        > open file descriptor. This is not necessarily needed for `fchownat(2)`
+
+      * AT_SYMLINK_NOFOLLOW: If  pathname  is  a symbolic link, do not dereference
+        it: instead operate on the link itself, like lchown().  (By default, fchownat()
+        dereferences symbolic links, like chown().)
+
+        > Same as `lchown`, you should use this whening trying to change the ownership
+        > of a soft link.
+
+
+10. obtain the file descriptor from filepath without opening it
+    
+    `open(2)` has a flag `O_PATH`, for more info, see `man 2 open`.
+
+11. Permissions on directories
+
+    > Permissions on directories use the same schema as files. However, they
+    > meaning changed a lot.
+
+    * read: the contents (directory itself) of the directory can be listed 
+      (e.g., using `ls(1)`), can not access its file because that needs `x`
+      permission.
+      
+      ```shell
+      $ mkdir dir
+      $ touch dir/file
+      $ chmod -x dir
+      $ l -d dir
+      Permissions Links Size User  Group Date Modified Name
+      drw-r--r--@     1    - steve steve  8 Oct 08:26  dir
+
+      # `ls(1)` can read a directory when `r` is given.
+      $ /usr/bin/ls dir
+      file
+
+      # For some distro or shell, `ls` is aliased to include flags (e.g., `-F`)
+      # Such a flag will query the i-nodes of the files in the directory, which needs the `x` permission.
+      $ ls dir
+      ls: cannot access 'dir/file': Permission denied
+      file
+
+      # exa also needs the `x` permission
+      $ exa dir
+      [dir/file: Permission denied (os error 13)]
+      ```
+
+    * write: files can be added or removed in that direcotry
+      
+      > `x` is also necessary to create or delete a file.
+
+    * execute: files within the directory may be accessed. It is also
+      called search permission.
+
+    > For a directory, if you don't have the `x` permission, then all you can do is
+    > using `ls(1)` to read it.
+      
+
+    When accessing a file, execute permission is required on all of the directories
+    listed in the pathname. For example, reading `/home/steve/Desktop/file` will need
+    the execution permission for `/`, `/home`, `/home/steve` and `/home/steve/Desktop`.
+
+    If the current working directory is `/home/steve/dir1`, and we access 
+    `../dir2/file`, we need the `x` permissions for `/home/steve` and `/home/steve/dir2`.
+
+    If we have the `x` permission for a directory and `r` permission for its file,
+    and we know the name of that file, we can read it.
+
+    ```shell
+    $ l -d dir
+    Permissions Links Size User  Group Date Modified Name
+    d-wx--x--x@     1    - steve steve  8 Oct 09:07  dir
+
+    $ cat dir/file
+    hel
+    ```
+
+12. Permission-checking algorithm
+
+    1. If the process is priviledged, then **all permissions** are granted.
+
+       > Not that correst, for a file that is NOT directory, Linux grants execution
+       > permission only if at least one `x` permission is granted to the three categories
+       >
+       > This may not be true on other UNIX implementations.
+
+       ```shell
+       $ touch test
+       $ echo "echo \"hello\"" > test
+       $ chmod 000 test
+       $ sudo ./test
+       sudo: ./test: command not found
+
+       $ chmod o+x test
+       $ sudo ./test
+       hello
+       ```
+
+    2. If the EUID (file system UID on Linux) matches the owner of that file,
+       then the permissions for owners are granted.
+    3. If the EGID (file system GID on Linux) or supplementary groups match
+       the group of that file, then group permissions are granted.
+    4. Otherwise, permissions for others are granted.
+
+    > This check process is executed in order and **stops as soon as the rule
+    > matches**. And this may lead to some unexpected behavior:
+    >
+    > ```shell
+    > $ l test
+    > Permissions Links Size User  Group Date Modified Name
+    > .r--rw-r--@     1    0 steve steve  8 Oct 09:25  test
+    > 
+    > $ echo "hello" > test
+    > warning: An error occurred while redirecting file 'test'
+    > open: Permission denied
+    > ```
+    >
+    > EUID (fs UID to be accurate) matches the owner, then the owner permission
+    > is granted, `r--`, thereby writing failed even though `group` has the write
+    > permission.
+
+    > Linux 2.6 introduces `access control lists (ACL)`, which makes it possible
+    > to define file permissions on a per-user and per-group basis.
+    > for more info, see [Ch17]
+
+13. check whether a process has permission at runtime using `access(2)`
+
+    > This check is based on REAL UID rather than the EFFECTIVE UID.
+    >
+    > This  allows set-user-ID programs and capability-endowed programs to easily 
+    > determine the **invoking user**'s authority.  In other words, access() does not
+    > answer the "can I read/write/execute this file?" question.  It answers a 
+    > slightly different  question:  "(assuming  I'm  a  setuid  binary)  can  the
+    > **user  who  invoked  me** read/write/execute  this file?", which gives set-user-ID
+    > programs the possibility to **prevent malicious users from causing them to read 
+    > files which users shouldn't be able to read** (prevent you from using the super
+    > power gained by set-UID bit).
+    >
+    > For the check based on `EUID`, use `eaccess(3)` or `euidaccess(3)`
+    >
+    > ```c
+    > #define _GNU_SOURCE             /* See feature_test_macros(7) */
+    > #include <unistd.h>
+    >
+    > int euidaccess(const char *pathname, int mode);
+    > int eaccess(const char *pathname, int mode);
+    > ```
+
+    > You have already used this in c to check whether a file exists
+    >
+    > [What's the best way to check if a file exists in C](https://stackoverflow.com/a/230068/14092446)
+
+    ```c
+    #include <unistd.h>
+
+    // follow soft links
+    int access(const char *pathname, int mode);
+
+    #include <fcntl.h>            /* Definition of AT_* constants */
+    #include <unistd.h>
+
+    int faccessat(int dirfd, const char *pathname, int mode, int flags);
+                    /* But see C library/kernel differences, below */
+    ```
+
+    `mode` argument:
+
+    * F_OK: does the file exist?
+    * R_OK: can the file be read?
+    * W_OK: can this file be wrtten?
+    * X_OK: can this file be executed? 
+
+    > This time gap between this syscall and the subsequent file operations means
+    > there is no guarantee that this info is still valid at that time.
+    > 
+    > For example, EUID (fs UID) is changed after `access(2)`.
+    >
+    > For info about modification to `EUID`, see 
+    > [Ch9 8 2](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9:process_credentials.md)
+
+14. functionality of `sticky bit`
+  
+    On some older UNIX implementatoins, `sticky bit` is used to make process faster.
+    Once the `sticky bit` of a executable file is set, then this file is saved to
+    the swap space (sticks in swap), and loads faster on subsequent executions.
+    Mode UNIX impls use a more sophisticated memory management, making this 
+    function of `sticky bit` obsolete.
+
+    > The constants `S_ISVTX`, derives from an alternative name for the sticky
+    > bit, `the saved-text bit`.
+
+    Nowodays, this bit is only useful on directories, and gains a new name:
+    restricted deletion and rename bit. When this bit is set on a dir, unpriviledged
+    users can `unlink (unlink()/rmdir())` or `rename (rename())` files in the
+    directory only if they have `w + x` permisions on that dir **and** own
+    either the file or directory. **This makes it possible to create a directory
+    that is shared by many users, who can create and delete their own files
+    in the directory but can't delete files owned by other users**.
+
+    > `/tmp` is an example
+    >
+    > ```shell
+    > l -d /tmp
+    > Permissions Links Size User Group Date Modified Name
+    > drwxrwxrwt@    25    - root root   8 Oct 15:59  /tmp
+    > ```
+    > Normal users have `w + x` permissions for `/tmp`, but they dont't own `/tmp`.
+    > So for files that are owned by others, they have no ability to delete or 
+    > rename those files.
+
+    
+15. file creation mask 
+    
+    When creating new files or directories, one can explicitly set the permission
+    (last 12 bits in mode_t) in the `mode` argument of `open(2)` or `mkdir(2)`.
+
+    ```c
+    int open(const char *pathname, int flags, mode_t mode);
+    int mkdir(const char *pathname, mode_t mode);
+    ```
+
+    But this is just a request, the actual permission will be `mode - umask`.
+   
+    `umask` is a **process attribute** that specifies which permission bits should
+    always be turned off when creating new files or directories.
+
+    For a new process, this attribute is inherited from its parent process.
+    
+    > What about the first process, I guess it uses the default value `0o222`
+
+    A process can change this inheritance through `umask(2)`.
+
+    > Shell usually has a built-in command `umask`, which is a wrapper around
+    > this syscall.
+
+    ```c
+    #include <sys/stat.h>
+
+    mode_t umask(mode_t mask);
+    // always successful and return the previous umask
+    ```
+
+16. change file permissions using
+
+    > use `fchmodat` rather than other functions
+    
+    ```c
+    #include <sys/stat.h>
+
+    int chmod(const char *pathname, mode_t mode);
+    int fchmod(int fd, mode_t mode);
+
+    #include <fcntl.h>           /* Definition of AT_* constants */
+    #include <sys/stat.h>
+
+    int fchmodat(int dirfd, const char *pathname, mode_t mode, int flags);
+    ```
+
+17. When a soft link is created, all permissoins are enabled by default.
+    And these permissions can NOT be changed.
+
+    ```shell
+    $ ln -s test link
+    $ l link
+    Permissions Links Size User  Group Date Modified Name
+    lrwxrwxrwx@     1    4 steve steve  8 Oct 20:54  link -> test
+
+    $ chmod 666 link
+    $ l link
+    lrwxrwxrwx@     1    4 steve steve  8 Oct 20:54  link -> test
+    ```
+
+    To change the permission of a file, a process should be either:
+    1. priviledged (CAP_FOWNER)
+    2. EUID (fs UID) matches the owner of that file.
+
+    > A security measure: when a process tries to set the permission of a file
+    > and the group of that file does not match EGID or any of supplementary
+    > group IDs, the `set-GID` bit is awlays cleared.
+    >
+    > ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-08_21-15-56.jpg)
+    > 
+    > I think this is a flaw of that BSD semantics

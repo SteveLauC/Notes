@@ -277,6 +277,10 @@
    
    1. fsync(2)
 
+      > **f**ile **sync**hronization
+      >
+      > commit in the units of file
+
       ```c
       #include <unistd.h>
 
@@ -304,6 +308,7 @@
       the `fsync(2)` to reduce the number of disk operation.
 
    3. sync(2)
+     
       
       ```c
       #include <unistd.h>
@@ -311,11 +316,18 @@
       void sync(void);
       ```
 
+      sync() causes **all pending modifications to filesystem metadata and cached 
+      file data** to be written to the underlying filesystems.
+
       Writes **all kernel buffer cache containing updated file information** to the
       disk. Returns only after all data has been transferred to the disk (or its 
       cache) (This is the behavior on Linux). SUSv3 does not request this.
 
    4. syncfs(2) (Linux-specific)
+     
+      > **sync**hronization **f**ile **s**ystem
+      >
+      > commit in the units of file system (partition)
       
       ```c
       #include <unistd.h>
@@ -329,12 +341,17 @@
       > What is the difference between `fsync(2)` and `syncfs(2)`?
       > 
       > Fist, `fsync(2)` is a POSIX syscall, `syncfs(2)` is exclusive to Linux.
+      > Second, `fsync(2)` is file-oriented and `syncfs(2)` is file system-oriented. 
+      > For a single file system, calling syncfs(fd) is equivalent to calling 
+      > fsync(fd) on every file residing on that file system.
       >
-      > [link](https://stackoverflow.com/q/48171855/14092446)
+      > [Does syncfs wait until disc write finished](https://stackoverflow.com/q/20708941/14092446)
+      > 
+      > The comment under this question tells the difference between `fsync` and 
+      > `syncfs`.
       >
-      > Besides from its availablity, IDK if there are any other differences.
-      >
-      > The above question's ac sucks.
+      > [question](https://stackoverflow.com/q/48171855/14092446)
+      > The above question's ac is not correct.
 
 8. Performance impact of synchronous `write(2)`
 
