@@ -19,6 +19,8 @@
 > 12. file creatoin mask (umask(1) and umask(2))
 > 13. change file permission (last 12 bits) using `chmod(2)/fchmod(2)/fchmodat(2)`
 > 14. permission of softlink: 0o777
+> 15. I-node flags (ext2 extended file attributes)
+> 16. summarize the usage of `set-UID/set-GID/sticky bit`.
 
 1. `stat/fstat/lstat`
    
@@ -1025,6 +1027,18 @@
     int fchmodat(int dirfd, const char *pathname, mode_t mode, int flags);
     ```
 
+    To change the permission of a file, a process should be either:
+    1. priviledged (CAP_FOWNER)
+    2. EUID (fs UID) matches the owner of that file.
+
+    > A security measure: when a process tries to set the permission of a file
+    > and the group of that file does not match EGID or any of supplementary
+    > group IDs, the `set-GID` bit is awlays cleared.
+    >
+    > ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-08_21-15-56.jpg)
+    > 
+    > I think this is a flaw of that BSD semantics
+
 17. When a soft link is created, all permissoins are enabled by default.
     And these permissions can NOT be changed.
 
@@ -1039,14 +1053,59 @@
     lrwxrwxrwx@     1    4 steve steve  8 Oct 20:54  link -> test
     ```
 
-    To change the permission of a file, a process should be either:
-    1. priviledged (CAP_FOWNER)
-    2. EUID (fs UID) matches the owner of that file.
+18. I-node flags (ext2 extended file attributes)
 
-    > A security measure: when a process tries to set the permission of a file
-    > and the group of that file does not match EGID or any of supplementary
-    > group IDs, the `set-GID` bit is awlays cleared.
-    >
-    > ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-08_21-15-56.jpg)
+    > Some file systems support i-node flags, `ext2` was the first fs supporting
+    > this, and thus this attribute is also  called `ext2 extended file attributes`.
+    > Subsequently, support for i-node flags on other file systems are added.
+    > Btrfs supports this.
     > 
-    > I think this is a flaw of that BSD semantics
+    > The supported flags varies across file systems.
+
+
+    One can use `lsattr(1)` or `chattr(1)` to list or modify flags on a file.
+
+    ```shell
+    $ touch test
+    $ lsattr test
+    ---------------------- test
+    
+    # make this file append only and immutable
+    $ sudo chattr +ai test
+    
+    $ lsattr test
+    ----ia---------------- test
+    ```
+
+    Within a program, one can use [`ioctl_iflags(2)`](https://man7.org/linux/man-pages/man2/ioctl_iflags.2.html) 
+    to retrieve and modify flags.
+
+    Flags:
+
+    > The detailed meaning of the following flags can be found in the above man page.
+
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-09_10-48-55.jpg)
+
+    > `FS_IMMUTABLE_FL`: when this flag is set, envn a priviledged process can not
+    > change the file contents and metadata.
+
+
+19. summarize the usage of `set-UID/set-GID/sticky bit`.
+
+    * set-UID: gain priviledge (only useful for compiled binaries)
+
+    * set-GID:
+
+      1. gain priviledge (for compiled binaries)
+
+      2. Once is set on a directory, the new files inside that directory will have
+         the same group as this directory instead of the using the EGID of the 
+         process that are creating this file.
+
+      TODO: update this when another usage is present.
+
+    * sticky bit (restricted deletion bit) (only useful on directories nowadays)
+      
+      prevent users deleting or renaming files that are not owned by them.
+
+      For detailed explanation and examples, see note 14.
