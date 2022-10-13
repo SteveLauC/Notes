@@ -1,28 +1,32 @@
 #### Ch15: File Attributes
 
-> 1. Retrieve file information using `stat(2)/lstat(2)/fstat(2)` from `i-node`
+> 1. Retrieve file information using `stat(2)/lstat(2)/fstat(2)/fstatat(2)` from `i-node`
 > 2. `stat` struct
 > 3. Get birthtime of a file using `statx(2)`
 > 4. Change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens(3)`
 >    
->    You should use `utimensat(3)` or `futimens(3)`
+>    > You should use `utimensat(3)` or `futimens(3)`
 >
 > 5. The ownership of a new file: EUID, EGID (system V) or GID of parent dir (BSD)
 > 6. Propagation of the `set-GID` bit on directories.
 > 7. Change the ownership using `chown/fchown/lchown/fchownat`
 > 8. Permission on directories
+>
+>    > The semantics differ from the permission on files
+>
 > 9. Permission checking algorithm
 > 10. Check whether a process has permissions at runtime using `access(2)` or `eaccess(2)`
 >        
 >     > `access(2)` is based on `RUID` and `eaccess(2)` is based on EUID.
-> 11. functionality of `sticky bit`
-> 12. file creatoin mask (umask(1) and umask(2))
+>
+> 11. functionality of `sticky bit` (`restricted deletion bit`)
+> 12. file creatoin mask (`umask(1)` and `umask(2)`)
 > 13. change file permission (last 12 bits) using `chmod(2)/fchmod(2)/fchmodat(2)`
-> 14. permission of softlink: 0o777
-> 15. I-node flags (ext2 extended file attributes)
+> 14. permission of a softlink: always 0o777
+> 16. I-node flags (ext2 extended file attributes): `lsattr(1)/chattr(1)`
 > 16. summarize the usage of `set-UID/set-GID/sticky bit`.
 
-1. `stat/fstat/lstat`
+1. `stat/lstat/fstat/fstatat`
    
    ```c
    #include <sys/stat.h>
@@ -171,6 +175,8 @@
          #define        __S_IFLNK        0120000        /* Symbolic link.  */       (00)1 010
          #define        __S_IFSOCK        0140000        /* Socket.  */              (00)1 100
          ```
+
+	 > `Hard Link` is not a kind of file type (kind of reference counter)
 
          Since a file can only be of one file sype, we have a mask for these 4 bits:
 
@@ -397,10 +403,14 @@
    But Linux has a extended API `statx(2)`, which is capable of retrieving 
    this birthtime.
 
-   Currently (2022-10-5), only glibc has a wrapper for this syscall. On other
-   platforms, you have to manually call it through `syscall(2)`.
+   Currently (2022-10), only `glibc` (since 2.28) has a wrapper for this syscall.
+   On other platforms (`musl` and `uClibc`), you have to manually call it through
+   `syscall(2)`.
 
    ```c
+   #include <fcntl.h>           /* Definition of AT_* constants */
+   #include <sys/stat.h>
+
    int statx(int dirfd, const char *restrict pathname, int flags,
                  unsigned int mask, struct statx *restrict statxbuf);
    ```
@@ -1011,7 +1021,33 @@
     // always successful and return the previous umask
     ```
 
-16. change file permissions using
+    > How can we just request current `umask` value without changing it? Call it 
+    > twice!
+    >
+    > ```c
+    > mode_t fetch_umask(void) {
+    >     mode_t prev = umask(0);
+    >     umask(prev);
+    >     return prev;
+    > }
+    > ```
+    > 
+    > But such a method is dangerous in multi-threads programs.
+    > There is a [GNU extension function](https://man7.org/linux/man-pages/man3/getumask.3.html) 
+    > tries to provide this functionality in a thread-safe way:
+    >
+    > ```c
+    > #define _GNU_SOURCE
+    > #include <sys/types.h>
+    > #include <sys/stat.h>
+    >
+    > mode_t getumask(void);
+    > ```
+    >
+    > Though there in no wrapper in current glibc.
+
+
+16. change file permissions using `chmod/fchmod/fchmodat`
 
     > use `fchmodat` rather than other functions
     
@@ -1092,7 +1128,8 @@
 
 19. summarize the usage of `set-UID/set-GID/sticky bit`.
 
-    * set-UID: gain priviledge (only useful for compiled binaries)
+    * set-UID: gain priviledge (only useful for compiled binaries on Linux
+      because on interptreted scripts this bit is always ignored)
 
     * set-GID:
 
@@ -1102,6 +1139,8 @@
          the same group as this directory instead of the using the EGID of the 
          process that are creating this file.
 
+	 > And the `set-GID` can propatate on directories, see note 8.
+
       TODO: update this when another usage is present.
 
     * sticky bit (restricted deletion bit) (only useful on directories nowadays)
@@ -1109,3 +1148,10 @@
       prevent users deleting or renaming files that are not owned by them.
 
       For detailed explanation and examples, see note 14.
+
+      > If the `sticky bit` is set on a directory, then a user (unpriviledged) 
+      > can not add `user` EA on this directory if this is owned by others, 
+      > even though this `user` has the corresponding permission.
+      >
+      > For what is EA (Extended Attributes), see 
+      > [note Ch16](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch16:extended_attributes.md)
