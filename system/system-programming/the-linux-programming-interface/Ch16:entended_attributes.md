@@ -27,7 +27,7 @@
 
 2. EA namespace
 
-   The name of EA is in form `namespace.name`, where namespace is used to classify
+   EA is in form `namespace.name`, where namespace is used to classify
    the EAs into several classes, and `name` uniquely identifies a specific EA 
    inside that `namespace`.
 
@@ -38,8 +38,8 @@
       `user` EA can be manipulated by unpriviledged users, subject to the file 
       permission:
 
-      1. retrieving the value needs `r` permission on the file
-      2. changing the value needs `w` permissoin on the file
+      1. retrieving the `value` needs `r` permission on the file
+      2. changing the `value` needs `w` permissoin on the file
 
       > To enable `user` EA on `ext2/3` and `Reiserfs`, a monut option `user_xattr`
       > is needed when mounting the file system 
@@ -65,7 +65,7 @@
 
 3. EA `name`
   
-   In `namespace` `user` and `trusted`, EA `name`s can be arbitrary strings.
+   In `namespace`s `user` and `trusted`, EA `name`s can be arbitrary strings.
    In `system`, `name` need to be permitted by the kernel.
 
 4. get and set EA from using `setfattr(1)/getfattr(1)`
