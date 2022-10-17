@@ -856,7 +856,7 @@
     hel
     ```
 
-12. Permission-checking algorithm
+12. Permission checking algorithm
 
     1. If the process is priviledged, then **all permissions** are granted.
 

@@ -59,6 +59,8 @@
       Used by the kernel to associate `system objects` with a file, currently,
       the only supported object is `access control list (ACL)`.
 
+      > Extended ACL is implemented using `system.posix_acl_access` EA.
+
    4. security
 
       Used to store `file security labels` 
@@ -68,7 +70,12 @@
    In `namespace`s `user` and `trusted`, EA `name`s can be arbitrary strings.
    In `system`, `name` need to be permitted by the kernel.
 
-4. get and set EA from using `setfattr(1)/getfattr(1)`
+4. EA value
+   
+   You should NOTE that EA name is just a sequence of arbitrary bytes, no 
+   guarantee to be a string, and no guatantee to be UTF-8 encoded.
+
+5. get and set EA from using `setfattr(1)/getfattr(1)`
 
    One can use `setfattr(1)` and `getfattr(1)` to set or get EA.
 
@@ -98,7 +105,7 @@
    $ getfattr -d file
    ```
 
-5. `user` EA can be used only on `regular files` and `directories`
+6. `user` EA can be used only on `regular files` and `directories`
 
    1. `user` EA uses file permission to control who can access it, the permission
       on a `soft link` is always `0o777`, which means anyone can access the `user`
@@ -115,7 +122,7 @@
    > else. (This can be seen as the second functionality of `sticky bit`, 
    > though it is still designed to work with the previous functionality.)
 
-6. limitation on EA
+7. limitation on EA
 
    1. From Linux Virutal File System
       
@@ -141,7 +148,7 @@
    For more info about `limitation`, see section `Filesystem differences` in 
    [man 7 xattr](https://man7.org/linux/man-pages/man7/xattr.7.html)
 
-7. EA-related syscalls 
+8. EA-related syscalls 
 
    1. retrieve the `name`s of all EAs associated with a file
       
@@ -158,7 +165,67 @@
       of that buffer.
 
       If `size` is 0, then `list` argument will be ignored. Then the function
-      will return the size of those `name`s. One can use this to set a approprate
+      will return the **size of those `name`s**. One can use this to set a approprate
       buffer size. (though these may be some `time-of-check-time-of-use` issues).
 
+      Using these syscalls needs the `x` permission on all directories included
+      in `path`.
+
+      And for security reason, the EA names returned by these syscalls may remove
+      the `name`s to which the caller don't access. For example, most systems
+      will omit `trusted.*` from the return list if the calling process is 
+      unpriviledged.
+
       `name`s will be returned in the format of `namespace.name\0namespace.name\0`.
+
+   2. Retrieve the value of an EA
+     
+      ```c
+      #include <sys/xattr.h>
+
+      ssize_t getxattr(const char *path, const char *name, void *value, size_t size);
+      ssize_t lgetxattr(const char *path, const char *name, void *value, size_t size);
+      ssize_t fgetxattr(int fd, const char *name, void *value, size_t size);
+      ```
+      
+      Return the size of that `value` on success, -1 on error.
+
+      Specifying the `size` to be `0` will return the buffer size.
+
+   3. create or modify the EA
+
+      ```c
+      #include <sys/xattr.h>
+
+      int setxattr(const char *path, const char *name, const void *value, size_t size, int flags);
+      int lsetxattr(const char *path, const char *name, const void *value, size_t size, int flags);
+      int fsetxattr(int fd, const char *name, const void *value, size_t size, int flags);
+      ```
+
+      `name` has to be NUL-terminated, `value` does not have to be because this 
+      is a extra `size` argument to specify its size. (arbitrary bytes)
+
+      By default, these syscalls create a new EA if `name` does not exist or 
+      replace the existing one. `flag` argument can be used to change this behavior.
+
+      flags:
+
+      * XATTR_CREATE
+
+	Perform a pure create, which fails (EEXIST) if the named attribute exists 
+	already.
+
+      * XATTR_REPLACE 
+
+        Perform a pure replace operation, which fails (ENODATA) if the named attribute does
+	not already exist.
+
+   4. remove an EA
+
+      ```c
+      #include <sys/xattr.h>
+
+      int removexattr(const char *path, const char *name);
+      int lremovexattr(const char *path, const char *name);
+      int fremovexattr(int fd, const char *name);
+      ```
