@@ -15,22 +15,70 @@
    applications. However, some applications need more accurate control over the
    permission. This is where ACL comes to help.
 
-   ACL can be seen as a extension to the traditional UNIX permission mechanism,
-   it allows you to specify the permission per user and per group, for an arbitrary
-   number of users and groups.
+   ACL can be seen as an extension to the traditional UNIX permission mechanism,
+   it allows you to specify the permission **per user and per group**, for an arbitrary
+   number of users and groups (Actually, there is a limit on how many entries are
+   supported, since EA is limited.)
 
    > ACL on Btrfs/ext4 is enabled by default.
 
    > ACL is not standarized in POSIX. An attempt was made but failed. 
 
-2. What does ACL look like
+2. Categories of ACL
+
+   There are two kind of ACL:
+
+   1. Access ACL
+
+      > Access ACL can be used on files and directories.
+
+      Access ACL, as its name infers, is used for extending the traditional 
+      permission mechanism.
+
+      > Extended Access ACL is implemented using `sytem.posix_acl_access` EA.
+
+   2. default ACL
+      
+      > Default ACL can be used only on directories.
+
+      Default ACL does not determine the access of this directory, instead, it
+      determines the ACL and permission of the file and direcories created in 
+      it.
+
+      * When a directory contains default ACL, then the sub directory created in 
+        this directory will also contain default ACL (inheritance). 
+
+      * The file created in this directory will inherit its parent dir's default
+        ACL as its access ACL. The ACL entries that are corresponding to the 
+        traditional permission bits are masked (ANDed) against the `mode` argument 
+        of syscalls like `open(2)/mkdir(2)`. **In this case, default ACL on the 
+        parent directory replaces `umask`, `umask` is ignored.**
+
+        > ```c
+        > int open(const char *pathname, int flags, mode_t mode);
+        > int mkdir(const char *pathname, mode_t mode);
+        > ```
+
+        The ACL entries that are corresponding to the traditional permission bits are:
+
+        1. `ACL_USER_OBJ`
+        2. `ACL_MASK` is present (is extended ACL) ? `ACL_MASK` : `ACL_GROUP_OBJ`.
+
+           > `ACL_MASK` is the new group in extended ACL.
+
+        3. `ACL_OTHER`
+
+      > Extended default ACL is implemented using `system.posix_ac_default` EA.
+
+
+3. What does ACL look like
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-16_09-11-40.jpg)
 
-   An ACL is a list of ACL entries, each of which specify the file permission for
-   an individual user or group of users.
+   > Note that `group class entries`, these entries are limited by `ACL_MASK`, see
+   > permission checking algorithm for more information.
 
-   Each entry consists of two or three parts:
+   An ACL is a list of ACL entries (ACEs), each entry consists of two or three parts:
    
    1. `Tag type`: specify the target to which this entry applies.
 
@@ -38,45 +86,45 @@
         entry. This corresponds to the traditional `owner` permission. 
 
       * `ACL_USER`: means that this entry applies to a user whose UID is `Tag 
-        qualifier`. An ACL can contain one or more `ACL_USER` entries, but only
+        qualifier`. An ACL can contain one or more `ACL_USER` entries, but at most
         one `ACL_USER` can be defined for a particular user.
 
-        > This is why ACL can set permission per user.
+        > This is why ACL can set permission for a specific user.
 
       * `ACL_GROUP_OBJ`: file group. Each ACL contains **exactly one** `ACL_GROUP_OBJ`
         entry. This corresponds to the traditional `group` permission **if `ACL_MASK`
         is not present**.
 
+        > If `ACL_MASK` is present, then `ACL_MASK` corresponds to the file group.
+
       * `ACL_GROUP`: Entry for a group whose GID is `Tag qualifier`.An ACL can 
-        contain one or more `ACL_GROUP` entries, but only one `ACL_GROUP` can be 
-        defined for a particular group.
+        contain one or more `ACL_GROUP` entries, but only at most `ACL_GROUP` can
+        be defined for a particular group.
 
-        > This is why ACL can set permission per group.
+        > This is why ACL can set permission for a specific group.
 
+      * `ACL_MASK`: Mask for `group class entries`.
 
-      * `ACL_MASK`: Specify the maximum permission can be granted to `ACL_USER`,
-        `ACL_GROUP_OBJ` and `ACL_GROUP` entries. An ACL contains at most one
-        `ACL_MASK` entry (0 or 1). If `ACL_USER` or `ACL_GROUP` is present, then 
-        an `ACL_MASK` is mandatory. 
+        Specify the maximum permission that can be granted to `ACL_USER`,
+        `ACL_GROUP_OBJ` and `ACL_GROUP` entries (group class entries). 
+
+        An ACL contains at most one `ACL_MASK` entry (0 or 1). If `ACL_USER` or 
+        `ACL_GROUP` is present, then an `ACL_MASK` is mandatory. 
 
         > Minimal ACL does not have `ACL_MASK` entry, extended ACL has.
 
       * `ACL_OTHER`: file other. Each ACL contains exactly one `ACL_OTHER` entry.
         This corresponds to the traditional `other` permission. 
 
-      > If an ACL contains `ACL_USER` or `ACL_GROUP` entry, then it must contain
-      > `ACL_MASK`, else, `ACL_MASK` is optional.
+   2. Tag qualifier (Optional, required only for `ACL_USER` and `ACL_GROUP` entries)
 
-
-   2. Tag qualitifier (Required only for `ACL_USER` and `ACL_GROUP` entries)
-
-      This field is simply UID or GID used for identifying a user or group.
+      This field is simply a UID or GID used for identifying a user or group.
    
    3. Permissions
 
       Permissions granted to this entry.
 
-3. Minimal and Extended ACL
+4. Minimal and Extended ACL
 
    * Minimal ACL: A minimal ACL is basically the traditional UNIX permission
      set. It has just three entries: `ACL_USER_OBJ/ACL_GROUP_OBJ/ACL_OTHER`.
@@ -108,8 +156,66 @@
      ACL is implemented unsing the traditional permission set. Extended ACL
      is implemented using `system.posix_acl_access` extended attributes (ch16).
 
+   > How to differenate between `minimal ACL` and `extended ACL`?
+   >
+   > `extended ACL` must have a `ACL_MASK` entry.
 
-4. ACL permission checking algorithm (from man 5 acl)
+5. Group class entries.
+
+   Group class entries consists at most 3 categories of ACL entries:
+
+   1. `ACL_USER`
+   2. `ACL_GROUP`
+   3. `ACL_GROUP_OBJ`
+
+   `ACL_MASK` limits the maximum permission that can be granted to `group cleas
+   entries`.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-02_20-54-58.jpg)
+
+   When a file has `extended ACL`, then setting (chmod) or getting (stat) `group
+   permission` are actually maniulating the permission of `ACL_MASK` entry 
+   instead of `ACL_GROUP_OBJ` for the reason that `group permission (3 bits)`
+   are actually storing `ACL_MASK` for the reason that `group permission` is no
+   longer storing the permission of `ACL_GROUP_OBJ`, rather storing `ACL_MASk`.
+
+   But when the file group are accessing this file, permission checking are
+   performed using `ACL_GROUP_OBJ & ACL_MASK`. See permission checking algorithm.
+
+
+   ```shell
+   $ touch file
+   $ setfacl -m g:docker:rw file
+   $ l file
+   .rw-rw-r--@     1    0 steve steve 18 Oct 12:07  file
+   $ getfacl file
+   # file: file
+   # owner: steve
+   # group: steve
+   user::rw-
+   group::r--
+   group:docker:rw-
+   mask::rw-
+   other::r--
+   ```
+
+   ```rust
+   use std::{fs::metadata, os::unix::fs::PermissionsExt};
+   
+   fn main() {
+       let md = metadata("file")
+       .unwrap();
+   
+       println!("{:16b}", md.permissions().mode())
+   }
+   ```
+   ```shell
+   $ cargo r -q
+   1000000110110100 # 110 (rw-) the permission of mask.
+   ```
+
+
+6. ACL permission checking algorithm (from man 5 acl)
 
    > Checks are performed in the following order, until one of the critera is
    > matched.
@@ -169,7 +275,77 @@
 
    6.   else access is denied.
 
+6. Long and short text form of ACE
 
-5. `ACL_MASK` will always be the upper limit of `ACL_USER` and `ACL_GROUP` entries.
-   And possibily is the upper limit of `ACL_GEOUP_OBJ` entry.
+   1. `long text form ACLs` contains one ACL entry per line, each field of 
+      `ACL_USER_OBJ`, `ACL_GROUP_OBJ` `ACL_MASK` and `ACL_OTHER` is separated
+      by `::`, Otherwise, it is separated by `:`. Each entry May contain comment,
+      which is started by `#`. `getfacl(1)` displays ACLs in this form. 
 
+      ```shell
+      $ getfacl file
+      # file: file
+      # owner: steve
+      # group: steve
+      user::rw-
+      group::r--
+      group:docker:rw-
+      mask::rw-
+      other::r--
+      ```
+
+   2. `short text form ACL` consists a sequence of ACL entries speparated by 
+      commas. Each field of `ACL_USER_OBJ`, `ACL_GROUP_OBJ` `ACL_MASK` and 
+      `ACL_OTHER` is separated by `::`, Otherwise, it is separated by `:`. 
+
+      ```
+      u::rw,u:paulh:rw,u:annabel:rw,g::r,g:teach:rw,m::rwx,o::-
+      ```
+
+7. Why do we need `ACL_MASK` entry?
+
+   TLDR: to be compatible with the traditional UNIX permission mechansim.
+
+   Say we have a file, and this file has a ACL like:
+
+   ```
+   user::rwx
+   user:paulh:r-x
+   group::r-x
+   group:teach:--x
+   other::--x
+   ```
+
+   And we call `chmod(file, 0700)` on this file, which means deny all acccess
+   to everyone who is not the file owner. How can we implement this?
+
+   1. set the permission of `ACL_GROUP_OBJ` and `ACLOTHER` to `000`?
+      
+      but `user:paulh` and `group:teach` still have their extra permission.
+
+   2. set the permission of `ACL_USER/ACL_GROUP_OBJ/ACL_GROUP/ACL_OTHER` all to
+      `000`? This overwrote the setting for `user:pault` and `group:teach`. 
+      Calling `chmod(file, 0751)` won't store the original setting.
+
+   `ACL_MASK` entry is derised to solve this problem. Changing the group permission
+   now alter the permission of `ACL_MASK` without overwriting the setting for
+   `user:paulh` and `group:teach`.
+
+   `group class entries` are seen as the new group.
+
+8. Using `getfacl(1)` and `setfacl(1)` to retrieve or modify ACLs
+
+   Note that `setfacl(1)` will automatically adjust `ACL_MASK` to be the union
+   of `group class entries`, to disable this, use the `-n` option.
+
+9. behavior of GNU `ls` when encountering ACL
+  
+   `ls(1)` will print a `+` when a directory has `default ACL` or `extended access ACL`
+   or when a file has `extended access ACL`.
+
+10. Overview of ACL APIs
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-18_11-00-53.jpg)
+
+   NOTE that all these path-APIs will dereference symbolic link, since the
+   symbolic link has no ACL (on Linux).
