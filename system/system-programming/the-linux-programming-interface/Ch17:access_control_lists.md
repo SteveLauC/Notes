@@ -1,11 +1,13 @@
 #### Ch17: Access Control Lists
 
-> 1. concept: what is ACL
-> 2. what does ACL look like
-> 3. Minimal and extended ACL
+> 1. Concept: what is ACL
+> 2. Accesss ACL and default ACL
+> 2. What does ACL look like
+> 3. Access minimal and extended ACL
 >
->    Minimal ACL is implemented using the traditional permission set. Extended
->    ACL is implemented using `system.posix_acl_access` extended attributes.
+>    Minimal access ACL is implemented using the traditional permission set.
+>    Extended access ACL is implemented using `system.posix_acl_access` 
+>    extended attributes.
 >  
 > 4. ACL permission checking algorithm.
 
@@ -49,10 +51,12 @@
         this directory will also contain default ACL (inheritance). 
 
       * The file created in this directory will inherit its parent dir's default
-        ACL as its access ACL. The ACL entries that are corresponding to the 
+        ACL as its access ACL. And the ACL entries that are corresponding to the
         traditional permission bits are masked (ANDed) against the `mode` argument 
-        of syscalls like `open(2)/mkdir(2)`. **In this case, default ACL on the 
-        parent directory replaces `umask`, `umask` is ignored.**
+        of syscalls like `open(2)/mkdir(2)`. **In this case, argument `mode` is 
+        seen as some kind of `mask`.**
+
+        > Permission of Entries &= `mode`
 
         > ```c
         > int open(const char *pathname, int flags, mode_t mode);
@@ -97,7 +101,7 @@
 
         > If `ACL_MASK` is present, then `ACL_MASK` corresponds to the file group.
 
-      * `ACL_GROUP`: Entry for a group whose GID is `Tag qualifier`.An ACL can 
+      * `ACL_GROUP`: Entry for a group whose GID is its `Tag qualifier`.An ACL can 
         contain one or more `ACL_GROUP` entries, but only at most `ACL_GROUP` can
         be defined for a particular group.
 
@@ -107,6 +111,11 @@
 
         Specify the maximum permission that can be granted to `ACL_USER`,
         `ACL_GROUP_OBJ` and `ACL_GROUP` entries (group class entries). 
+
+        > This does not mean that the permission of `ACL_MASK` is always bigger
+        > than the permission of `group class entries`. We say the permission of
+        > `ACL_MASK` is maximum because this is guaranteed by the permission
+        > checking algorithm. (See note 6)
 
         An ACL contains at most one `ACL_MASK` entry (0 or 1). If `ACL_USER` or 
         `ACL_GROUP` is present, then an `ACL_MASK` is mandatory. 
@@ -126,14 +135,16 @@
 
 4. Minimal and Extended ACL
 
+   > Both Access and Extended ACL have these stuff.
+
    * Minimal ACL: A minimal ACL is basically the traditional UNIX permission
      set. It has just three entries: `ACL_USER_OBJ/ACL_GROUP_OBJ/ACL_OTHER`.
 
-     |Tag type     |Permissions         |
-     |-------------|--------------------|
-     |ACL_USER_OBJ |permission for owner|
-     |ACL_GROUP_OBJ|permission for group|
-     |ACL_OTHER    |permission for other|
+     |Tag type     |Tag qualifier|Permissions         |
+     |-------------|-------------|--------------------|
+     |ACL_USER_OBJ |None         |permission for owner|
+     |ACL_GROUP_OBJ|None         |permission for group|
+     |ACL_OTHER    |None         |permission for other|
 
      > If you use `getfacl(1)` on a new file, you will find that it has a minimal
      > ACL.
@@ -149,12 +160,13 @@
      > other::r--
      > ```
 
-   * Extended ACL: An extended ACL is one that additional contains `ACL_USER`,
-     `ACL_GROUP` and `ACL_OTHER`.
+   * Extended ACL: An extended ACL is one that additional contains entries like 
+     `ACL_USER`, `ACL_GROUP`, `ACL_OTHER` and `ACL_MASK`.
 
-     Another difference between `minimal ACL` and `extended ACL` is that minimal
-     ACL is implemented unsing the traditional permission set. Extended ACL
-     is implemented using `system.posix_acl_access` extended attributes (ch16).
+     Another difference between `minimal access ACL` and `extended access ACL` is 
+     that minimal access ACL is implemented unsing the traditional permission set.
+     Extended access ACL is implemented using `system.posix_acl_access` extended 
+     attributes (ch16).
 
    > How to differenate between `minimal ACL` and `extended ACL`?
    >
@@ -162,7 +174,7 @@
 
 5. Group class entries.
 
-   Group class entries consists at most 3 categories of ACL entries:
+   Group class entries consists 3 categories of ACL entries:
 
    1. `ACL_USER`
    2. `ACL_GROUP`
@@ -175,8 +187,7 @@
 
    When a file has `extended ACL`, then setting (chmod) or getting (stat) `group
    permission` are actually maniulating the permission of `ACL_MASK` entry 
-   instead of `ACL_GROUP_OBJ` for the reason that `group permission (3 bits)`
-   are actually storing `ACL_MASK` for the reason that `group permission` is no
+   instead of `ACL_GROUP_OBJ` for the reason that `group permission` is no
    longer storing the permission of `ACL_GROUP_OBJ`, rather storing `ACL_MASk`.
 
    But when the file group are accessing this file, permission checking are
@@ -250,6 +261,8 @@
       > request will be used. (NOTE that permission of several entries will not
       > be accumulated.)
       >
+      > Example:
+      >
       > If you are in two groups, the first one has the `r` permission, the second
       > one has the `w` permission, then `access(file, R_OK)` and `access(file, W_OK)`
       > both will return 0, but `access(file, R_OK|W_OK)` will return -1.
@@ -304,7 +317,7 @@
 
 7. Why do we need `ACL_MASK` entry?
 
-   TLDR: to be compatible with the traditional UNIX permission mechansim.
+   TL;DR: to be compatible with the traditional UNIX permission mechanism.
 
    Say we have a file, and this file has a ACL like:
 
@@ -327,25 +340,221 @@
       `000`? This overwrote the setting for `user:pault` and `group:teach`. 
       Calling `chmod(file, 0751)` won't store the original setting.
 
+   We need to "remove" the permissions set for `paulh` and `teach` without
+   overwriting those two entries.
+
    `ACL_MASK` entry is derised to solve this problem. Changing the group permission
    now alter the permission of `ACL_MASK` without overwriting the setting for
-   `user:paulh` and `group:teach`.
+   `user:paulh` and `group:teach`. With `ACL_MASK`, we can simply set the permission
+   of `ACL_MASK` and `ACL_OTHER` to `000`.
 
-   `group class entries` are seen as the new group.
+   > `group class entries` are seen as the new group.
 
 8. Using `getfacl(1)` and `setfacl(1)` to retrieve or modify ACLs
 
    Note that `setfacl(1)` will automatically adjust `ACL_MASK` to be the union
    of `group class entries`, to disable this, use the `-n` option.
 
+
 9. behavior of GNU `ls` when encountering ACL
   
    `ls(1)` will print a `+` when a directory has `default ACL` or `extended access ACL`
    or when a file has `extended access ACL`.
 
-10. Overview of ACL APIs
+10. ACL APIs
 
-   ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-18_11-00-53.jpg)
+    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-18_11-00-53.jpg)
 
-   NOTE that all these path-APIs will dereference symbolic link, since the
-   symbolic link has no ACL (on Linux).
+    NOTE that all these path-APIs will dereference symbolic link, since the
+    symbolic link has no ACL (on Linux).
+
+    1. Retrieve a file's ACL
+      
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       acl_t acl_get_file(const char *path_p, acl_type_t type);
+       ```
+
+       Argument `type` : 
+
+       * To retrieve `Access ACL`, pass `ACL_TYPE_ACCESS` to `type`
+
+       * To retrieve `Default ACL`, set `type` to `ACL_TYPE_DEFAULT`
+
+       This function return `acl_t`
+
+       > Use `acl_free(3)` to deallocate the `acl_t` retunred by this function.
+
+    2. Retrieve an ACE from an ACL
+
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       int acl_get_entry(acl_t acl, int entry_id, acl_entry_t *entry_p);
+       ```
+
+       To iterate over all the ACL entries, we should set `entry_id` as 
+       `ACL_FIRST_ENTRY` first, then set it to `ACL_NEXT_ENTRY` in the following
+       calls.
+
+    3. Retrieve or modify `Tag Type` in an entry
+
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       int acl_get_tag_type(acl_entry_t entry_d, acl_tag_t *tag_type_p);
+       int acl_set_tag_type(acl_entry_t entry_d, acl_tag_t tag_type);
+       ```
+
+       `acl_tag_t` is a integer type, it can be:
+
+       1. ACL_USER_OBJ
+       2. ACL_USER
+       3. ACL_GROUP_OBJ
+       4. ACL_GROUP
+       5. ACL_MASK
+       6. ACL_OTHER
+
+    4. Retrieve or modify `qualifier` in an entry
+       
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       void * acl_get_qualifier(acl_entry_t entry_d);
+       int acl_set_qualifier(acl_entry_t entry_d, const void *qualifier_p);
+       ```
+
+       This function return a pointer to `uid_t` or `gid_t` (u32 on amd64 Linux).
+
+       And this will only succeed when this entry is of type `ACL_USER` or 
+       `ACL_GROUP`.
+
+    5. Retrieve or modify `Permission set` in an entry
+
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       int acl_get_permset(acl_entry_t entry_d, acl_permset_t *permset_p);
+
+       // Handy functions to avoid manually `&` or `|`
+       // `perm` argument can be: ACL_READ, ACL_WRITE, ACL_EXECUTE
+       int acl_add_perm(acl_permset_t permset_d, acl_perm_t perm);
+       int acl_delete_perm(acl_permset_t permset_d, acl_perm_t perm);
+       int acl_clear_perms(acl_permset_t permset_d);
+
+       int acl_set_permset(acl_entry_t entry_d, acl_permset_t permset_d);
+       ```
+
+    6. Create or delete an ACE
+
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       // add entry `entry_p` to `acl_p`
+       int acl_create_entry(acl_t *acl_p, acl_entry_t *entry_p);
+
+       // delete `entry_d` from `acl`
+       int acl_delete_entry(acl_t acl, acl_entry_t entry_d);
+       ```
+
+    7. Update a file's ACL
+
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       // converse of `acl_get_file(3)`
+       int acl_set_file(const char *path_p, acl_type_t type, acl_t acl);
+       ```
+
+    8. Create an ACL from text
+      
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       acl_t acl_from_text(const char *buf_p);
+       ```
+
+       `buf_p` is a string containing long or short form of ACL.
+
+       > Use `acl_free(3)` to deallocate `acl_t` returned by this function.
+
+    9. Convert an ACL to text
+
+       ```c
+       #include <sys/types.h>
+       #include <sys/acl.h>
+
+       char * acl_to_text(acl_t acl, ssize_t *len_p);
+       ```
+
+       The string returned by this function is allocated in the heap, caller should
+       manually deallocate it using `int acl_free(void *obj_p)(3)`.
+
+    10. Recalculate the permission of `ACL_MASK` entry
+
+        ```c
+        #include <sys/types.h>
+        #include <sys/acl.h>
+
+        int acl_calc_mask(acl_t *acl_p);
+        ```
+
+        The permission of `ACL_MASK` will be the union of the permission sets of
+        `group class entries`.
+
+        This  function will **create** an `ACL_MASK` entry if it does not exist.
+
+    11. Check if an ACL is valid
+
+        ```c
+        #include <sys/types.h>
+        #include <sys/acl.h>
+
+        int acl_valid(acl_t acl);
+
+        // A better `acl_valid` but is specific to Linux
+        int acl_check(acl_t acl, int *last);
+        // Convert the error code returned by `acl_check` to a printable string.
+        // Also Linux specific
+        const char * acl_error(int code);
+        ```
+
+    12. Remove the default ACL
+        
+        ```c
+        #include <sys/types.h>
+        #include <sys/acl.h>
+
+        int acl_delete_def_file(const char *path_p);
+        ```
+
+    13. Allocate a space that is capable of accommodating `count` entries
+
+        ```c
+        #include <sys/types.h>
+        #include <sys/acl.h>
+
+        acl_t acl_init(int count);
+        ```
+
+        > Use `acl_free(3)` to deallocate the storage.
+
+    14. Duplicate an existing acl
+        
+        ```c
+        #include <sys/types.h>
+        #include <sys/acl.h>
+
+        acl_t acl_dup(acl_t acl);
+        ```
+
+        This function will allocate memory, use `acl_free(3)` to deallocate it.
