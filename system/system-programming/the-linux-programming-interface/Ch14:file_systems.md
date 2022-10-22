@@ -156,6 +156,11 @@
    * i-node table (i-list): each file or directory will has a unique entry in 
      this table. (i stands for *index*)
 
+     > The i-node table is numbered starting at 1 instead of 0, because 0 is 
+     > used to indicate that this entry is unused (like NULL). I-node 1 is 
+     > used to track bad blocks. On ext* file system, the root of a partition
+     > has i-node 2. Btrfs uses 256.
+
    * Data blocks: data that forms the files or directories
      
 
@@ -165,6 +170,7 @@
    i-node entry is identified by a unique number called inode number or i-number.
 
    What a i-node entry contains:
+
    1. File type
    2. UID
    3. GID
@@ -175,6 +181,11 @@
    7. Size of the file in bytes
    8. Number of allocated blocks (block size = 512 bytes)
    9. Pointer to data blocks.
+
+   > I-node entry does not contain `filename`, it is stored `directory`. because
+   > of this, we can have multiple `filename`s referring to the same i-node entry,
+   > this is `hard link` (hard link is not a kind of file type).
+
 
 7. Pointers to data blocks in i-node entry
 
@@ -359,7 +370,7 @@
 
       > [what is bind mount](https://unix.stackexchange.com/q/198590/498440)
       >
-      > Or see `note 15 4`
+      > Or see `Ch14: 15 4`
 
     * MS_DIRSYNC: make directory updates synchronous. Similar to `O_SYNC` of 
       `open(2)` but just for direcoties.
@@ -572,7 +583,8 @@
        of `mount(2)` is a `directory or regular file` rather than a `device special
        file`.
 
-       A typical useage of `bind mount` is [`chroot jails`](https://unix.stackexchange.com/q/105/498440)
+       A typical useage of `bind mount` is [`chroot jails`](https://unix.stackexchange.com/q/105/498440).
+       For information about `chroot(1)/chroot(2)`, see Ch18: 39.
  
        Demo for directory source:
        

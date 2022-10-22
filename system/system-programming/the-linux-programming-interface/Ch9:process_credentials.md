@@ -52,6 +52,8 @@
    A process with EUID 0 is a `priviledged process` and thus can be exempt from
    many of the permission checks.
 
+   A new process inherit EUID and EGID from its parent process.
+
    Normally, EUID and EGID have the same values as RUID and RGID. But this can
    be changed through:
 

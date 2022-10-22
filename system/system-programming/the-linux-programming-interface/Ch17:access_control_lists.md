@@ -1,15 +1,23 @@
 #### Ch17: Access Control Lists
 
+> See `man 5 acl` for more information.
+
 > 1. Concept: what is ACL
-> 2. Accesss ACL and default ACL
-> 2. What does ACL look like
-> 3. Access minimal and extended ACL
+> 2. Accesss ACL and default ACL (We care about Access ACL more)
+> 3. What does ACL look like
+> 4. Access minimal and extended ACL
 >
 >    Minimal access ACL is implemented using the traditional permission set.
 >    Extended access ACL is implemented using `system.posix_acl_access` 
 >    extended attributes.
 >  
-> 4. ACL permission checking algorithm.
+> 5. Group class entries
+> 6. ACL permission checking algorithm.
+> 7. Long and short form of ACE
+> 8. Why do we need `ACL_MASK` entry (to be compatible with the traditional UNIX
+>    permission mechanism)
+> 9. cli tools: use getfacl(1) and setfacl(1) to retrieve and modify ACLs
+> 10. ACL APIs (acl_xxx_xxx()): based on POSIX 1003.1e DRAFT 17
 
 1. What is ACL
   
@@ -20,7 +28,7 @@
    ACL can be seen as an extension to the traditional UNIX permission mechanism,
    it allows you to specify the permission **per user and per group**, for an arbitrary
    number of users and groups (Actually, there is a limit on how many entries are
-   supported, since EA is limited.)
+   supported, since ACL is implemented using EA and EA is limited.)
 
    > ACL on Btrfs/ext4 is enabled by default.
 

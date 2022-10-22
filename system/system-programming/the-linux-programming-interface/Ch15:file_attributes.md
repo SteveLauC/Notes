@@ -24,6 +24,12 @@
 > 13. change file permission (last 12 bits) using `chmod(2)/fchmod(2)/fchmodat(2)`
 > 14. permission of a softlink: always 0o777
 > 16. I-node flags (ext2 extended file attributes): `lsattr(1)/chattr(1)`
+>     
+>     File Attributes:
+>     1. stat struct
+>     2. I-node flags
+>     3. Extended Attributes (EA), see Ch16
+>
 > 16. summarize the usage of `set-UID/set-GID/sticky bit`.
 
 1. `stat/lstat/fstat/fstatat`
@@ -151,7 +157,7 @@
    2. st_ino
 
       The i-node number of this file, this and `st_dev` uniquely identifies this
-      file across all the file systems
+      file **across all the file systems**
 
    3. `mode_t` type
       
