@@ -1,5 +1,20 @@
 #### Ch18: Directories and Links
 
+> 18.1: Directories and (Hard) Links
+> 18.2: Symbolic (Soft) Links
+> 18.3: Creating and Removing (Hard) Links: `link(2)`, `linkat(2)`, `unlink(2)`, `unlinkat(2)`
+> 18.4: Changing the Name of a File: `rename(2)` `renameat(2)` `renameat2(2)` (`mv` command)
+> 18.5: Working with Symbolic Links: `symlink(2)/symlinkat(2)` and `readlink(2)/readlinkat(2)`
+> 18.6: Creating and Removing directories: `mkdir(2)/mkdirat(2)` and `rmdir(2)`
+> 18.7: Removing a File or directory: `remove(3)` (a wrapper for `unlink(2)` and `rmdir(2)`)
+> 18.8: Reading Direcotries: `opendir(3)/fopendir(3)/readdir(3)/rewinddir(3)/closedir(3)`
+> 18.9: File Tree Walking: `nftw(3)/ftw(3)`
+> 18.10: The Current Working Directory of a Process
+> 18.11: Operating Relative to a Directory File Descriptor
+> 18.12: Changing the Root Directory of a Process: `chroot(2)`
+> 18.13: Resolving a Pathname: `realpath(1)/realpath(3)`
+> 18.14: Parsing Pathnames Strings: `dirname(3)` and `basename(3)`
+
 > 1. How to differentiate between a regular file and directory in the disk level
 > 2. What is hard link
 > 3. How can I find the filename associated with a file descriptor?
@@ -19,7 +34,7 @@
 
    1. The first 4 bits of `st_mode` identify this is a directory
    2. The contents of a regular file is unorganized, while a direcotry basically
-      can be seen as a table, consisting of filenames and i-node number.
+      can be seen as a table, consisting of filenames and i-node numbers.
 
       | filename                  | I-node number|
       |---------------------------|--------------|
@@ -30,9 +45,9 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-20_09-57-37.jpg)
 
-2. I-node entry does not store `filename`, it is stored in the direcotry.
+2. I-node entry **does not** store `filename`, **it is stored in the direcotry**.
    Because of this, we can create multiple `filename`s having the same
-   i-node number, this is `hard link`.
+   i-node number, **which is `hard link`**.
 
    > Most Linux and UNIX file systems support hard link, Microsoft VFAT does not.
 
@@ -46,8 +61,9 @@
    ```
 
 
-3. When the number of hard links decreases to 0, the disk allocated for that file
-   can be deallocated. Kinda similar to `reference count`.
+3. When the number of hard links of a file decreases to 0, and there is no process
+   holding open file descriptors pointing to it, the disk allocated for that
+   file can be deallocated. Kinda similar to `reference count`.
 
 4. How can I find the filename associated with a file descriptor?
 
@@ -59,7 +75,7 @@
    ![diagram](https://github.com/SteveLauC/pic/blob/main/relation_between_fd_and_open_files.jpeg)
 
    But on Linux, with the `/proc` virtual file system, we can scan the entries of 
-   `/proc/self/fd`:
+   `/proc/PID/fd` (using `readlink(1)`):
 
    ```shell
    # Note that you can not use `l /proc/self/fd` since this will print the open
@@ -85,7 +101,7 @@
       > at that time.
 
       See
-      [Ch14: 15 4 for more information](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch14:file_systems.md)
+      [Ch14: 15 4 for more information about `bind mount`](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch14:file_systems.md)
 
    > All these limitations can be resolved by soft link.
 
@@ -93,7 +109,7 @@
 
 6. What is soft link?
 
-   A soft link is a file type whose content is the name of another file.
+   A soft link is a type of file whose content is the name of another file.
 
    We can use `readlink(2)` to read it (or `readlink(1)` from shell):
 
@@ -144,6 +160,8 @@
 7. The contents (path) of a soft link can be either `relative` or `absolute`,
    if it is a relative path, then it is relative to `link` itself.
 
+   See [exercise 18-2 for a great example](https://github.com/SteveLauC/The-Linux-Programming-Interface/tree/main/exercise/Ch18/18-2)
+
 8. dangling link
   
    When a soft link refers to a path that does not exist, we say this link is
@@ -157,6 +175,7 @@
    # Note that `file` does not exist
    $ ln -s file link
 
+   # `link` is a dangling link that points to a file that does not exist.
    $ l
    Permissions Links Size User  Group Date Modified Name
    lrwxrwxrwx      1    4 steve steve 20 Oct 14:01  link -> file
@@ -259,23 +278,27 @@
 
     1. An extra `dirfd` argument.
     2. `unlink(2)` **can not remove dir**, while `unlinkat(2)` **can**. If `AT_REMOVEDIR`
-       is present in `flags`, then `unlinkat(2)` can be used remove direcotries, 
-       just like `rmdir(2)`.
+       is present in `flags`, then `unlinkat(2)` remove direcotries, which is 
+       equivalent to `rmdir(2)`. NOTE that then `unlinkat(fd, path, AT_REMOVEDIR)`
+       can NOT be used to remove files, or you will get `ENOTDIR`. And `target dir`
+       must be empty, just like the `rmdir(2)`.
 
-    An open file is deleted only when all file descriptors are closed:
+    An open file is deleted only when all file descriptors referring to it are 
+    closed:
     
     ![diagram](https://github.com/SteveLauC/pic/blob/main/relation_between_fd_and_open_files.jpeg)
 
     When the number of hardlink reaches 0, if there is still open file descriptor
-    referring to it, then it will not be deleted. This is a useful feature, it
+    referring to it, then it will NOT be deleted. This is a useful feature, it
     makes a process who wanna delete a file does not need to worry about whether
-    some other process has it open.
+    some other processes have it open.
 
 15. How to create a temporary file?
   
     Since a file won't be deleted if there is still open file descriptor referring
     to it even though the number of hard links decreases to 0, we can create a 
-    temporary file and `unlink(2)` it immediately, the file is still valid.
+    temporary file and `unlink(2)` it immediately, the file is still valid. When
+    our `fd` is closed, this file will be deleted.
 
     This is exactly `tmpfile(3)` does.
 
@@ -372,7 +395,7 @@
     first. Or we can use `PATH_MAX`.
     
     > There is another limit constant `SYMLINK_MAX`, which defines the maximum
-    > bytes can be placed in a symlink
+    > bytes that can be placed in a symlink
     >
     > ```c
     > #include <unistd.h>
@@ -456,10 +479,12 @@
     If `pathname` is a symlink, it is not dereferenced and `ENOTDIR` (not a 
     directory) is returned.
 
+    `unlinkat(fd, path, AT_REMOVEDIR)` is equivalent to `rmdir(2)`.
+
 
 ##### 18.7: Removing a File or directory: `remove(3)` (a wrapper for `unlink(2)` and `rmdir(2)`)
 
-23. Remove a file or direcotry using `remove(3)`
+23. Remove a file or an empty direcotry using `remove(3)`
 
     ```c
     #include <stdio.h>
@@ -490,7 +515,7 @@
     
 ##### 18.8: Reading Direcotries: `opendir(3)/fopendir(3)/readdir(3)/rewinddir(3)/closedir(3)`
 
-24. Iterate over the entries in a directory
+24. Iterate over the entries of a directory
 
     ```c
     #include <sys/types.h>
@@ -811,6 +836,58 @@
     Besides this, Rust has a [crate: path-clean](https://github.com/danreeves/path-clean) 
     that can be used even when `path` does not exist.
 
+    > path-clean does not dereference symlink
+
 
 ##### 18.14: Parsing Pathnames Strings: `dirname(3)` and `basename(3)`
+
+44. `dirname(3)` and `basename(3)`
+
+    ```c
+    #include <libgen.h>
+    
+    char *dirname(char *path);
+    char *basename(char *path);
+    ```
+    
+    Both `dirname(3)` and `basename(3)` may modify the `path` argument, if we wanna
+    preserve them, we must pass copies of it to `dirname(3)` and `basename(3)`.
+    And the return value is statically allocated, can be overwritten by subsequent
+    calls.
+    
+    |path       |    dirname   | basename|
+    |-----------|--------------|---------|
+    | /usr/lib  | /usr         | lib     |
+    | /usr/     | /            | usr     |
+    | usr       | .            | usr     |
+    | /         | /            | /       |
+    | .         | .            |  .      |
+    | ..        | .            | ..      |
+    | "" (enpty)| .            | .       |
+    | NULL      | .            | .       |
+    
+    Concatenating the string returned by `dirname(3)`, a slash (`/`), and the string
+    returned by `basename(3)` yields a complete pathname. Note that `dirname("/")` + 
+    "/" + `basename("/")` yields `///`, this is a valid pathname since multiple slashes
+    will be seen as a single one.
+    
+    See also `dirname(1)` and `basename(1)`
+
+45. duplicate a string in C
+  
+    ```c
+    #include <string.h>
+
+    // call `malloc(3)` to duplicate string
+    char *strdup(const char *s);
+
+    // Similar to `strdup(3)`, but at least dup `n` bytes
+    char *strndup(const char *s, size_t n);
+
+    // There two methods use `alloca(3)` to allocate stack memory
+    char *strdupa(const char *s);
+    char *strndupa(const char *s, size_t n);
+    ``` 
+
+
 ##### 18.15: Summary

@@ -235,6 +235,10 @@
     ```
 
 14. text file busy
+
     出现这种错误说明binary在运行时被修改
+
+    `ETXTBSY`: pathname refers to an executable image which is currently being
+    executed and write access was requested.
 
     [link](https://stackoverflow.com/questions/16764946/what-generates-the-text-file-busy-message-in-unix)
