@@ -1,19 +1,19 @@
 #### Ch18: Directories and Links
 
-> 18.1: Directories and (Hard) Links
-> 18.2: Symbolic (Soft) Links
-> 18.3: Creating and Removing (Hard) Links: `link(2)`, `linkat(2)`, `unlink(2)`, `unlinkat(2)`
-> 18.4: Changing the Name of a File: `rename(2)` `renameat(2)` `renameat2(2)` (`mv` command)
-> 18.5: Working with Symbolic Links: `symlink(2)/symlinkat(2)` and `readlink(2)/readlinkat(2)`
-> 18.6: Creating and Removing directories: `mkdir(2)/mkdirat(2)` and `rmdir(2)`
-> 18.7: Removing a File or directory: `remove(3)` (a wrapper for `unlink(2)` and `rmdir(2)`)
-> 18.8: Reading Direcotries: `opendir(3)/fopendir(3)/readdir(3)/rewinddir(3)/closedir(3)`
-> 18.9: File Tree Walking: `nftw(3)/ftw(3)`
-> 18.10: The Current Working Directory of a Process
-> 18.11: Operating Relative to a Directory File Descriptor
-> 18.12: Changing the Root Directory of a Process: `chroot(2)`
-> 18.13: Resolving a Pathname: `realpath(1)/realpath(3)`
-> 18.14: Parsing Pathnames Strings: `dirname(3)` and `basename(3)`
+> 18.1: Directories and (Hard) Links  
+> 18.2: Symbolic (Soft) Links  
+> 18.3: Creating and Removing (Hard) Links: `link(2)`, `linkat(2)`, `unlink(2)`, `unlinkat(2)`  
+> 18.4: Changing the Name of a File: `rename(2)` `renameat(2)` `renameat2(2)` (`mv` command)  
+> 18.5: Working with Symbolic Links: `symlink(2)/symlinkat(2)` and `readlink(2)/readlinkat(2)`  
+> 18.6: Creating and Removing directories: `mkdir(2)/mkdirat(2)` and `rmdir(2)`  
+> 18.7: Removing a File or directory: `remove(3)` (a wrapper for `unlink(2)` and `rmdir(2)`)  
+> 18.8: Reading Direcotries: `opendir(3)/fopendir(3)/readdir(3)/rewinddir(3)/closedir(3)`  
+> 18.9: File Tree Walking: `nftw(3)/ftw(3)`  
+> 18.10: The Current Working Directory of a Process  
+> 18.11: Operating Relative to a Directory File Descriptor  
+> 18.12: Changing the Root Directory of a Process: `chroot(2)`  
+> 18.13: Resolving a Pathname: `realpath(1)/realpath(3)`  
+> 18.14: Parsing Pathnames Strings: `dirname(3)` and `basename(3)`  
 
 > 1. How to differentiate between a regular file and directory in the disk level
 > 2. What is hard link
@@ -888,6 +888,3 @@
     char *strdupa(const char *s);
     char *strndupa(const char *s, size_t n);
     ``` 
-
-
-##### 18.15: Summary
