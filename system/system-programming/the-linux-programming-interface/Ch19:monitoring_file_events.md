@@ -10,13 +10,16 @@
 >
 > ##### 19.5 Queue Limits and `/proc` Files
 >
-> ##### 19.6 An Older System for Monitoring File Events: dnotify
->
+> ##### Limitations of `inotify`
 
 1. `inotify` is the successor for `dnotify`, which provides a subset of the
    functionality of `inotify`. Both two techniques are Linux-specific.
 
-   Those BSDs (including macOS) have a similar stuff, [`kqueue`](https://www.freebsd.org/cgi/man.cgi?kqueue). 
+   Those BSDs (including macOS) have a similar stuff, 
+   [`kqueue`](https://www.freebsd.org/cgi/man.cgi?kqueue). 
+
+   > This book gives some brief introduction to `dnotify` in `19.6`, if you are
+   > intersted in this, take a look at it.
 
 2. In Rust, we have [`inotify`](https://github.com/hannobraun/inotify-rs) for Linux
    and a cross platform crate [`notify`](https://github.com/notify-rs/notify).
@@ -40,20 +43,20 @@
       which can be bitwise ORed in `flags` argument. If `flags` is set to 0,
       then `inotify_init1(2)` is equivalent to `inotify_init(2)`.
 
-      1. IN_NONBLOCK
+      1. `IN_NONBLOCK`
 
          Set the O_NONBLOCK  file status flag on the open file description 
-         (see open(2)) referred to by the new file descriptor.  Using this 
-         flag saves extra calls to fcntl(2) to achieve the same result.
+         (see `open(2)`) referred to by the new file descriptor.  Using this 
+         flag saves extra calls to `fcntl(2)` to achieve the same result.
 
          > See
          > [Ch5: 14](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch5:file_i_o_further_details.md)
          > for more info about `O_NONBLOCKING`.
 
-      2. IN_CLOEXEC
+      2. `IN_CLOEXEC`
 
-         Set the close-on-exec (FD_CLOEXEC) flag on the new file descriptor.  
-         See the description of the O_CLOEXEC flag in open(2) for reasons 
+         Set the close-on-exec (`FD_CLOEXEC`) flag on the new file descriptor.  
+         See the description of the `O_CLOEXEC` flag in `open(2)` for reasons 
          why this may be useful.
 
    2. Add (or modify) watch to the target file using `inotify_add_watch(2)`
@@ -88,7 +91,7 @@
       >
 
       This function returns a `watch descriptor`, which is used to represent
-      the watch in later operations.
+      the `watch` in later operations.
 
       > `inotify_rm_watch(2)` removes an existing `watch` (the return value
       > of `inotify_add_watch(2)` from a file).
@@ -102,11 +105,15 @@
       > When a watch is removed, it can occur for two reasons:
       >
       > 1. It is explicitly removed with `inotify_rm_watch(2)`
-      > 2. The kernel removes it because the `inotify instance` was dropped or
-      >    the file system on which the target file resides is unmounted.
+      > 2. The kernel removes it 
+      >
+      >    1. the `inotify instance` was dropped
+      >    2. the watched file is deleted (receive `IN_DELETE_SELF` + `IN_IGNORD`)
+      >    3. the file system on which the target file resides was unmounted. (
+      >       receive `IN_UNMOUNT` + `IN_IGNORED`)
       >
       > > Before kernel 2.6.36, the drop of a watch which contains `IN_ONESHOT`
-      > > will not trigger this `IN_IGNORED` event. Well, starting with 2.6.36
+      > > will not trigger this `IN_IGNORED` event. Well, starting with 2.6.36,
       > > it does.
 
    3. Obtain event notification using `read(2)`
@@ -115,7 +122,7 @@
       descriptor (return value of `inotify_init/inotify_init1`).
 
       Each successful `read(2)` will return one or more `inotify_event` structures
-      in an ordered way. (See 19.4 for more information about this structure).
+      in an **ordered** way. (See 19.4 for more information about this structure).
 
    4. finish the monitoring
 
@@ -127,7 +134,7 @@
 4. Events that can be specified in the `mask` argument of `inotify_add_watch(2)`
    and returned from `read(2)`:
 
-   > When monitoring a directory:
+   > **When monitoring a directory**:
    >
    > * the events marked with an asterisk (*) can occur both for the 
    >   directory itself and for objects inside the directory
@@ -155,14 +162,15 @@
 
      > This operation (the deletion itself) is performed on the file or directories
      > inside the watched directory, this is why it is marked with `+`. But the 
-     > event is notified on the watched directory, you can get this event on the
+     > event is notified on the watched directory, you can not get this event on the
      > file on which the deletion opertaion is performed, this is kinda contradictory.
 
    * `IN_DELETE_SELF`: Watched file/directory **itself** was deleted. (This event also 
-     occurs if an object is moved to another filesystem, since mv(1) in effect 
+     occurs if an object is moved to another filesystem, since `mv(1)` in effect 
      copies the file  to  the other filesystem and then deletes it from the 
-     original filesystem.)  In addition, an IN_IGNORED event will subsequently be
-     generated for the watch descriptor.
+     original filesystem.)  **In addition, an `IN_IGNORED` event will subsequently be
+     generated for the watch descriptor (the watched file is gone, then the watch 
+     itself is also removed)**
 
      > You can see that `inotify` is implemented at the `inode` level.
      > `mv(1)/rename(2)` within the same file system (i.e., the `inode` remains
@@ -204,8 +212,8 @@
      By default, when watching events on the children of a directory, events are 
      generated for children **even after they have been unlinked from the directory**.
      This can result in **large numbers of uninteresting events** for some applications
-     (e.g., if watching /tmp, in which many applications create temporary files 
-     whose names are immediately unlinked). 
+     (e.g., if watching `/tmp`, in which many applications create temporary files 
+     *whose names are immediately unlinked*). 
 
      Specifying `IN_EXCL_UNLINK` changes the default behavior, so that events are
      not generated for children after they have been unlinked from the watched 
@@ -219,8 +227,8 @@
      > This does not specify event, instead, it controls the behavior of 
      > `inotify_add_watch(2)`
 
-     > So by default, if you call `inotify_add_watch` to a file that has been
-     > already added, the original setting will be **overwritten**.
+     > So by default, if you call `inotify_add_watch` to a file that has already 
+     > been added, the original setting will be **overwritten**.
 
    * `IN_ONESHOT`: Monitor the filesystem object corresponding to pathname for **one
      event**, then remove from watch list.
@@ -233,28 +241,36 @@
      provides an application with a race-free way of ensuring that the monitored 
      object is a directory.
 
+     > This does not specify event, instead, it controls the behavior of 
+     > `inotify_add_watch(2)`
+
    * `IN_MASK_CREATE (since Linux 4.18)`: 
       
-      Watch pathname only if it does not already have a watch associated with it; 
-      the error `EEXIST` results if pathname is already being watched.
+     > This does not specify event, instead, it controls the behavior of 
+     > `inotify_add_watch(2)`
 
-      Using this flag provides an application with a way of ensuring that new 
-      watches do not modify existing ones. This is useful because multiple
-      paths may refer to the same inode, and multiple calls to inotify_add_watch(2)
-      without this flag may clobber existing watch masks.
+     Watch pathname only if it does not already have a watch associated with it; 
+     the error `EEXIST` results if pathname is already being watched.
+
+     Using this flag provides an application with a way of ensuring that new 
+     watches do not modify existing ones. This is useful because multiple
+     paths may refer to the same inode, and multiple calls to inotify_add_watch(2)
+     without this flag may clobber existing watch masks.
 
 6. Events that can only be returned from `read(2)`
   
-   * `IN_IGNORED`: Watch was removed explicitly (inotify_rm_watch(2)) or automatically
-     (file was deleted, or filesystem was unmounted). See also BUGS.
+   * `IN_IGNORED`: Watch was removed explicitly (`inotify_rm_watch(2)`) or automatically
+     (file was deleted (`IN_DELETE_SELF` + `IN_IGNORED`), or filesystem was unmounted 
+     (`IN_UNMOUNT` + `IN_IGNORED`)). 
+     See also `inotify_rm_watch(2)` in note 3.
 
    * `IN_ISDIR`: Subject of this event is a directory.
 
    * `IN_Q_OVERFLOW`: Event queue overflowed (wd is -1 for this event).
 
-   * `IN_UNMOUNT`: Filesystem containing watched object was unmounted.  In 
+   * `IN_UNMOUNT`: Filesystem containing watched object was unmounted.  **In 
      addition, an IN_IGNORED event will subsequently be generated for the watch
-     descriptor.
+     descriptor.**
 
 7. Few notes on `inotify`:
   
@@ -263,10 +279,11 @@
       link, you will receive events when some modifications are made to other 
       hard links since they have the same inode.
 
-   2. Events made through **symlink** will not be notified.
+   2. Events made through **symlink** will NOT be notified.
 
-   3. When monitoring a directory, the `name` field of `struct inofity_event` will
-      be set to indicate the specific file.
+   3. When monitoring a directory, and receiving events on the files or directories 
+      inside this watched directory, the `name` field of `struct inofity_event` 
+      will be set to indicate the specific file.
 
    4. If we perform an `inotify_add_watch(2)` call on a file or directory that
       has already been watched, then the original watch setting will be **replaced**
@@ -284,7 +301,8 @@
        // Unique cookie associating related events. Currently, this field is only
        // used for `rename(2)`. If this happens, an `IN_MOVED_FROM` event will be 
        // delivered to the directory from which the file moves and an `IN_MOVED_TO`
-       // event is delivered to the directory to which the file moves.
+       // event is delivered to the directory to which the file moves, such two
+       // events will have the same `cookie` field so that they can be associated.
        // In other cases, this field is simply set to 0.
        uint32_t cookie;   
 
@@ -330,14 +348,93 @@
 
 9. Some notes on the return value of that `mask` field
 
-   1. An `IN_IGNORED` event will be trigger is a watch is removed. (for more info
-      , see `inotify_rm_watch(2)`)
+   1. An `IN_IGNORED` event will be trigger if a watch is removed. (for more info
+      , see `inotify_rm_watch(2)` in note `3`)
 
    2. If the subject of the event is a directory, then `IN_ISDIR` is included.
 
    3. If the file system containing the watched files is unmounted, then `IN_UNMOUNT`
       is included. And further, an `IN_IGNORED` event will be delivered since the
-      kernel implicitly removes this watch (for more infor, see `inotify_rm_watch(2)`)
+      kernel implicitly removes this watch (for more info, see `inotify_rm_watch(2)`
+      in note `3`)
 
-##### 19.5 Queue Limits and `/proc` Files
-##### 19.6 An Older System for Monitoring File Events: dnotify
+##### 19.5 Queue **Limits** and `/proc` Files
+
+10. `inotify` needs kernel memory to queue messages, and thus has some limits.
+    User with privilege can configure these limits through the files under
+    `/proc/sys/fs/inotify`
+
+    ```shell
+    $ cd /proc/sys/fs/inotify/
+    $ l
+    Permissions Links Size User Group Date Modified Name
+    .rw-r--r--@     1    0 root root  31 Oct 16:14  max_queued_events
+    .rw-r--r--@     1    0 root root  31 Oct 16:14  max_user_instances
+    .rw-r--r--@     1    0 root root  31 Oct 16:14  max_user_watches
+    ```
+
+    You can see that only `root` has the write permission.
+
+    1. `max_queued_events`:
+
+       When `inotify_init(2)/inotify_init1(2)` is called, this value is used to
+       set an upper limit on the number of events that can be queued on the new
+       inotify instance. If this limit is reached, then `IN_Q_OVERFLOW` is present,
+       and excess events are discarded. The `wd` field for the overflow events 
+       (i.e., events with `IN_Q_OVERFLOW` set) will be `-1`.
+
+       ```shell
+       $ cat max_queued_events
+       16384
+       ```
+
+    2. `max_user_instances`
+
+       Maximum number of `inotify instances` that can be created for a user. 
+
+       ```shell
+       $ cat max_user_instances
+       128
+       ```
+
+    3. `max_user_watches`
+       
+       Maximum number of `inotify watch`es that can be created for a user. 
+
+       ```shell
+       $ cat max_user_watches
+       119664
+       ```
+
+##### Limitations of `inotify`
+
+11. Limitations of `inotify`
+
+    > This section does not come from the book, it comes from `man 7 inotify`.
+
+    1. The `struct inotify_event` does not contain any informatin about `who`
+       triggers this event. 
+
+    2. `inotify` only reports events triggered by `user space` processes through
+       the file system APIs. So it is unusable on network file system.
+
+    3. Even on local file system, it still can not be used on pseudo-filesystems 
+       such  as  `/proc`, `/sys`, and `/dev/pts`.
+
+    4. The inotify API does not report file accesses and modifications that may 
+       occur because of mmap(2), msync(2), and munmap(2).
+
+    5. The inotify API identifies affected files by filename. However, by the 
+       time an application processes an inotify event, the filename may already
+       have been deleted or renamed.
+
+    6. The caller program needs to memorize the realtionship between a `watch 
+       descriptor` and `watched file`.
+
+    7. Monitoring for directories is not recursive (Honestly, I dont think this 
+       is a flaw).
+
+    8. You need to take care of that kernel memory limit.
+
+    9. If a file system is mounted at your watched directory, then NO event will
+       be sent. When it is unmounted, events will be generated.
