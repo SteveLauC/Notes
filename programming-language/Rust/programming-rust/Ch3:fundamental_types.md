@@ -483,57 +483,36 @@
 13. `String` and `Vec` are considered to be smart pointers, and thus they have
     `std::ops::Deref` and `std::ops::Drop` implemented.
 
-14. array can use a lot of slice methods because, and you can put a ref to array
-    where `slice` is expected.
+14. array can use a lot of slice methods, and you can put a ref to array where 
+    `slice` is expected because:
 
     > ```rust
+    > // Call a slice method on an array
+    >
     > array.slice_method()
     > ```
     >
     > ```rust
+    > // put a reference to array in the position where a slice is expected
+    >
     > fn foo<T>(x: &[T]){}
     > let arr = [T, T, T];
     > foo(&arr);
     > ```
     
-    > This is **WRONG**
-    >
-    > ```rust
-    > impl<T, const N: usize> AsRef<[T]> for [T; N]
-    > impl<T, const N: usize> AsMut<[T]> for [T; N]
-    > ```
-    > 
-    > ```rust
-    > // Used to do a cheap reference-to-reference conversion.
-    > 
-    > pub trait AsRef<T> 
-    > where
-    >     T: ?Sized, 
-    > {
-    >     fn as_ref(&self) -> &T;
-    > }
-    > 
-    > 
-    > // Used to do a cheap mutable-to-mutable reference conversion.
-    > 
-    > pub trait AsMut<T> 
-    > where
-    >     T: ?Sized, 
-    > {
-    >     fn as_mut(&mut self) -> &mut T;
-    > }
-    > ```
-
     [A unsized coercion in the `method lookup algorithm`](https://stackoverflow.com/a/58886793/14092446)
     and [unsized coercions](https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions) 
+
+    > The core of these two procedures is `unsized coercions`.
 
     `Vec` also has the same functionality as `array` due to the `Deref` and 
     [`Coercion types`](https://doc.rust-lang.org/reference/type-coercions.html#coercion-types)
 
 
-15. return type of `Index/IndexMut` on `[T; N]/[T]; Vec<T>`
+15. Return type of `Index/IndexMut` on `[T; N]/[T]/Vec<T>`
 
-    The return type are the same `SliceIndex<[T]>::output`
+    The return types of all these three trait implementations are same: 
+    `SliceIndex<[T]>::output`
 
     ```rust
     // impl for [T]
@@ -696,8 +675,7 @@
     }
     ```
 
-    perhaps for the reason that `String` is not a kind of slice. They wanna 
-    perserve
+    perhaps for the reason that `String` is not a kind of slice.
 
 18. `std::primitive` module
 

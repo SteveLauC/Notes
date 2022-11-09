@@ -1,3 +1,11 @@
+#### Ch5: References
+
+> ##### Reference to values
+> ##### Working with references
+> ##### Reference Safety
+> ##### Reference to values
+> ##### Taking Arms Against a Sea of objects
+
 1. Pointers can be divided into two categories:
    
    1. owning pointer: such a pointer has the ownership of the underlying
@@ -74,3 +82,78 @@
       ```
 
       Contains a pointer to the value and a pointer to the trait implementation.
+
+#### Reference to values
+#### Working with references
+#### Reference Safety
+
+1. Whenever a reference type appears inside another type's definition, you must
+   write out its lifetime.
+
+#### Sharing Versus Mutation
+
+1. A slice is a fat pointer, where the the first field of that ptr points to the
+   data directly.
+
+   ```rust
+   fn main() {
+       let v = vec![1, 2, 3];
+       println!("stack p: {:p}", &v);
+       println!("heap p: {:p}", v.as_ptr());
+   
+       let slice = &v as &[i32];
+       println!("ptr in slice: {:p}", slice);
+   }
+   ```
+
+   ```shell
+   stack p: 0x7ffd941c7ed0
+   heap p: 0x55c6b5811ba0
+   ptr in slice: 0x55c6b5811ba0
+   ```
+
+2. Why can't we have mutable and immuable references at the same time
+
+   ```rust
+   pub fn extend_from_slice(&mut self, other: &[T])
+   ```
+
+   ```rust
+   fn main() {
+       let mut v = vec![1, 2, 3];
+       v.extend_from_slice(&v);
+   }
+   ```
+
+   ```shell
+   error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
+    --> src/main.rs:8:5
+     |
+   8 |     v.extend_from_slice(&v);
+     |     ^^-----------------^--^
+     |     | |                 |
+     |     | |                 immutable borrow occurs here
+     |     | immutable borrow later used by call
+     |     mutable borrow occurs here
+   
+   For more information about this error, try `rustc --explain E0502`.
+   error: could not compile `tt` due to previous error
+   ```
+
+   If the above code is allowed, slice `&v` (argument passed to `extend_from_slice()`
+   ) may become a dangling pointer. `v` is of type `Vec`, once its heap buffer is full, 
+   it will reallocate to get a bigger buffer, and deallocate the previous heap 
+   memory. **Remeber that slice is a pointer pointing directly to the data**, slice 
+   `&v` is referring the previous heap memory, when deallocated, `&v` becomes a 
+   dangling pointer.
+
+   ![memory layout](https://github.com/SteveLauC/pic/blob/main/photo_2022-11-08_19-09-41.jpg)
+
+3. Shared access is read only access
+   
+   Across the lifetime of a shared reference, neither its referent, **nor anything
+   reachable from that referent**, can be changed by anything.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-11-08_19-46-18.jpg)
+
+#### Taking Arms Against a Sea of objects

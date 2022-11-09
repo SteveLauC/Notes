@@ -15,8 +15,9 @@
 >     3. per-mount `mount(2)` flags
 >     4. bind mounts (created using `mount(2)` `MS_BIND` flag)
 >     5. recursive bind mounts
-> 11. relationship between `fs` and `mp`
+> 11. relationship between `file system` and `mount points`
 > 12. tmpfs: a virtual memory file system
+>     > `/tmp` uses it to speed it up.
 > 13. obtain file system info using `statvfs(3)/fstatvfs(3)`
 > 14. OS-specific syscalls `statfs/fstatfs`
    

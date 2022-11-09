@@ -178,7 +178,7 @@
 
    * `IN_MODIFY (+)`: File was modified (e.g., write(2), truncate(2)).
 
-   * `IN_MOVE_SELF`: Watched file/directory was itself moved.
+   * `IN_MOVE_SELF`: Watched file/directory was **itself** moved.
 
      > `rename(2)` within the same file system.
 
