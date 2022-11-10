@@ -3,31 +3,39 @@
 1. syscall调用的步骤(i386)
 
     1. invoke the wrapper function from the c library
-    2. the wrapper function copies the provided arguments from the stack to some spicific
-    registers
+    2. the wrapper function copies the provided arguments from the stack to some **spicific
+       registers**
     3. the wrapper function copies the corresponding syscall number to a spicific
-    register
+       register
+
+       > `man 2 syscall` to see the which register is used.
+
     4. the wrapper function executes a `trap(0x80)` machine instruction, which 
-    causes the processor
-    to switch from user mode to kernel mode, and execute the code located in the trap vector
+       causes the processor
+
+       to switch from user mode to kernel mode, and execute the code located in
+       the trap vector
+
     5. the kernel invokes the `system_call()(located in the assembler file 
-    arch/i386/entry.S)`, this will:
-        1. saves register values onto the kernel stack
-        2. checks the validity of the system call number
-        3. checks the validity of the arguments(if it has) and execute the syscall
-        4. restore registers values from the kernel stack and places the syscall 
-        return value on the stack
-        5. return to the wrapper function and switch the processor back to user mode
+       arch/i386/entry.S)`, this will:
+
+       1. saves register values onto the kernel stack
+       2. checks the validity of the system call number
+       3. checks the validity of the arguments(if it has) and execute the syscall
+       4. restore registers values from the kernel stack and places the syscall 
+          return value on the stack
+       5. return to the wrapper function and switch the processor back to user mode
+
     6. the wrapper function checks the return value of the syscall, if any error 
     happened, set `errno` to the corresponding value
     7. the wrapper function returns to the calling function
 
 2. 大多数library function并没有调用syscall，而有的比如`printf`则调用了
 
-   > 隐藏在`malloc/free`下面的系统调用是`brk`
+   > 隐藏在`malloc/free`下面的系统调用是`brk`，或者是`mmap`.
 
 3. Linux上的standard c library不止`glibc`。比如，有用于嵌入式设备的消耗更少内存的
-   `uClibc` 和 `diet libc`
+   `uClibc` 和 `diet libc`，还有`musl`, `bionic`貌似也可以给Linux用.
 
 4. 如何得知`glibc`的版本
 
