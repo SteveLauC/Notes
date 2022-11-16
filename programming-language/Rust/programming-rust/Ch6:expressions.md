@@ -293,7 +293,7 @@
 
 
    Most conveniently, you can use `as` to cast thoes C-like enum directly to
-   integer types they represent
+   the integer types they represent
 
    > This is documented in 
    > [Ch3 fundamental_types.md: 6](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/programming-rust/Ch3:fundamental_types.md)

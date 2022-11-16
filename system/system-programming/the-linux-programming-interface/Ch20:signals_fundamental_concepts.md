@@ -138,7 +138,8 @@
      >
      > `man 2 setitimer`: ITIMER_REAL
 
-     > `SIGVTALRM` is used for **virtual timer**
+     > `SIGVTALRM` is used for **virtual timer** (user mode CPU time)
+     > `SIGPROF` is used for `profiling` timer (user and kernel mode CPU time)
 
    * SIGBUS: This signal (bus error) is sent to indicate kinds of memory error.
      If we use `mmap(2)` to access the memory that does not belongs to us, we will
@@ -154,11 +155,12 @@
    * SIGCONT: When sent to a **stopped process**, this signal causes the process to 
      **resume**.
 
-     When sent to a non-stopped process, this signal is ignored.
+     When sent to a non-stopped process, this signal is ignored (discarded by the 
+     kernel).
 
    * SIGEMT: In UNIX systems generally, this signal is used to indicate an 
-     implementaion dependent hardware error. On Linux, this signal is used only
-     in the **Sun SPARC** (An architecture) implementation. The suffix `EMT` 
+     implementaion dependent hardware error. **On Linux, this signal is used only
+     in the Sun SPARC (An architecture) implementation.** The suffix `EMT` 
      means `emulator trap`, an assembler mnemonic on the Digital PDP-11.
 
    * SIGFPE: This signal is generated for certain types of arithmetic errors, 
@@ -169,22 +171,22 @@
 
      For example, on x86-32, integer divide-by-zero always yields a SIGFPE, but
      the handling of floating-point divide-by-zero depends on whether the 
-     FE_DIVBYZERO exception has been enabled. If this exception is enabled 
-     (using feenableexcept()), then a floating-point divide-by-zero generates 
-     SIGFPE; otherwise, it yields the IEEE-standard result for the operands 
-     (a floating-point representation of infinity). See the fenv(3) manual page
+     `FE_DIVBYZERO` exception has been enabled. If this exception is enabled 
+     (using `feenableexcept(3)`), then a floating-point divide-by-zero generates 
+     `SIGFPE`; otherwise, it yields the IEEE-standard result for the operands 
+     (a floating-point representation of infinity). See the `fenv(3)` manual page
      and `<fenv.h>` for further information.
 
    * SIGHUP: When a terminal disconnect (hangup) occurs, this signal is sent to
      the controlling process of the terminal. We describe the concept of a 
-     controlling process and the various circumstances in which SIGHUP is sent 
+     controlling process and the various circumstances in which `SIGHUP` is sent 
      in Section 34.6. 
 
-     A second use of SIGHUP is with daemons (e.g., init, httpd,
+     A second use of `SIGHUP` is with daemons (e.g., init, httpd,
      and inetd). Many daemons are designed to respond to the receipt of SIGHUP 
      by reinitializing themselves and rereading their configuration files. The 
-     system administra- tor triggers these actions by manually sending SIGHUP 
-     to the daemon, either by using an explicit kill command or by executing 
+     system administrator triggers these actions by manually sending `SIGHUP`
+     to the daemon, either by using an explicit `kill` command or by executing 
      a program or script that does the same.
 
    * SIGILL: This signal is sent to the process who tries to execute an illegal
@@ -206,11 +208,17 @@
      occurs on certain types of open file descriptors, such as those for terminals 
      and sockets. This feature is described further in Section 63.3.
 
-   * SIGIOT: On Linux, this is a synonym for `SIGABRT`. On some traditional UNIX 
-     implementations, this signal indicates an implementation-defined hardware
-     fault. 
+   * SIGIOT: 
 
-   * SGIKILL: This is the `sure kill` signal. **It can't be blocked, ignore, or 
+     > `IOT` means `input/output trap`
+     >
+     > https://superuser.com/q/1284627/1597536
+     
+     1. On Linux, this is a synonym for `SIGABRT`. 
+     2. On some traditional UNIX implementations, this signal indicates an 
+        implementation-defined hardware fault. 
+
+   * SGIKILL: This is the `sure kill` signal. **It can't be blocked, ignored, or 
      caught by a handler**. And thus always terminates a process.
 
    * SIGLOST: This signal exists on Linux, but is unused. 
@@ -229,11 +237,17 @@
    * SIGPOLL: This signal is derived from System V, and is a synonym for `SIGIO`
      on Linux. 
 
-   * SIGPROF: The kernel generates this signal upon the expiration of a profiling 
-     timer set by a call to `setitimer(2)` (Section 23.1). A profiling timer is one 
-     that counts the CPU time used by a process. Unlike a virtual timer (see 
-     `SIGVTALRM` below), a profiling timer counts CPU time used in both user mode 
-     and kernel mode.
+     > SIGIO: Using the `fcntl(2)` system call, it is possible to arrange for this 
+     > signal to be generated when an I/O event (e.g., input becoming available) 
+     > occurs on certain types of open file descriptors, such as those for terminals 
+     > and sockets. This feature is described further in Section 63.3.
+
+   * SIGPROF: The kernel generates this signal upon the expiration of a **profiling 
+     timer** set by a call to `setitimer(2)` (Section 23.1). 
+
+     A profiling timer is one that counts the CPU time used by a process. Unlike
+     a virtual timer (see `SIGVTALRM` below), a profiling timer counts CPU time 
+     used **in both user mode and kernel mode**.
 
    * SIGPWR: This is the `power failure signal`. On systems that have an 
      uninterruptible power supply (UPS), it is possible to set up a daemon 
@@ -270,7 +284,7 @@
      `segmentation violation`.
 
    * SIGSTKFLT: Documented in `signal(7)` as `stack fault on coprocessor`, this
-     signal is defined, but is unused on Linux.
+     signal is defined, **but is unused on Linux**.
 
    * SIGSTOP: This is the sure `stop` signal. **It can't be blocked, ignored or 
      caught by a handler;** Thus, it always stops a process.
@@ -313,10 +327,14 @@
      a background process group when it attempts to `write(2)` to the terminal (see 
      Section 34.7.1). This signal stops a process by default.
 
-   * SIGUNUSED: As the name implies, this signal is **unused**. On Linux 2.4 and 
-     later, this signal name is synonymous with SIGSYS on many architectures. 
-     In other words, this signal number is no longer unused on those architectures, 
-     although the signal name remains for backward compatibility.
+   * SIGUNUSED: As the name implies, this signal is **unused**
+
+     On Linux 2.4 (released on January 4, 2001) and later, if defined, this 
+     signal name is synonymous with SIGSYS (bad syscall) on many 
+     architectures. 
+
+     Glibc since 2.26 (released on August 2, 2017) no longer defines this signal,
+     so it is unused again.
 
    * SIGURG: This signal is sent to a process to indicate the presence of 
      out-of-band (also known as *urgent*) data **on a socket** (Section 61.13.1).
@@ -345,6 +363,9 @@
      > `man 2 setitimer`: `ITIMER_VIRTUAL`
 
      > `SIGALRM` is used for `realtime` timer.
+     >
+     > `SIGPROF` is used for `profiling` timer (CPU time including both user and 
+     > kernel mode)
 
    * SIGWINCH: In a windowing environment, this signal is sent to the foreground
      process group **when the terminal window size changes** (as a consequence either
@@ -361,8 +382,60 @@
      or `truncate(2)`) to increase the size of a file beyond the process’s file 
      size resource limit (`RLIMIT_FSIZE`, described in Section 36.3).
 
+2. Overview of various signal
+  
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-11-12_11-53-32.jpg)
+
+   The `Default` column:
+
+   * `core`: generates a core dump file
+   * `term`: terminates the process
+   * `ignore`: ignored by the process
+   * `cont`: resumes the process
+   * `stop`: suspends the process
+
 ##### 20.3 Changing Signal Dispositions: `signal(2)`
+
+1. UNIX provoides two ways to change signal dispositions, `signal(2)` and 
+   `sigaction(2)`. The `signal(2)` syscall is the simpler one, which provides
+   less functionality compared to `sigaction(2)`.
+
+   However, the behavior of `signal(2)` varies across UNIX implementations, 
+   and even varies acroes different Linux versions, thus this should never 
+   be used in portable applications.
+
+2. `signal(2)`
+
+   ```c
+   #include <signal.h>
+
+   typedef void (*sighandler_t)(int);
+   // `signum`: the number of signal to be operated 
+   // `handler`: the handler you wanna use
+   sighandler_t signal(int signum, sighandler_t handler);
+   ```
+
+   The return value of `signal(2)` is the previous signal handler on success.
+   On error, `SIG_ERR` is returned and `errno` is set to indicate the error
+   case.
+
+   > `signal(2)` can be used to retrieve the signal handler, but will change
+   > it at the same time. To acieve this without modifying the existing one,
+   > use `sigaction(2)` instead.
+
+   > That `sighandler_t` type alias, available only when `_GNU_SOURCE` is defined.
+
+   `handler` argument can be set to:
+   1. `SIG_DFL`: undo the disposition
+   2. `SIG_IGN`: ignore this signal
+   3. a user-defined hanlder
+
 ##### 20.4 Introduction to Signal Handlers
+
+1. Execution flow of a process with signal handler set
+
+   ![flow](https://github.com/SteveLauC/pic/blob/main/photo_2022-11-12_12-34-18.jpg)
+
 ##### 20.5 Sending Signals: `kill(2)`
 ##### 20.6 Checking for the Existence of a Process
 ##### 20.7 Other Ways of Sending Signals: `raise(3)` and `killpg(3)`
