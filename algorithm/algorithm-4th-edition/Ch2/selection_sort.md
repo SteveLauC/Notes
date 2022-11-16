@@ -1,7 +1,10 @@
 #### 1. selection sort: swap the ith smallest item with s[i]
    
-   > spatial complexity: O(1)  
+   > spatial complexity: O(1)
+   >
    > time complexity: O(N^2)
+   >
+   > stable: [No](https://stackoverflow.com/a/4601081/14092446)
 
    ```rust
    fn selection_sort<T: PartialOrd>(s: &mut [T]) {
@@ -53,3 +56,5 @@
          ```
    
       2. It only moves data n times(exclusive to selection sort)
+
+         > What are the situations in other sorting algorithms
