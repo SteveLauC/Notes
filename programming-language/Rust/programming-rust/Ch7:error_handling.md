@@ -9,7 +9,7 @@
 1. When Rust process panics, it will eithter unwind the stack, or just abort the
    program.
 
-   Unwinding is the default option, if you don't like it, specify this in `Cargo.toml`:
+   Unwinding is the default option, if you don't like it, change it in `Cargo.toml`:
 
    ```toml
    # For debug mode
@@ -25,6 +25,33 @@
 
 2. Panic is per thread, one thread can be panicking while other threads are
    going on about their normal business.
+
+   ```rust
+   use std::thread::spawn;
+   
+   fn main() {
+       let handle = spawn(|| {
+           panic!("One thread panicked");
+       });
+       handle.join().unwrap();
+   
+       println!("Hello from another thread!");
+   }
+   ```
+
+   ```shell
+   $ cargo r -q
+   thread '<unnamed>' panicked at 'One thread panicked', src/main.rs:5:9
+   stack backtrace:
+      0: rust_begin_unwind
+                at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/std/src/panicking.rs:584:5
+      1: core::panicking::panic_fmt
+                at /rustc/897e37553bba8b42751c67658967889d11ecd120/library/core/src/panicking.rs:142:14
+      2: rust::main::{{closure}}
+                at ./src/main.rs:5:9
+   note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+   Hello from another thread!
+   ```
 
 3. When panic is implemented using `unwind`, one can catch it and allow
    the thread to survive and continue running using `std::panic::catch_unwind()`
@@ -153,3 +180,62 @@
    > 2. `Box/Rc/Arc<T>`
    >
    > (`Box<T>` owns its value, and thus has lifetime `'static`)
+
+7. Use `downcast_ref()` to get the concrete type of an `Error`:
+  
+   These methods are implemented for `Error` trait object instead of types
+   `E: Error`.
+
+   This function is generic, and thus you have to provide a generic type `T`
+   when calling it:
+
+   ```rust
+   pub fn downcast_ref<T>(&self) -> Option<&T>
+   where
+       T: 'static + Error,
+   ```
+
+   ```rust
+   use std::{
+       error::Error,
+       fmt::{Display, Formatter},
+       str::Utf8Error,
+   };
+   
+   #[derive(Debug)]
+   struct Foo;
+   
+   impl Display for Foo {
+       fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+           write!(f, "{:?}", self)
+       }
+   }
+   
+   impl Error for Foo {}
+   
+   fn main() {
+       let f = Box::new(Foo) as Box<dyn Error>;
+       let bad_guess = f.downcast_ref::<Utf8Error>();
+       let good_guess = f.downcast_ref::<Foo>();
+       println!("{:?}", bad_guess);
+       println!("{:?}", good_guess);
+   }
+   ```
+
+   ```shell
+   $ cargo r -q
+   None
+   Some(Foo)
+   ```
+
+   > There are actually three `downcast_ref()` methods on `dyn Error`, the 
+   > difference lies in the trait bound of the targeting trait object:
+   >
+   > ```rust
+   > impl dyn Error + 'static 
+   > impl dyn Error + 'static + Send
+   > impl dyn Error + 'static + Send + Sync
+   > ```
+   >
+   > For the implementation of these three functions, the last two implementations
+   > rely on the first one.
