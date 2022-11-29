@@ -239,3 +239,159 @@
    >
    > For the implementation of these three functions, the last two implementations
    > rely on the first one.
+
+8. `std::time::SystemTime::elapsed()`
+
+   ```rust
+   pub fn elapsed(&self) -> Result<Duration, SystemTimeError>
+   ```
+
+   Returns the Duration elspased from the time point `self`.
+
+   ```rust
+   use std::{
+       time::{
+           SystemTime,
+           Duration,
+       },
+       thread::sleep,
+   };
+   
+   fn main() {
+       let now = SystemTime::now();
+       sleep(Duration::from_secs(2));
+   
+       println!("{:?}", now.elapsed().unwrap())
+   }
+   ```
+
+   ```shell
+   $ cargo r -q
+   2.000248375s
+   ```
+
+   This function may fail as the `SystemTime` can go backwards. If you don't want
+   this, use `Instant::elapsed()` instead. `Instant` is guaranteed to be 
+   monotonically nondecreasing.
+
+9. `exit(3)` in cpp will not call destructor to clean up the left resources,
+   and thus is not recommended to use in your program.
+
+   In C, it is [mostly fine to use `exit(3)`](https://stackoverflow.com/a/31501322/14092446).
+   However, there may be some resources that won't be freed by `exit(3)`, in such
+   cases, you need to call `atexit(3)` to define a callback to manually clean
+   those stuff.
+
+   ```c
+   #include <stdlib.h>
+
+   int atexit(void (*function)(void));
+   ```
+
+   How does Rust handle this:
+
+   ```rust
+   // std::process::exit
+
+   pub fn exit(code: i32) -> ! {
+       crate::rt::cleanup();
+       crate::sys::os::exit(code)
+   }
+   ```
+
+   ```rust
+   // crate::sys::os::exit
+   // a wrapper for libc::exit
+
+   pub fn exit(code: i32) -> ! {
+       unsafe { libc::exit(code as c_int) }
+   }
+   ```
+
+   ```rust
+   // One-time runtime cleanup.
+   // Runs after `main` or at program exit.
+   // NOTE: this is not guaranteed to run, for example when the program aborts.
+   pub(crate) fn cleanup() {
+       static CLEANUP: Once = Once::new();
+       CLEANUP.call_once(|| unsafe {
+           // Flush stdout and disable buffering.
+           crate::io::cleanup();
+           // SAFETY: Only called once during runtime cleanup.
+           sys::cleanup();
+       });
+   }
+   ```
+
+   ```rust
+   // io::cleanup()
+
+   // Flush the data and disable buffering during shutdown
+   // by replacing the line writer by one with zero
+   // buffering capacity.
+   pub fn cleanup() {
+       let mut initialized = false;
+       let stdout = STDOUT.get_or_init(|| {
+           initialized = true;
+           ReentrantMutex::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
+       });
+   
+       if !initialized {
+           // The buffer was previously initialized, overwrite it here.
+           // We use try_lock() instead of lock(), because someone
+           // might have leaked a StdoutLock, which would
+           // otherwise cause a deadlock here.
+           if let Some(lock) = stdout.try_lock() {
+               *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+           }
+       }
+   }
+   ```
+
+   ```rust
+   // sys::cleanup(), defined in `unix.rs`
+   
+   // SAFETY: must be called only once during runtime cleanup.
+   // NOTE: this is not guaranteed to run, for example when the program aborts.
+   pub unsafe fn cleanup() {
+       stack_overflow::cleanup();
+   }
+   ```
+
+   ```rust
+   // stack_overflow.rs: cleanup()
+
+   pub unsafe fn cleanup() {
+       drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed));
+   }
+   ```
+
+10. The `main()` function in Rust can return `Result<T, E>` 
+    [since 1.26](https://blog.rust-lang.org/2018/05/10/Rust-1.26.html#main-can-return-a-result)
+
+    If `main` returns an `Error`, it will exit the program with an error code and
+    print the `Debug` representation of that `Error`.
+
+11. `#[derive(std::errror::Error)` using [`thiserror`](https://docs.rs/thiserror/latest/thiserror)
+
+
+    ```rust
+    use thiserror::Error;
+    
+    #[derive(Error, Debug)]
+    #[error("Error with code: {0}")]
+    struct ErrorWithCode(i32);
+    
+    fn main() {
+        let f = ErrorWithCode(1);
+        println!("{}", f);
+    }
+    ```
+
+    ```shell
+    $ cargo r -q
+    Error with code: 1
+    ```
+
+    It is a convenient macro to help you avoid the manual implementation of
+    `std::fmt::Display` and `std::error::Error`.
