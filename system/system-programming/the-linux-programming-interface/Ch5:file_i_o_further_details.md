@@ -40,7 +40,7 @@
 5. fetch access mode
 
    > If you forget about what is `access mode` and the categories of `flag`,
-   here you go[link](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch4.md)
+   > here you go[link](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch4:file_i_o_the_universal_i_o_model.md)
 
    getting access mode is a little bit complex cause `O_RDONLY` has value 0
 

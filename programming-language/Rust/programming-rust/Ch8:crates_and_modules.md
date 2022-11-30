@@ -92,8 +92,44 @@
    For more information, see 
    [pub(in path), pub(crate), pub(super), and pub(self)](https://doc.rust-lang.org/reference/visibility-and-privacy.html#pubin-path-pubcrate-pubsuper-and-pubself)
 
+2. When Rust sees `mod a`, it will check both `a.rs` and `a/mod.rs`, if neither
+   file exists or both exist, that's an error.
 
-2. 
+3. There are three modes you can empoly when separating modules among files, to
+   define a module `fs` with submodule `file`
+
+   1. A file named `fs.rs` with contents like this:
+
+      ```rust
+      pub mod file;
+      ```
+
+   2. A directory named `fs`:
+
+      ```shell
+      $ cd fs
+      $ ls
+      mod.rs file.rs
+
+      $ cat mod.rs
+      pub mod file;
+      ```
+
+    3. A directory named `fs` and a file named `fs.rs`
+
+       > The `fs.rs` in this hierarch is equivalent to `mod.rs`
+
+       > Personally I don't like this hierarcy, I perfer the second one.
+
+       ```shell
+       $ cat fs.rs
+       pub mod file;
+
+       $ cd fs
+       $ ls
+       file.rs
+       ```
+
 ##### Turning a Program into a Library
 ##### The `src/bin` directory
 ##### Attributes

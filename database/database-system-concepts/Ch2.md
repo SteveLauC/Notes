@@ -65,14 +65,14 @@
    > Database systems today typically support foreign key constraint key instead
    of referential integrity constraint
 
-#### 2.5 query language
+#### 2.5 Relational Query Language
 1. categories of query language
   
    * imperative ~:中文译作命令式查询语言
    * functional ~
    * declrative query language
 
-#### 2.6 the relational algebra
+#### 2.6 The Relational Algebra
 1. select operation: select tuples that satifies the given predicate
 
    > In predicate, we can combine sub-predicate using connections like and, or and not.
