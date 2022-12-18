@@ -3,9 +3,9 @@
 > 1. Retrieve file information using `stat(2)/lstat(2)/fstat(2)/fstatat(2)` from `i-node`
 > 2. `stat` struct
 > 3. Get birthtime of a file using `statx(2)`
-> 4. Change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(3)/futimens(3)`
+> 4. Change `atime` and `mtime` using `utime(2)/utimes(2)/futimes(2)/lutimes(2)/utimensat(2)/futimens(2)`
 >    
->    > You should use `utimensat(3)` or `futimens(3)`
+>    > You should use `utimensat(2)` or `futimens(2)`
 >
 > 5. The ownership of a new file: EUID, EGID (system V) or GID of parent dir (BSD)
 > 6. Propagation of the `set-GID` bit on directories.
@@ -547,7 +547,7 @@
       `lutimes(2)` doesn't follow soft link.
 
 
-   3. utimensat(3) or futimens(3)
+   3. utimensat(2) or futimens(2)
 
       > accuracy: nanosecond
 
