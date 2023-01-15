@@ -54,7 +54,7 @@
     |O_WRONLY  | open for writing only|
     |O_RDWR    | open for reading and writing|
     | =========|======|
-    |O_CLOEXEC | set the close-on-exec flag|
+    |O_CLOEXEC | set the close-on-exec flag, which indicates if the file descriptor will be inherited or not|
     |O_CREAT|  create file if it does not already exist|
     |O_DIRECTORY| fail if pathname is not a dir(service opendir(3))|
     |O_EXCL| with O_CREAT: create file exclusively|

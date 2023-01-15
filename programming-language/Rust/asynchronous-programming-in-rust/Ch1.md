@@ -43,7 +43,7 @@
 
 2. 使用`.await`来执行一个`Future`
 
-   It will not block the caller, but instead asynchronously waits for the future 
+   It will not block the caller, but instead **asynchronously waits** for the future 
    to complete, allowing other tasks to run if the future is currently unable 
    to make progress.
 
@@ -68,3 +68,48 @@
         println!("hello");
     }
     ```
+
+    > 需要注意的是，在一个 async block 中，有多个`Future`，然后多次使用`.await`来
+    > 等待，那么这几个在同一个 async block 里的`Future`s 的执行顺序仍然是从上往下
+    > 的，并不会说第一个无法取得进展，而先去执行第二个
+    >
+    > ```rust
+    > async fn first() {
+    >     // tokio::time::sleep(Duration::from_secs(2)).await;
+    >     println!("first");
+    > }
+    >
+    > async fn second() {
+    >     println!("second");
+    > }
+    >
+    > #[tokio::main]
+    > async fn main() {
+    >     first().await; 
+    >     second().await; 
+    > }
+    > ```
+    >
+    > 上面的代码永远都是先打印`first`，再打印`second`.即使说`first()`里面`tokio::time::sleep()`
+    > 了，也会是先打印`first`。
+    >
+    >
+    > 那种一个`Future`无法取得进展，换用另一个`Future`的情况得用`join!()`:
+    >
+    > ```rust
+    > #[tokio::main]
+    > async fn main() {
+    >     let first_fut = first();
+    >     let second_fut = second();
+    >
+    >     tokio::join!(first, second);
+    > }
+    > ```
+    >
+    > 比如取消`first()`里`sleep()`的注释，来运行上面的代码：
+    > 
+    > ```shell
+    > $ cargo r
+    > second
+    > first    # 2s 后才打印first
+    > ```

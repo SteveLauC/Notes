@@ -73,22 +73,22 @@
 
 4. async function的2种写法(((
 
-    ```rust
-    use std::future::Future;
+   ```rust
+   use std::future::Future;
 
-    fn main() {
-    }
+   fn main() {
+   }
 
-    // 这就是async fn
-    async fn foo_async() -> () {
-        ()
-    }
-    
-    // async block
-    fn foo() -> impl Future<Output = ()> {
-        async {}
-    }
-    ```
+   // 这就是async fn
+   async fn foo_async() -> () {
+       ()
+   }
+   
+   // async block
+   fn foo() -> impl Future<Output = ()> {
+       async {}
+   }
+   ```
 
 5. async lifetime
 
@@ -96,17 +96,17 @@
    non-'static arguments` return a Future which is bounded by the lifetime 
    of the arguments:
 
-    ```rust
-    // This function:
-    async fn foo(x: &u8) -> u8 { *x }
+   ```rust
+   // This function:
+   async fn foo(x: &u8) -> u8 { *x }
 
-    // Is equivalent to this function:
-    fn foo_expanded<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
-        async move { *x }
-    }
-    ```
+   // Is equivalent to this function:
+   fn foo_expanded<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
+       async move { *x }
+   }
+   ```
 
-    > what is `reference or other non-'static arguments`
+   > what is `reference or other non-'static arguments`
 
 6. mulithreaded future executor
 

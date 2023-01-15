@@ -8,13 +8,13 @@
     3. the wrapper function copies the corresponding syscall number to a spicific
        register
 
-       > `man 2 syscall` to see the which register is used.
+       > `man 2 syscall` to see the what register are used on a particular arch.
 
     4. the wrapper function executes a `trap(0x80)` machine instruction, which 
        causes the processor
 
        to switch from user mode to kernel mode, and execute the code located in
-       the trap vector
+       the trap vector (interrupt vector)
 
     5. the kernel invokes the `system_call()(located in the assembler file 
        arch/i386/entry.S)`, this will:
@@ -32,10 +32,15 @@
 
 2. 大多数library function并没有调用syscall，而有的比如`printf`则调用了
 
+   ```shell
+   $ strace ./a.out 2>&1 |grep write
+   write(1, "hello", 5hello)                    = 5
+   ```
+
    > 隐藏在`malloc/free`下面的系统调用是`brk`，或者是`mmap`.
 
 3. Linux上的standard c library不止`glibc`。比如，有用于嵌入式设备的消耗更少内存的
-   `uClibc` 和 `diet libc`，还有`musl`, `bionic`貌似也可以给Linux用.
+   `uClibc` 和 `diet libc`，还有`musl`, `bionic`(libc for andorid)貌似也可以给Linux用.
 
 4. 如何得知`glibc`的版本
 

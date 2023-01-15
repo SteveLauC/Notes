@@ -1,11 +1,11 @@
 #### Ch13: File I/O Buffering
 
 > 1. conception: kernel buffer cache and libc buffer
-> 2. library functions (setvbuf/setbuf/setbuffer/setlinebuf) used to modify the
+> 2. library functions (`setvbuf/setbuf/setbuffer/setlinebuf`) used to modify the
      buffering mode of stream buffer (libc buffer)
-> 3. library function to flush the buffer (flush(3))
+> 3. library function to flush the buffer (`fflush(3)`)
 > 4. conception: synchronized I/O data integrity and file integrity
-> 5. syscalls for controlling kernel buffer (fsync/fdatasync/sync/syncfs)
+> 5. syscalls for controlling kernel buffer (`fsync/fdatasync/sync/syncfs`)
 > 6. direct I/O (raw I/O)
 >    * how to enable it
 >    * how to test if your system supports it
@@ -36,7 +36,7 @@
    ```
 
    > To be precise, since Kernel 2.14, Linux no longer maintains a separate
-   > `buffer cache`. Instead, file I/O buffers are included in the page cache.
+   > `buffer cache`. Instead, file I/O buffers are included in the **page cache**.
    > But we still use the word `buffer cache` as this is the general terminology
    > in UNIX world.
 
@@ -55,7 +55,8 @@
    (and metadata) is writen to the disk. (reaches synchronized I/O file integrity 
    completion) 
 
-   > [Ch4 Note 5 flag arguments of open(2)](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch4.md)
+   > [Ch4 Note 5 flag arguments of open(2)]
+   > (https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch4:file_i_o_the_universal_i_o_model.md)
 
    Another approach to make I/O synchronous is to modify the configuration of
    the underlying file system:
@@ -116,11 +117,11 @@
    }
    ```
 
-   In the above program, we use a buffer of size `1024`, we can try different 
-   values to measure the time consumed to copy a big file:
+   In the above program, we use a buffer of size `1024` (`BUF_SIZE`), we can try
+   different values to measure the time consumed to copy a big file:
 
-   Here we have two executables with bufsize of `1 bytes` and `1024 bytes` 
-   respectively, and we try to copy `log` using these two binaries:
+   Here we have two executables with bufsize set to `1 bytes` and `1024 bytes` 
+   respectively, and we try to copy `log` (20MB) using these two binaries:
 
    ```shell
    $ l
@@ -147,7 +148,8 @@
    space and kernel space`. That's basically the overhead of calling `read(2)` 
    and `write(2)`.
 
-   > refer to [Ch3 note1: the process of syscall](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch3.md)
+   > refer to [Ch3 note1: the process of syscall]
+   > (https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch3:system_programming_concepts.md)
 
 
    The size of buffer can have a big impact on the performance.
@@ -160,6 +162,9 @@
    > developer.
 
    These are three types of buffering modes:
+
+   > The concept of `buffering mode` exists in libc buffer, for the kernel buffer,
+   > I guess it is `block buffered`.
 
    1. unbuffered
    2. block buffered
@@ -180,8 +185,8 @@
 
    The above lib functions can be used to modify the mode of buffering.
 
-   `setvbuf(3)` is the general one and the other functions are based on all 
-   `setvbuf(3)`. The `stream` argument identifies the stream to be modified.
+   `setvbuf(3)` is the general one and the other functions are implemented based
+   on `setvbuf(3)`. The `stream` argument identifies the stream to be modified.
    And if you wanna modify the mode, **do it after stream is open and 
    before any I/O operation has been performed on this stream**, this modification 
    will effect all the subsequent I/O functions performed on this
@@ -438,6 +443,33 @@
 
     > On Btrfs, Direct I/O will fall back to Buffered I/O if alignment restrictions
     > are not satisfied. See [post](https://www.spinics.net/lists/linux-btrfs/msg67293.html)
+
+    > Tmpfs does NOT support Direct I/O, you can check this 
+    > [mail list](https://lore.kernel.org/lkml/45A29EC2.8020502@tmr.com/t/)
+    >
+    > To prevent the problem that above link could be dead in the future, I
+    > abstract the key sentences here:
+    >
+    > I wonder why open() with O_DIRECT (for example) bit set is disallowed 
+    > on a tmpfs (again, for example) filesystem, returning EINVAL.
+    > 
+    > 
+    > Email author (question): 
+    > Yes, the question may seems strange a bit, because of two
+    > somewhat conflicting reasons.  First, there's no reason to
+    > use O_DIRECT with tmpfs in a first place, because tmpfs does
+    > not have backing store at all, so there's no place to do
+    > direct writes to.  But on another hand, again due to the very
+    > nature of tmpfs, there's no reason not to allow O_DIRECT
+    > open and just ignore it, -- exactly because there's no
+    > backing store for this filesystem.
+    >
+    > Reply:
+    > Because it would be (a very small amount of) work and bloat to
+    > support O_DIRECT on tmpfs; because that work didn't seem useful;
+    > and because the nature of tmpfs (**completely in page cache**(the kernel 
+    > buffer cache)) is at odds with the nature of O_DIRECT (completely avoiding
+    > page cache), so it would seem misleading to support it.
 
 11. mixing lib functions and syscalls for File I/O
 
