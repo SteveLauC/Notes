@@ -69,9 +69,9 @@
        };
        println!("{}", str);  // use of moved value
    }
-  ```
+   ```
 
-4. async function的2种写法(((
+4. async function的2种写法
 
    ```rust
    use std::future::Future;
