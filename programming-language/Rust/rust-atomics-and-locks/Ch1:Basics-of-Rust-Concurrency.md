@@ -10,13 +10,13 @@
 
 > TOC
 >
-> * [Threads In Rust]()
-> * [Scoped Threads]()
-> * [Shared Ownership and Reference Counting]()
-> * [Borrowing and Data Races]()
-> * [Interior Mutability]()
->   * [Cell]()
->   * [RefCell]()
+> * [Threads In Rust](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#threads-in-rust)
+> * [Scoped Threads](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#threads-in-rust)
+> * [Shared Ownership and Reference Counting](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#shared-ownership-and-reference-counting)
+> * [Borrowing and Data Races](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#borrowing-and-data-races)
+> * [Interior Mutability](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#interior-mutability)
+>   * [Cell](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#cell)
+>   * [RefCell](#RefCell)
 >   * [Mutex and RwLock]()
 >   * [Atomic]()
 > * [Interior Mutability]()
@@ -444,6 +444,7 @@
    |Mutex  |Yes          |
    |RwLock |Yes          |
    |AtomicX from `sync::atomic` module |Yes          |
+   |UnsafeCell | Definitely NO |
 
 ## Cell
 
