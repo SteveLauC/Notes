@@ -12,6 +12,11 @@
 >    * alignment restrictions.
 > 7. mixing use of syscalls and lib functions (write order issue)
 
+> Great Posts about `Direct I/O`:
+> 1. [RocksDB 源码分析 – I/O](https://youjiali1995.github.io/rocksdb/io/)
+
+[IO_stack_of_the_Linux_kernel](https://github.com/SteveLauC/pic/blob/main/IO_stack_of_the_Linux_kernel.png)
+
 1. kernel `buffer cache`
    
    When performing disk operation, the kernel maintains a memory called 
@@ -387,6 +392,14 @@
    [article: ensuring data reaches disk](https://lwn.net/Articles/457667/)
 
 10. Direct I/O: bypassing the kernel buffer cache
+
+    > Direct I/O will bypass the page cache, but it won't guarantee `synchronized I/O 
+    > data integrity completion` or `synchronized I/O file integrity completion`, 
+    > to achive these two completions, use `O_DSYNC` or `O_SYNC`, or you can call
+    > `fsync()` or `fdatasync()`.
+    >
+    > In other words, Direct I/O is NOT synchronous, it won't guarantee that
+    > the data will be on the disk after `write(2)`.
 
     This can be enabled through the `O_DIRECT` flag of `open(2)` when opening a
     file or through `fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_DIRECT)` for a

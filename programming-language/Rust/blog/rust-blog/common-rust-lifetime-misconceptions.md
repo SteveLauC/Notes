@@ -11,12 +11,21 @@
    ![illustration](https://github.com/SteveLauC/pic/blob/main/Screen%20Shot%202022-04-07%20at%2010.31.04%20AM.png)
 
 
-   理清这两者之间的关系之后再来看看`&'static T'`，它是一个不可变的引用，这个引用
-   指向一个块可以存活无限长时间的内存，那么对于`T`这块内存的要求就是1要求其不可
-   变，2要求在`&'static T'`创建后`T`不会move掉。所以`&'static T'`这种引用是可以在
-   运行时创建的，只要内存不可变并且我们主动地进行内存泄露(防止被move掉)。
+   理清这两者之间的关系之后再来看看`&'static T`，它是一个不可变的引用，这个引用
+   指向一个块可以存活无限长时间(从被创建到程序结束)的内存，那么对于`T`这块内存的
+   要求就是:
+
+   1. 要求其不可变
+   2. 要求在`&'static T`创建后`T`不会move掉。
+
+   所以`&'static T`这种引用是可以在运行时创建的，只要内存不可变并且我们主动地进行
+   内存泄露(防止被move掉)。
 
    ![illustration](https://github.com/SteveLauC/pic/blob/main/Screen%20Shot%202022-04-07%20at%2011.00.46%20AM.png)
+
+   > `&'static T` doesn’t mean that the value lived since the start of the program,
+   > but only that it lives **to the end of the program**. The past is simply not 
+   > relevant.
 
    ```rust
    // 演示`T: 'static`是可变的
