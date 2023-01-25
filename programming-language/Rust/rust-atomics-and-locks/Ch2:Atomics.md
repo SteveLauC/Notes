@@ -4,7 +4,7 @@
 > with several real-world use cases as usable examples.
 >
 > While memory ordering is relevant for every atomic operation, that topic is 
-> left for the [next chapter](../Ch3:Memory-Ording.md). This chapter only 
+> left for the [next chapter](./Ch3:Memory-Ording.md). This chapter only 
 > covers situations where relaxed memory ordering suffices, which is the case 
 > more often than one might expect.
 
