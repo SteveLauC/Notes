@@ -17,9 +17,16 @@
 > * [Interior Mutability](#interior-mutability)
 >   * [Cell](#cell)
 >   * [RefCell](#RefCell)
->   * [Mutex and RwLock](#mutex-and-rwlokc)
+>   * [Mutex and RwLock](#mutex-and-rwlock)
 >   * [Atomic](#atomic)
-> * [Interior Mutability](#interior-mutability)
+> * [Locking: Mutexes and RwLocks](#locking:-mutexes-and-rwLocks)
+>   * [Rust’s Mutex](#rust's-mutex)
+>   * [Lock Poisoning](#lock-poisoning)
+>   * [Reader-Writer Lock](#reader-writer-lock)
+> * [Waiting: Parking and Condition Variables](#waiting:-parking-and-condition-variables)
+>   * [Thread Parking](#thread-parking) 
+>   * [Condition Variables](#condition-varables)
+> * [Summary](#summary)
 
 1. Operating systems isolate processes from each other as much as possible, 
    allowing a program to do its thing while completely unaware of what any 
@@ -494,7 +501,7 @@ pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError>
 Fun fact: `RefCell` does not protect you from data races since `RefCell` is 
 NOT thread-safe and data races only happen when multiple threads are involved.
 
-## Mutex<T> and RwLock<T>
+## Mutex and RwLock
 
 1. `RwLock` is the concurrent version of `RefCell`
 
@@ -508,7 +515,7 @@ NOT thread-safe and data races only happen when multiple threads are involved.
    as when you try to break the rule, `Gurad` stops you from doing that through
    blocking the program (thread).
 
-2. `Mutex` is similar to `RwLokc` but is simpler, which eliminates the accessing
+2. `Mutex` is similar to `RwLock` but is simpler, which eliminates the accessing
    purpose (read or write).
 
 ## Atomics
@@ -537,7 +544,7 @@ NOT thread-safe and data races only happen when multiple threads are involved.
 
    Not all types are available since they need support from hardware.
 
-## UnsafeCell<T>
+## UnsafeCell
 
 The core primitive for interior mutability in Rust.
 
@@ -552,3 +559,218 @@ types with interior mutability—including all types discussed above—are built
 top of UnsafeCell.
 
 # Thread Safety: Send and Sync
+
+1. Definitions
+
+   * Send: 
+     A type is Send if it **can be sent to another thread**. In other words, **if 
+     ownership of a value of that type can be transferred to another thread.**
+     For example, Arc<i32> is Send, but Rc<i32> is not.
+
+   * Sync:
+     A type is Sync if it can be **shared with another thread**. In other words,
+     a type T is Sync if and only if a shared reference to that type, &T, is
+     Send. For example, an i32 is Sync, but a Cell<i32> is not. (A Cell<i32>
+     is Send, however.)
+
+     > If you wanna **share** T with another thread, you create a shared reference
+     > `&T` and pass it to that thread. To make this happen, `&T` must be `Send`.
+
+2. Typical types that are NOT `Sync`
+
+   > If the following types are used in Multi-threaded environments, data races
+   > may happen.
+
+   |Type         |  Reason                  |
+   |-------------|--------------------------|
+   |Rc           |The counter is NOT atomic |
+   |Cell         |No synchronization applied|
+   |RefCell      |No synchronization applied|
+   | Raw Ptr     |                          | 
+
+3. Typical types that are NOT `Send`
+
+   |Type         |  Reason                  |
+   |-------------|--------------------------|
+   |Rc           |Because `Rc` is NOT `Sync`|
+   |Raw Ptr      |                          |  
+
+   > Explanation of the reason why `Rc` is NOT `Send`:
+   >
+   > For `Rc`, I think it is fine to pass it to another thread as long as you 
+   > don't clone it, in this perspective, it should be `Send`. But clone is 
+   > allowed, if multiple threads have an Rc to the same allocation, they might
+   > try to modify the reference counter at the same time, which can give
+   > unpredictable results.
+
+4. Types that are `Send` but not `Sync`
+
+   1. Cell
+   2. RefCell
+
+5. Types that are `Sync` but not `Send`
+  
+   1. MutexGuard
+   2. RwLockReadGuard
+   3. RwLockWriteGuard
+
+   > ref: [Sync but not Send?](https://users.rust-lang.org/t/sync-but-not-send/21551)
+
+6. How to make your own type NOT `Send` or `Sync`
+
+   `Send` and `Sync` are markder traits that are mostly controlled by the 
+   compiler, if the compiler thinks your type is `Send` or `Sync`, it will
+   mark it auotmatically.
+
+   ```rust
+   // Foo is Send and Sync
+
+   struct Foo;
+   ```
+
+   If you try to use `!` to explicitly mark it un`Send` or un`Sync`:
+
+   ```rust
+   struct Foo;
+
+   impl !Send for Foo {}
+   impl !Sync for Foo {}
+
+   fn main() {}
+   ```
+
+   ```shell
+   error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
+    --> src/main.rs:3:6
+     |
+   3 | impl !Send for Foo {}
+     |      ^^^^^
+     |
+     = note: see issue #68318 <https://github.com/rust-lang/rust/issues/68318> for more information
+
+   error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
+    --> src/main.rs:4:6
+     |
+   4 | impl !Sync for Foo {}
+     |      ^^^^^
+     |
+     = note: see issue #68318 <https://github.com/rust-lang/rust/issues/68318> for more information
+
+   For more information about this error, try `rustc --explain E0658`.
+   error: could not compile `rust` due to 2 previous errors
+   ```
+
+   The current workaround is to add a non-`Send` or non-`Sync` field to your type:
+
+   ```rust
+   use std::{marker::PhantomData, rc::Rc};
+
+   // Foo is not Send and Sync due to the usgae of `Rc`.
+   //
+   // Use `PhantomData<Cell<()>>` if you wanna make it `Send` but `!Sync`
+   // Use `PhantomData<MutexGuard<'a, ()>>` if you wanna make it `Sync` but `!Send`
+   struct Foo {
+       _not_send_and_sync: PhantomData<Rc<()>>,
+   }
+
+   fn main() {}
+   ```
+
+7. How to make your own type `Send` or `Sync`
+
+   ```rust
+   use std::rc::Rc;
+   struct Foo {
+       rc: Rc<()>
+       // raw ptr also works 
+   }
+
+   unsafe impl Send for Foo {}
+   unsafe impl Sync for Foo {}
+   ```
+
+   use `unsafe impl` to overwrite the compiler's auto impl.
+
+8. Demostrate the data races that may happen with `Rc` if it can be shared 
+   with threads:
+
+   > The demo below is WRONG. Haven't figured out a way to achieve this.
+
+   ```rust
+   use std::{rc::Rc, thread::spawn};
+
+   struct MyRc(Rc<i32>);
+
+   unsafe impl Send for MyRc {}
+   unsafe impl Sync for MyRc {}
+
+   impl Clone for MyRc {
+       fn clone(&self) -> Self {
+           MyRc(Rc::clone(&self.0))
+       }
+   }
+
+   fn main() {
+       let rc = MyRc(Rc::new(0));
+
+       let t1 = spawn({
+           let rc = MyRc::clone(&rc);
+           move || {
+               let _another_clone = MyRc::clone(&rc);
+           }
+       });
+
+       let t2 = spawn({
+           let rc = MyRc::clone(&rc);
+           move || {
+               let _another_clone = MyRc::clone(&rc);
+           }
+       });
+
+       t1.join().unwrap();
+       t2.join().unwrap();
+
+       println!("strong count: {}", Rc::strong_count(&rc.0));
+   }
+   ```
+
+   ```shell
+   $ cargo r -q
+   strong count: 1
+   ```
+
+9. Traits implementations on closures
+
+   > Remeber the trait bound of `F` in `std::thread::spawn()`?
+
+   > ref: [Closure Types](https://doc.rust-lang.org/reference/types/closure.html#other-traits)
+
+   All closure types implement Sized. Additionally, closure types implement the
+   following traits if allowed to do so by the types of the captures it stores:
+
+   * Clone
+   * Copy
+   * Sync
+   * Send
+   The rules for Send and Sync match those for normal struct types, while Clone 
+   and Copy behave as if derived. For Clone, the order of cloning of the captured
+   variables is left unspecified.
+
+   Because captures are often by reference, the following general rules arise:
+
+   * A closure is Sync if all captured variables are Sync.
+   * A closure is Send if all variables captured by non-unique immutable reference
+     are Sync, and all values captured by unique immutable or mutable reference, 
+     copy, or move are Send.
+   * A closure is Clone or Copy if it does not capture any values by unique 
+     immutable or mutable reference, and if all values it captures by copy or
+     move are Clone or Copy, respectively.
+
+# Locking: Mutexes and RwLocks
+## Rust’s Mutex
+## Lock Poisoning
+## Reader-Writer Lock
+# Waiting: Parking and Condition Variables
+## Thread Parking
+## Condition Variables
+# Summary
