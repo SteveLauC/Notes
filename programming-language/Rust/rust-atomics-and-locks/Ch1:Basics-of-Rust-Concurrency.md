@@ -10,16 +10,16 @@
 
 > TOC
 >
-> * [Threads In Rust](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#threads-in-rust)
-> * [Scoped Threads](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#threads-in-rust)
-> * [Shared Ownership and Reference Counting](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#shared-ownership-and-reference-counting)
-> * [Borrowing and Data Races](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#borrowing-and-data-races)
-> * [Interior Mutability](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#interior-mutability)
->   * [Cell](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/rust-atomics-and-locks/Ch1:Basics-of-Rust-Concurrency.md#cell)
+> * [Threads In Rust](#threads-in-rust)
+> * [Scoped Threads](#threads-in-rust)
+> * [Shared Ownership and Reference Counting](#shared-ownership-and-reference-counting)
+> * [Borrowing and Data Races](#borrowing-and-data-races)
+> * [Interior Mutability](#interior-mutability)
+>   * [Cell](#cell)
 >   * [RefCell](#RefCell)
->   * [Mutex and RwLock]()
->   * [Atomic]()
-> * [Interior Mutability]()
+>   * [Mutex and RwLock](#mutex-and-rwlokc)
+>   * [Atomic](#atomic)
+> * [Interior Mutability](#interior-mutability)
 
 1. Operating systems isolate processes from each other as much as possible, 
    allowing a program to do its thing while completely unaware of what any 
@@ -57,7 +57,7 @@
 
 2. `ThreadId` in Rust
 
-   Rust stdlib assigns every thread an unique number as their identifier.
+   Rust stdlib assigns every thread an unique number as its identifier.
 
    > NOTE: Rust stdlib will NOT reuse `ThreadId` even when this thread terminates.
    > 
@@ -147,7 +147,7 @@
    **be automatically joined** before this function returns, which guarantees 
    that none of the threads spawned in the scope can outlive the scope. 
 
-2. Compare two `spawn()` functions
+2. Compare two `spawn()` functions, notice the trait bound:
 
 
    ```rust
@@ -181,11 +181,11 @@
    ```
 
    The difference between these two functions is pretty obvious, the lifetime
-   parameter.
+   parameter bound of `F` and `T`.
 
 # Shared Ownership and Reference Counting 
 
-> Any data shared between them will need to live as long as the longest living thread.
+> Any data shared between threads will need to live as long as the longest living thread.
 
 1. Ways to share objects between threads
 
@@ -223,6 +223,7 @@
       ```rust
       use std::cell::Cell;
 
+      // Cell is NOT Sync
       static C: Cell<()> = Cell::new(());
 
       fn main() {}
@@ -249,7 +250,7 @@
       > 1. `const` is similar to the macros in C, which is actually the replacement
       >    occurrs at compile time.
       > 2. You should NEVER use `interior mutability` with `const` as it is just
-      >    a compile-time replacement (as `const` variables are just C macros).
+      >    a compile-time replacement.
       >
       >    ```rust
       >    use std::sync::Mutex;
@@ -286,12 +287,12 @@
 
       > NOTE: `'static` lifetime doesn’t mean that the value lived since the 
       > start of the program, but only that **it lives to the end of the program.**
-      > The past is simply not relevant.
+      > The past is simply NOT relevant.
       >
-      > see [common lifetime micconceptions for more details.]
-      > (https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/blog/rust-blog/common-rust-lifetime-misconceptions.md)
+      > see 
+      > [common lifetime micconceptions for more details.](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/blog/rust-blog/common-rust-lifetime-misconceptions.md)
 
-      The downside of leaking an object is that we are leaking our memeory.
+      > The downside of leaking an object is that we are leaking our memeory.
 
       ```rust
       use std::thread::spawn;
@@ -310,7 +311,7 @@
       }
       ```
 
-   3. Reference Counting (Arc)
+   3. Reference Counting (Rc or Arc)
 
       Leaking an object gives up its ownership, in most cases, this is not what
       we want. We want to share its ownership, using `Reference Counting`.
@@ -331,6 +332,8 @@
       `Rc` is not thread-safe as the inner counter types are not `atomic`:
 
       ```rust
+      // Def of `Rc`
+
       pub struct Rc<T: ?Sized> {
           ptr: NonNull<RcBox<T>>,
           phantom: PhantomData<RcBox<T>>,
@@ -344,6 +347,8 @@
       ```
 
       ```rust
+      // Def of `Arc`
+
       pub struct Arc<T: ?Sized> {
           ptr: NonNull<ArcInner<T>>,
           phantom: PhantomData<ArcInner<T>>,
@@ -361,7 +366,7 @@
       }
       ```
 
-2. Pro tip on cloning `Arc` for a newly spawn thread
+2. Pro tip on cloning `Arc` for a newly spawned thread
 
    Instead of `clone`ing it before calling `spawn()`, we should `clone` it in
    the body of `spawn()`.
@@ -413,11 +418,11 @@
    2. At least one thread tries to write to that memory 
    3. NO synchronization is applied between these threads.
 
+
    > [Are "data races" and "race condition" actually the same thing in context 
    > of concurrent programming](https://stackoverflow.com/a/75134842/14092446)
    >
-   > `readdir(3)` has a data race.
-   >
+   > `readdir(3)` has a data race:
    > [Why is fs::read_dir() thread safe on POSIX platforms](https://stackoverflow.com/q/74160999/14092446)
 
 # Interior Mutability
@@ -426,14 +431,17 @@
 > Under certain conditions, those types can allow mutation through an 
 > **immutable** reference.
 >
-> And keep in mind that interior mutability only allows mutation when the object
-> being shared, `exclusive access` is still guaranteed. From the documentation of:
+> But keep in mind that interior mutability only allows mutation when the object
+> being shared, `exclusive access` is still guaranteed. 这段话的意思是，可以共享
+> ，但在共享的基础上想要改变它，在任何时间，改变必须是独占的。From the 
+> [documentation](https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.borrow_mut) 
+> of:
 >
 > ```rust
 > pub fn borrow_mut(&self) -> RefMut<'_, T>
 > ```
 >
-> Panics if the value is currently borrowed.
+> **Panics** if the value is currently borrowed.
 
 1. Types with `interior mutability`
 
@@ -446,9 +454,9 @@
    |AtomicX from `sync::atomic` module |Yes          |
    |UnsafeCell | Definitely NO |
 
-## Cell
+## Cell<T>
 
-> interior mutability by the whole value and thus the APIs of `Cell` won't panic.
+> interior mutability **by the whole value** and thus the APIs of `Cell` won't panic.
 
 Keep in mind that the interior mutability of `Cell` is limited, you need to operate
 it as a whole:
@@ -467,7 +475,7 @@ is mutable, which is gererally not the case when using `Cell`.
 pub fn get_mut(&mut self) -> &mut T
 ```
 
-## RefCell
+## RefCell<T>
 
 > interior mutability by **reference** (Note the `Ref` prefix), which means 
 > that the APIs will panic when the **borrow rules** are violated (this is 
@@ -483,7 +491,10 @@ pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError>
 pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError>
 ```
 
-## Mutex and RwLock
+Fun fact: `RefCell` does not protect you from data races since `RefCell` is 
+NOT thread-safe and data races only happen when multiple threads are involved.
+
+## Mutex<T> and RwLock<T>
 
 1. `RwLock` is the concurrent version of `RefCell`
 
@@ -526,11 +537,11 @@ pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError>
 
    Not all types are available since they need support from hardware.
 
-## UnsafeCell
+## UnsafeCell<T>
 
 The core primitive for interior mutability in Rust.
 
-An UnsafeCell<T> wraps a T, but does not come with any conditions or restrictions 
+An `UnsafeCell<T>` wraps a T, but does not come with any conditions or restrictions 
 to avoid undefined behavior. Instead, its get() method just gives a raw pointer 
 to the value it wraps, which can only be meaningfully used in unsafe blocks. It 
 leaves it up to the user to use it in a way that does not cause any undefined behavior.
