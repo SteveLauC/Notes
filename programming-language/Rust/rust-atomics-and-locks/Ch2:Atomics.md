@@ -18,9 +18,6 @@
 >   * [Example: Progress Reporting from Multiple Threads](#example-progress-reporting-from-multiple-threads)
 >   * [Example: ID Allocation](#example-id-allocation)
 > * [Compare-and-Exchange Operations](#compare-and-exchange-operations)
->   * [Example: ID Allocation Without Overflow](#example-id-allocation-without-overflow)
->   * [Example: Lazy One-Time Initialization](#example-lazy-one-time-initialization)
-> * [Summary](#summary)
 
 1. Atomic operation is an operation that is indivisible, which means it is either
 completed, or it did't happen yet.
@@ -341,9 +338,6 @@ operation.
        assert_eq!(n.into_inner(), 0);
    }
    ```
-
-   > This will be explained in later 
-   > [section:Compare-and-Exchange Operations](#compare-and-exchange-operations)
 
 ## Example: Progress Reporting from Multiple Threads
 
