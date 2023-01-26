@@ -432,7 +432,7 @@
    > [Are "data races" and "race condition" actually the same thing in context 
    > of concurrent programming](https://stackoverflow.com/a/75134842/14092446)
    >
-   > `readdir(3)` has a data race:
+   > `readdir(3)` has a race condition:
    > [Why is fs::read_dir() thread safe on POSIX platforms](https://stackoverflow.com/q/74160999/14092446)
 
 # Interior Mutability
@@ -1010,15 +1010,15 @@ or write, while `Mutex` is just about exclusive access.
 
    > Currently IDK why...
 
-# Waiting: Parking and Condition Variables
+# Waiting(Sleeping): Parking and Condition Variables
 
 When data is mutated by multiple threads, there are many situations where 
-they would need to wait for some event, for some condition about the data 
+they would need to wait(sleep/suspended) for some event, for some condition about the data 
 to become true. For example, if we have a mutex protecting a Vec, we might
 want to wait until it contains anything.
 
-While a mutex does allow threads to wait until it becomes unlocked, it does
-not provide functionality for waiting for any other conditions. If a mutex 
+While a mutex does allow threads to wait **until it becomes unlocked**, it does
+not provide functionality for **waiting for any other conditions**. If a mutex 
 was all we had, we’d have to keep locking the mutex to repeatedly check if 
 there’s anything in the Vec yet.
 
