@@ -29,6 +29,8 @@ completed, or it did't happen yet.
    For `Mutex` and `RwLock`, data races won't happen because it blocks the 
    threads that try to access the locked variable.
 
+   > However, atomic types are not free of `race` (race condition).
+
 2. Atomic operations are the **main building blocks** for anything involving 
    multiple threads. All the other concurrency primitives, such as mutexes and 
    condition variables, are implemented using atomic operations.
