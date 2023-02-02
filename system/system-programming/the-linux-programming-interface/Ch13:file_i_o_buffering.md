@@ -15,7 +15,7 @@
 > Great Posts about `Direct I/O`:
 > 1. [RocksDB 源码分析 – I/O](https://youjiali1995.github.io/rocksdb/io/)
 
-[IO_stack_of_the_Linux_kernel](https://github.com/SteveLauC/pic/blob/main/IO_stack_of_the_Linux_kernel.png)
+![IO_stack_of_the_Linux_kernel](https://github.com/SteveLauC/pic/blob/main/IO_stack_of_the_Linux_kernel.png)
 
 1. kernel `buffer cache`
    
