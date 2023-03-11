@@ -2,7 +2,7 @@
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/lsmt-SST.jpeg)
 
-You can see that a SST is a collection of blocks, and block is the minumum unit
+You can see that an SST is a collection of blocks, and block is the minumum unit
 of read and caching in LSMT, which is usually 4KB in size, similar to the database
 pages. In each block, we store a collection of sorted kv pairs.
 
@@ -10,7 +10,7 @@ pages. In each block, we store a collection of sorted kv pairs.
 
 ```rust
 /// A block is the smallest unit of read and caching in LSM tree. It is a 
-/// collection of sorted key-value pairs.
+/// collection of **sorted** key-value pairs.
 pub struct Block {
     data: Vec<u8>,
     offsets: Vec<u16>,
@@ -25,7 +25,7 @@ pub struct Block {
 This is how an entry (kv pair) stored in the data section. `key_len` and 
 `value_len` are 2 bytes long, which means the lengths of `key` and `value` 
 are 65535 at most. We assume that key is not empty but a value can be empty,
-an mepty value means that the corresponding key has been deleted (tombstone)
+an mepty value means that the corresponding key has been deleted (**tombstone**)
 
 ```
 |                             entry1                            |
