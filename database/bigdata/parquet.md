@@ -8,10 +8,10 @@ encoding schemes with enhanced performance to handle complex data in bulk.
 
 # Logical Format
 
-Parquest is expressed in schema, started with the `message` keyword, each message 
+Parquest is expressed in schema that starts with the `message` keyword, every schema 
 contains one or multiple fields, each of which has 3 associated attributes:
 1. Repeatability
-   * Required: means that this field occurs for ONLY once
+   * Required: means that this field occurs ONLY once
    * Optional: Occurrence: 0 or 1
    * Repeated: Occurrence: 0 or x
 
@@ -69,7 +69,7 @@ Address Book
    }
    ```
    
-   We can see that nested structure like `Contacts` is supported in parquet.
+   We can see that nested structure like `Contacts` is supported.
 
 # Phycial Format
 
