@@ -56,3 +56,39 @@
          sleep, time, random number generation, etc.
 
          > Isn't this covered by the standard library?
+
+3. Data structures used by SQLite
+
+   There are two kinds of B-tree that are employed by SQLite:
+   1. B-Tree to store index, or "Index B-Tree"
+   2. B+Tree to store table, or "Table B-Tree"
+
+4. Main diff between `Table B-Tree` and `Index B-Tree`
+   
+   `Table B-Tree` uses a uniqure, non-null, signed 64-bit key to reference the 
+   data in the internal node and the actual data is stored in the leaf nodes. 
+   This 64-bit integer field is referred to as 
+   [`ROWID`](https://www.sqlite.org/rowidtable.html).
+
+   Let's take the following table as an example:
+
+   ```
+   +-------+-------+-------+-----+
+   | ROWID | Name  | Marks | Age |
+   +-------+-------+-------+-----+
+   |    6  | Jone  | 5     | 28  |
+   |   15  | Alex  | 32    | 45  |
+   |   12  | Tom   | 37    | 23  |
+   |   53  | Ron   | 87    | 13  |
+   |   24  | Mark  | 20    | 48  | 
+   |   25  | Bob   | 89    | 32  |
+   +-------+-------+-------+-----+
+   ```
+
+   The following Table B-Tree will be used to store this table:
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/table_b_tree.png)
+
+   You can find that all data is stored in the leaf nodes, and each leaf node
+   has a pointer pointing to the next leaf node, which enables it to perform
+   binary search as the data stored is ordered.

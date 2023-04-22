@@ -154,4 +154,114 @@ exactly one column chunk **per column**. Column chunks contain one or more pages
    unit (in terms of compression and encoding). There can be multiple page types 
    which are interleaved in a column chunk.
 
+# Metadata
+
+## Metadata Hierarchy
+
+1. File Metadata
+
+   Type in `parquet`: `parquet::file::metadata::FileMetaData`
+   
+2. Row Group Metadat
+
+   Type in `parquet`: `parquet::file::metadata::RowGroupMetaData`
+
+3. Column Chunk Metadata
+   
+   Type in `parquet`: `parquet::format::ColumnMetaData`
+
+> See the format diagram from section [Phycial Format](#phycial-format) for 
+> more detail.
+
+> `Parquet` has a type for all the metadata: `parquet::file::metadata::ParquetMetaData`.
+
+## API
+
+> All APIs are based on crate version 36.0.0.
+
+### To set:
+
+All the metadata can be set through:
+
+```rust
+parquet::file::properties::WriterPropertiesBuilder
+
+set_xxx();
+```
+
+Once a `WriterProperty` is built, you can pass it to:
+
+```rust
+impl<W: Write> ArrowWriter<W> {
+    pub fn try_new(
+        writer: W,
+        arrow_schema: SchemaRef,
+        // pass it here
+        props: Option<WriterProperties>
+    ) -> Result<Self>
+}
+```
+
+### To get:
+
+1. From writer:
+
+   When the write is doen, `.close(self)` the writer returns `Result<FileMetadata>`
+
+2. From reader:
+
+   1. From trait `FileReader`
+  
+      ```rust
+      pub trait FileReader: Send + Sync {
+          fn metadata(&self) -> &ParquetMetaData;
+      }
+      ``` 
+
+      This trait is impled for `SerializedFileReader`.
+
+   2. `ParquetFileArrowReader` has a method `metadata`
+
+      ```rust
+      pub fn metadata(&self) -> &ParquetMetaData
+      ```
+
+   3. `parquet::file::footer::parse_metadata()`
+     
+      ```
+      pub fn parse_metadata<R: ChunkReader>(
+          chunk_reader: &R
+      ) -> Result<ParquetMetaData>
+      ```
+
+      trait `ChunkReader` is impled for `std::fs::File`.
+
+
+
+## Some Metadata you may be intersted in
+
+1. Writer Version (Parquet Format Version)
+
+   API to set this Metadata:
+
+   ```
+   set_writer_version(self, value: WriterVersion) -> Self
+   ```
+
+   > One should note that parquet does not provide a metadata to store the 
+   > version info about schema.
+   >
+   > To achive this, set a customized key value pair:
+   > ```
+   > { key: "SchemaVersion", value: "1" }
+   > ```
+
+2. created_by
+
+   API to set this Metadata:
+
+   ```rust
+   pub fn set_created_by(self, value: String) -> Self
+   ```
+
 
