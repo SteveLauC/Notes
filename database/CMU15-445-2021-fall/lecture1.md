@@ -19,16 +19,47 @@
 
     data model: a high level abstraction; A collection of concepts to describe the
     data stored in a database
-        * rational
-        * key value
-        * graph
-        * object-oriented
+
+    * SQL DB
+      * rational(MySQL...)
+    * NoSQL DB
+      * key value(skytable)
+      * graph(neo4j)
+      * Doucment(es/mondb)/object-oriented
+    * Vector DB
+      * For Machine Learning(Milvus)
 
     schema: defines exactly what we are going to store in a database
 
 3. DML
-    * procedural: how
-    * declarative: what
+    * Procedural: how
+      Relational Algebra
+    * Declarative: what
+      SQL
+
+    > Why is SQL a declarative QL?
+    >
+    > Because it does not contain the execution detail, just the result we want. 
+    >
+    > Let's give an example:
+    > For a query like "Retrieve the joined tuple from R and S where S.id=102", 
+    > in Relational Algebra, we can do:
+    >
+    > 1. σ id=102(R ▷◁ S)
+    > 2. R ▷◁ (σ id=102(S))
+    >
+    > They have the same effect but can have totally different performance, say there
+    > are millions of tuples in relation S but only one tuple satisfies the restriction
+    > that `id=102`, expression 1 will be much more slower than the expression 2. 
+    > If we use expression 1, then it will just execute like that, no optimization.
+    > 
+    > In SQL, we can just do `SELECT * FROM R, S WHERE S.id = 102`, we don't specify
+    > whether it will do the filter first or join first. It is the DBMS that thinks
+    > plan 2 is much more efficient and chooses to go with it.
+    >
+    > And even you write the SQL in the way Relational Algebra is written, we still
+    > have the query optimizer to can alter the statements.
+
 
 4. comparison between our python query code(phycial level highly related) and SQL
 
