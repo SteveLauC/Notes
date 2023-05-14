@@ -17,18 +17,6 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-14-44.png)
 
-2. database workloads(what is database used for? )
-
-   1. On-Line Transaction Processing(OLTP): fast operations that only read/update
-   a small amount of data each time.(mostly used by user)(mainly write to the DB)
-
-   2. On-Line Analytical Processing(OLAP): Complex queries that read a lot of
-   data to compute aggregates(mostly used by data scientist)(mainly read from the DB)
-
-   3. Hybrid Transaction + Analytical Processing: OLTP+OLAP
-
-   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2014-44-15.png)
-
    
 ## Today's agenda
 
@@ -263,44 +251,3 @@ Every DBMS stores its catalogs in its own table. For example, in MySQL:
 ```
 
 In PostgreSQL, you get this a bunch of stuff: https://www.postgresql.org/docs/current/catalogs-overview.html
-
-### Storage models
-
-For different workloads, DBMS can store tuples in different ways so that it
-can fit the workloads most.
-
-1. n-ary storage model(aka **row storage**)(NSM)(what we will do in the semester)
-
-   The DBMS sotres all attributes for a single tuple continuously in a page.
-
-   * Advantages:
-     1. fast inserts, updates, and deletes
-     2. good for queries that need the entire tuple
-
-     > Suitable for writeing and OLTP
-
-   * Disadvantage:
-
-     1. not good for scanning large portions of table and a subset of the
-     attributes. When you need just few attributes, the DBMS still has to fetch
-     the *whole tuple* to get that few attributes.
-
-2. decomposition storage model(aka **column storage**)(DSM)
-
-   The DBMS sotres the values of a single attribute for all tuples continuously
-   in a page. If we only need one attribute, then we just need one page.
-
-   * Advantage:
-
-     1. reduces the amount of wasted I/O because the DBMS only reads the data
-     it needs
-
-     2. better query processing and data compression. Compression can be done
-     cause all the data in a page have the same type(domain). For example, if
-     this page is all about temperature, and the data is all about 30 degrees,
-     like 31, 29, then we can just store 1 and -1.
-
-   * Disadvantage:
-
-     1. slow for point queries(need the retire tuple), inserts, updates and 
-     deletes because of tuple splitting

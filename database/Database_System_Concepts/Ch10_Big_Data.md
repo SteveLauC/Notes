@@ -111,9 +111,40 @@
       * BigTable(Google)
       * HBase
       * MongoDB (Doc DB)
-
+        In MongoDB, partitioning is done based on the value of a specific attribute,
+        called the `partitioning attribute` or `shard key`.
 
    4. Parallel and Distributed Databases
+      
+      Parallel Databases are databases that run on multieple machines(together 
+      referred to as a cluster).
+
+      Parallel database were initially developed in the 198s, and thus they 
+      predate the modern generation of Big Data systems. Early generation
+      parallel databases designed for transaction processing supported only
+      a few matchines in a cluster, while those designed to process large
+      analytical queries were designed to support tens to hundreds of matcines.
+
+      In such a large distributed system, the probability of failure during
+      execution of a query increases significantly for queries that process
+      a large amount of data and consequently run for a long time. Restarting
+      a query in the event of failure is no longer an option, since there is
+      a fairly high probability that a failure will happen yet again while the
+      query is executing. **`Map-reduce` is devised for avoiding a complete 
+      restart, allowing only computation on the failed machines to be redone.**
+
+4. Replication and consistency
+
+   Replication is key to ensuring availability of data. And an update to a data
+   should be applied to all the nodes containing a replica of that data.
+
+   Key problems:
+   1. How to ensure **atomic** execution of a transaction that updates data at
+      more than one machine.
+   2. How to perform updates on a data item that has been replicated, when some
+      of the replicas of the data item are on a failed machine.
+
+   > This will be introducted in Ch23. 
 
 # 10.3 The MapReduce Paradigm
 # 10.4 Beyond MapReduce: Algebraic Operations
