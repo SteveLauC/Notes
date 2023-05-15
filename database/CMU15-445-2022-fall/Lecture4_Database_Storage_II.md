@@ -1,3 +1,10 @@
+## Today's agenda
+
+> * Log-Structured Storage
+> * Data Representation
+> * System Catalogs
+> * Storage Models
+
 0. Problem of slotted-page structure
    
    * Fragmentation: Deletion of tuples can leave gaps in the pages.
@@ -16,14 +23,6 @@
    to find the correct value.(read amplification)
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2017-14-44.png)
-
-   
-## Today's agenda
-
-> * Log-Structured Storage
-> * Data Representation
-> * System Catalogs
-> * Storage Models
 
 ### Log-Structured Storage
 1. Modification on tuple-oriented structure is some kinda change that happens
