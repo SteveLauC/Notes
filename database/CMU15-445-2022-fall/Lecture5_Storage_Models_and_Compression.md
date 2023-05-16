@@ -144,9 +144,9 @@ can fit the workloads most.
 
       This is called `late materialization`.
 
-      > Why is this what we want?
+      > Why is this wanted?
       >
-      > During execution, the data will be passed along the query route, the
+      > During execution, the data will be copied along the query route, the
       > smaller that data is, the lass overhead we pay for the data transfer.
 
    3. Loseless
@@ -278,17 +278,16 @@ can fit the workloads most.
    * Bitmap Encoding
 
      > [What is `cardinality` in Databases?](https://stackoverflow.com/questions/10621077/what-is-cardinality-in-databases)
+     >
      > In this context, `Cardinality` means the number of unique values of a 
      > specific attribute.
-
-     > Turns var-len values into fixed-len values (a vector of bits)
 
      Store a separate bitmap for each unique value for an attribute where an 
      offset in the vector corresponds to a tuple.
 
      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-15%2022-48-19.png)
 
-     > Only practical if the value cardinality is low.
+     > Only practical **if the value cardinality is low**.
      >
      > An example demostrating how does it look like with data that has high 
      > cardinality:
@@ -317,7 +316,7 @@ can fit the workloads most.
 
      > Kinda like `trie`
 
-     An variant of `Delta Encoding`, `Delta Encoding` minimizes space usage by
+     A variant of `Delta Encoding`, `Delta Encoding` minimizes space usage by
      subtracting the previous value, `Incremental Encoding` removes the common
      prefixes and suffixes, this works best with sorted data.
 
@@ -349,4 +348,5 @@ can fit the workloads most.
      We can NOT use hash function to build that map for the reasons:
      1. Decode is NOT supported, `Hash(string) -> int`, it is NOT reversible
      2. Hashmap can do queries like `WHERE field = value` but can not handle
-        `WHERE field > value`(range query) as it is unordered.
+        `WHERE field > value`(range query) as it is unordered. We want the 
+        map to be sorted to support range query.
