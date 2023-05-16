@@ -138,11 +138,16 @@ can fit the workloads most.
 
       > TODO: Isn't this ONLY needed in column storage?
 
-   2. Postpone decompression as long as possible
+   2. Postpone decompression as long as possible during query execution
       
       > The optimal case is that we can operate on the compressed data directly.
 
       This is called `late materialization`.
+
+      > Why is this what we want?
+      >
+      > During execution, the data will be passed along the query route, the
+      > smaller that data is, the lass overhead we pay for the data transfer.
 
    3. Loseless
      
@@ -163,11 +168,11 @@ can fit the workloads most.
 
 5. Naive Compression
 
-   > Compression schemas (methods) that are not stupid.
+   > `Naive` means the DBMS has no idea what the compressed data is.
 
-   What about simply compress the whole disk page, this is stupid as an 
-   decompression is needed whenever we need to access the page. In this way,
-   `late materialization` is impossible.
+   What about simply compressing the whole disk page(MySQL InnoDB), this is 
+   stupid as a decompression is needed whenever we need to access the page. 
+   In this way, `late materialization` is impossible.
 
    And this compression schema does not consider the meaning/semantics of the
    compressed data.
@@ -182,7 +187,7 @@ can fit the workloads most.
      hello -> [('h', 0, 1), ('e', 1, 1), ('l', 2, 2), ('o', 4, 1)]
      ```
 
-     > The result triple `(value, offset, Length)` is called `RLE triple`.
+     > The result triple `(value, offset, amount)` is called `RLE triple`.
 
      It converted duplicate entries into a single entry to reduce the space usage.
      As we can see, only adjacant and repeated entries can be deduplicated, to 
@@ -210,6 +215,8 @@ can fit the workloads most.
      GROUP BY c;
      ```
 
+     ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-16%2008-32-56.png)
+
    * Bit-Packing Encoding
 
      When values for an attribute are always less than the value's declared 
@@ -230,7 +237,11 @@ can fit the workloads most.
 
      Using 64 bits (`BIGINT` is 64-bit long) is overkill, 8-bit is sufficient.
 
+     ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-16%2008-34-53.png)
+
    * Mostly Encoding
+
+     > Most values will be encoded in place.
 
      This is a variant of `Bit-packing`, for the following data, most values can
      be stored in `u8`, few can not. For those exceptions, instead of storing them
@@ -262,11 +273,15 @@ can fit the workloads most.
      | 4  |
      ```
 
+     ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-16%2008-35-47.png)
+
    * Bitmap Encoding
 
      > [What is `cardinality` in Databases?](https://stackoverflow.com/questions/10621077/what-is-cardinality-in-databases)
      > In this context, `Cardinality` means the number of unique values of a 
      > specific attribute.
+
+     > Turns var-len values into fixed-len values (a vector of bits)
 
      Store a separate bitmap for each unique value for an attribute where an 
      offset in the vector corresponds to a tuple.
@@ -274,10 +289,25 @@ can fit the workloads most.
      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-15%2022-48-19.png)
 
      > Only practical if the value cardinality is low.
+     >
+     > An example demostrating how does it look like with data that has high 
+     > cardinality:
+     > In the US, there are 43000 zip codes(each take 32 bits), assume we have 
+     > `10_000_000` rows, without compression, it takes 10_000_000 * 32 = 320_000_000
+     > bits.
+     >
+     > With Bitmap encoding, since we have 43000 zip codes, it takes 43000 * 32 
+     > = 1376000 bits, for the value part, it is 43000 * 10_000_000 = 
+     > 430_000_000_000 bits, 430001376000 bits in total.
+     >
+     > 320000000 / 430001376000 = 0.000744184
+
 
    * Delta Encoding
 
-     Recording the difference between values that follow each other in the same column.
+     Recording the difference **between values that follow each other** in the same column.
+
+     > You have to decompress the previous value to get the next one.
 
      > This schema can be combined with `Run length Encoding` to get better result.
 
@@ -285,17 +315,38 @@ can fit the workloads most.
 
    * Incremental Encoding
 
-     An variant of `Delta Encoding`, `Delta Encoding` minimize space usage by
-     getting rid of the base value, `Incremental Encoding` removes the common
-     prefixes and suffixes.
+     > Kinda like `trie`
+
+     An variant of `Delta Encoding`, `Delta Encoding` minimizes space usage by
+     subtracting the previous value, `Incremental Encoding` removes the common
+     prefixes and suffixes, this works best with sorted data.
 
      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-15%2022-58-18.png)
 
    * Dictionary Compression(Mostly widely used)
      
      Build a data structure that maps variable-length values to a smaller integer
-     identifier.
+     identifier, and replace those values with their identifiers.
 
-     > This turns `var-len` values into fixed length values.
+     > Why is this mostly used?
+     >
+     > 1. This turns `var-len` values into fixed length values.
+     > 2. This allows us to directly operate on the compressed data without 
+     >    decompressing it.
+     >    
+     >    ```sql
+     >    SELECT * FROM table
+     >    WHERE name = 'andy';
+     >    ```
+     >    Can be turned into something like this by the DBMS
+     >    ```sql
+     >    SELECT * FROM table
+     >    WHERE name = identifier;
+     >    ```
 
      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-15%2023-00-45.png)
+
+     We can NOT use hash function to build that map for the reasons:
+     1. Decode is NOT supported, `Hash(string) -> int`, it is NOT reversible
+     2. Hashmap can do queries like `WHERE field = value` but can not handle
+        `WHERE field > value`(range query) as it is unordered.
