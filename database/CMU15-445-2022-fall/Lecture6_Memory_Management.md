@@ -29,12 +29,16 @@
 
      Locks need to be able to rollback changes. 
 
+     > High level, transaction level
+
    * Latches: A latch is a low-level protection primitive that the DBMS uses 
      for the critical sections in its internal data structures (e.g., hash 
      tables, regions of memory). Latches are held for only the duration of 
      the operation being made. 
 
      Latches do not need to be able to rollback changes.
+
+     > Low level, source code level, `Mutex<T>`, `RwLock<T>`.
 
 # Buffer Pool
 
@@ -54,9 +58,10 @@
    `Page Table` keeps track of :
       
    * Record which pages are in the buffer pool
-   * Mapping between `frame` and `PageID`
+   * Mapping from `frame` to `PageID`
    * Dirty sign for each page
-   * Pin/Reference counter for each page
+   * Pin/Reference counter for each page: prevents the Buffer Pool Manager from
+     evicting it.
 
 3. Memory allocation policies
    
@@ -85,6 +90,8 @@ There are a number of ways to optimize the Buffer Pool:
    
    The DBMS does not always have a single buffer pool:
 
+   > Basically partition the memory for different components.
+
    * per-database buffer pool
    * per-page *type* buffer pool(data/index/metadata)
 
@@ -95,7 +102,22 @@ There are a number of ways to optimize the Buffer Pool:
 
    1. Object-ids
       
-      > TODO: how
+      Extend the internal ID with a field `ObjectID`:
+
+      ```
+      // Before
+
+      (ObjectID, PageID, SlotID)
+      ```
+
+      ```
+      // After 
+
+      (ObjectID, PageID, SlotID)
+      ```
+
+      And we store a mapping from `ObjectID` to `Buffer Pool` so that we can 
+      find where this tuple goes using its `ObjectID`.
 
    2. Hash the `PageID` to select which buffer pool to go
 
@@ -121,6 +143,9 @@ There are a number of ways to optimize the Buffer Pool:
     
       > This is what the OS can NOT do, cause it doesn't know the semantics
       > of our query.
+      >
+      > This should be used to index files whereas the OS does not know if a 
+      > file is an index file or not, it is just chunks of bytes.
 
       For example, we have a query
 
@@ -134,7 +159,7 @@ There are a number of ways to optimize the Buffer Pool:
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-29-14.png)
 
       To iterate over our `index`, we have to read the root node of that index
-      (B-Tree) into memory.
+      (B+Tree) into memory.
      
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2016-30-27.png)
 
@@ -150,6 +175,8 @@ There are a number of ways to optimize the Buffer Pool:
 
 
 3. Scan sharing
+
+   > This is called `synchronized scans` in PostgreSQL's term.
 
    If a query starts a scan and there is alredy one doing this, then the DBMS 
    will attach the new task to the existing query's cursor.
@@ -177,8 +204,9 @@ There are a number of ways to optimize the Buffer Pool:
 
 4. Buffer pool bypass
 
-   If the page content is only used ONCE, there is no need to store it in
-   the buffer pool(if so, we have to replace it later)
+   Bringing a page into the buffer pool has its overhead(Page Table Metadaa 
+   Management), if the page content is only used ONCE, there is no need to 
+   store it in the buffer pool(if so, we have to replace it later)
 
    Called `light scans` in `informix DBMS`
 
@@ -201,7 +229,7 @@ There are a number of ways to optimize the Buffer Pool:
 
 # Buffer Replacement Policies
 
-> When the buffer pool is full, we need to free up a frame to make room for a
+> When the buffer pool is full, we need to free up a `frame` to make room for a
 > new page, it must decide which page to `evict/replace`. A replacement policy is
 > an algorithm that the DBMS implements that makes a decision on which pages to 
 > evict from buffer pool when it needs space.
@@ -210,8 +238,8 @@ There are a number of ways to optimize the Buffer Pool:
 
    1. Least Recently Used(LRU)
 
-      Maintain a stimestamp of when each page is last accessed, evict the page with
-      oldest timestamp
+      Maintain a timestamp of when each page is last accessed, evict the page 
+      with the oldest timestamp
 
    2. Clock
 
@@ -239,6 +267,20 @@ There are a number of ways to optimize the Buffer Pool:
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-19-45.png)
 
       find a reference bit of 0, evict this frame.
+   
+   > One problem of `LRU` and `Clock` is that they are susceptible to `sequential
+   > flooding`: A query that sequentially scan all the pages, this will pollute
+   > the buffer pool with pages that are ONLY used once.
+   >
+   > In this case, the most recently used page is the most **unwanted** page.
+
+   3. LRU-K
+
+      > This is not affected by `sequential flooding`.
+
+      For each page, we keep track of the timestamps of the last `k` accesses,
+      and we compute the interval between accesses and use it estimate the 
+      next access.
 
 2. How to handle dirty pages (when replacing frames)
    
@@ -247,16 +289,13 @@ There are a number of ways to optimize the Buffer Pool:
    * Slow way: Write the dity frame back to the disk and drop it
 
    The slow way is expensive. And there is a method which is: the DBMS 
-   periodically walks through the `page table` and writes the diry frame back 
+   **periodically** walks through the `page table` and writes the diry frame back 
    to disk in the background. When the modification is sent back to the disk, 
    the DBMS can drop it or simply unset its dirty flag. 
 
+   NEED TO BE CAREFUL THAT **THE LOGS SHOULD BE WRITTEN BEFORE THE MODIFICATION**.
 
-   > NEED TO BE CAREFUL THAT THE LOGS SHOULD BE WRITTEN BEFORE THE MODIFICATION.
-   >
-   > TODO: Is this WAL?
-
-# Other Memory Pools
+# Other kind of Memory Pools
 1. The DBMS needs memory for things other than just tuples and indexes. These 
    other memory pools may not always backed by disk depending on implementation.
 

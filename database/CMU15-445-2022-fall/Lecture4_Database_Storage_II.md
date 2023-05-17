@@ -3,7 +3,6 @@
 > * Log-Structured Storage
 > * Data Representation
 > * System Catalogs
-> * Storage Models
 
 0. Problem of slotted-page structure
    
