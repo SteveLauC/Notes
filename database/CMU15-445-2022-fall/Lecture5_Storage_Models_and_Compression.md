@@ -190,11 +190,11 @@ can fit the workloads most.
      > The result triple `(value, offset, amount)` is called `RLE triple`.
 
      It converted duplicate entries into a single entry to reduce the space usage.
-     As we can see, only adjacant and repeated entries can be deduplicated, to 
+     As we can see, only adjacent and repeated entries can be deduplicated, to 
      maximize compression opportunities, it would be great to sort the values 
      first.
 
-     Such a compression can be seen as a `group by` on the adjacant values and
+     Such a compression can be seen as a `group by` on the adjacent values and
      thus can speed up `group by` queries.
 
      ```sql
