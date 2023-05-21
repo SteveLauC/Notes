@@ -11,6 +11,14 @@
 >   * 14.2.5 Indices on Multiple Keys
 >
 > * 14.3 B+Tree Index Files
+>   * 14.3.1 Structure of a B+Tree
+>   * 14.3.2 Queries on B+Tree
+>   * 14.3.3 Updates on B+Tree
+>     * 14.3.3.1 Insertion
+>     * 14.3.3.2 Deletion
+>   * 14.3.4 Complexity of B+Tree updates
+>   * 14.3.5 Nonunique Search Keys
+>
 > * 14.4 B+Tree Extensions
 > * 14.5 Hash Indices
 > * 14.6 Multiple-key Access
@@ -70,8 +78,7 @@
    
    1. Access types: the types of access that are supported efficiently
 
-      > For example, `ordered index` can be used to speed range query, `hash
-      > index` can be used for point query.
+      > See [doc of index of PostgreSQL](https://www.postgresql.org/docs/current/indexes.html)
 
    2. Access Time: The time it takes to find a particular data item, or set
       of items.
@@ -155,11 +162,15 @@
       In a dense index, an index entry appears for **every** search-key value in 
       the file.
 
+      > It is for every search-key value instead of every tuple (i.e., search-key
+      > is not necessarily the primary key)
+
       ![diagram](https://github.com/SteveLauC/pic/blob/main/dense_index.jpg)
 
       > In a dense clustering index, if there are multiple entries with the same
       > search-key value, then the index entry for that search-key would point
       > to **the first** entry with that search-key value.
+
 
    2. Sparse index
 
@@ -213,7 +224,8 @@
 
 ## 14.2.2 Multilevel Indices
 
-> We want our index to be in memory.
+> We want our index to be in memory, if the data volume is big and we only have
+> one layer of index, then it cannot be fetched into memory.
 
 1. 没有什么是一层索引解决不了的，如果有，那就再加一层索引。
 
@@ -305,6 +317,9 @@
             2. If the index entry points to the deleted entry, update it.
 
 ## 14.2.4 Secondary Indices
+
+1. Secondary Index must be dense.
+
 ## 14.2.5 Indices on Multiple Keys
 1. So far, serch key of all examples given in the book has only one attribute,
    in general, a search key can have more than one attribute.
@@ -321,6 +336,115 @@
    > Basically a string comparsion
 
 # 14.3 B+Tree Index Files
+
+1. For ordered index, why is B+Tree preferred? 
+
+   What about other data structures like:
+
+   > Let's assume that the `IndexEntry` has a fixed length so that binary 
+   > search can be used in some cases.
+   >
+   > To answer this question, you should note that index exists both in Memory
+   > (with type system support)and disk (just some bytes).
+
+   1. Sorted Array
+      
+      To insert a new entry in the middle, you have to move all the entries
+      after the new one backwards, which will uses a lot of useless I/O.
+      
+      Same applies to removal.
+      
+   2. Sorted Linked List
+
+      (On disk)To apply binary search to linked list, you have to find the 
+      middle node, and this requires two pointer to traverse the list with 
+      different speeds, which needs two sequential scans.
+
+   3. Binary Search Tree
+      
+      Theoretically, BST has the best complexity when invoking CRUD, but in 
+      memory, each node ONLY stores one entry, which requires a heap memory
+      allocation and makes the performance bad.
+
+      And incontiuous memory (tree) is not good for caching.
+
+   4. B-Tree
+
+## 14.3.1 Structure of a B+Tree
+
+![diagram](https://github.com/SteveLauC/pic/blob/main/b%2Btree.jpg)
+
+1. B+Tree is performant on lookup but not that good on insertion and deletion
+   as it needs to re-balance itself.
+
+   > This kind of trade-off is unavoidable.
+
+2. Three kinds of nodes
+
+   * Root node
+   * Internal node(nonleaf node)
+   * Leaf node
+
+3. B+Tree is balanced, which means that every path from the root of the tree
+   to a leaf node **has the same length**.
+
+   All leaf nodes appear in the same level.
+
+4. `order` and children amount bound
+   
+   We say that a B+Tree has `order` of `n` when its **internal node** has `n` 
+   **children** at most (upper bound).
+
+   1. Internal node, has `([n/2], n)` children to make the tree balanced.
+
+      > `[x]` denotes that the smallest integer that is bigger than x, e.g., 
+      > [1.9] = 2.
+
+   2. Leaf node has 0 children, but leaf nodes in a B+Tree with order n have 
+       [[(n-1)/2], n-1] search-key values.
+
+      > You should note that `order` is the upper bound on the amount of 
+      > children, leaf node has no children but is still kinda restricted 
+      > under it.
+
+   3. Root node can has
+      1. 0 children when it is a leaf node
+      2. Otherwise, [2, n) children
+
+5. B+Tree can be seen as a multilevel index
+
+6. A node(regardless of its kind) in B+Tree, if has n pointers, then it has
+   n-1 search key values. For nodes other than leaf node, n pointers means 
+   n children.
+
+   If it is a leaf node, then the last pointer points to the next leaf node.
+
+7. Search-key values within a node remains ordered.
+
+   If `Li` and `Lj` are leaf nodes and `i<j`, then every search-key value in
+   `Li` is less than every search-key value in `Lj`.
+
+   Since all search-key values in leaf nodes are sorted, the last pointer in
+   leaf node points to the next leaf node, enables us to do efficient binary
+   search on them.
+
+8. How to handle duplicate search-key values
+
+   > This will be explained in detail in Section 14.3.5
+
+   One common approach that almost every implementation does is to add the
+   primary key to search-key to ensure the absence of duplciates.
+
+
+## 14.3.2 Queries on B+Tree
+## 14.3.3 Updates on B+Tree
+### 14.3.3.1 Insertion
+### 14.3.3.2 Deletion
+## 14.3.4 Complexity of B+Tree updates
+## 14.3.5 Nonunique Search Keys
+
+
+
 # 14.4 B+Tree Extensions
 # 14.5 Hash Indices
 # 14.6 Multiple-key Access
