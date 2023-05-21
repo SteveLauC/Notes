@@ -437,6 +437,260 @@
 
 
 ## 14.3.2 Queries on B+Tree
+
+> B+Tree supports:
+>
+> 1. Equality query
+>     
+>    ```
+>    =
+>    ```
+
+> 2. Range query
+>    ```
+>    < <= > >=
+>    ```
+
+1. How to do equality query on a B+Tree
+
+   > The following rust code should be seen as a pseudocode for the following
+   > reason:
+   >
+   > 1. Pointer on leaf nodes should be something like this:
+   >    ```rust
+   >    struct LeafNodePtr {
+   >        /// file path and offset 
+   >        page_id: (PathBuf, u64),
+   >        /// slot id
+   >        slot_id: u64,
+   >    }
+   >    ```
+   >
+   > 2. Whether a pointer should be null needs futuer research.
+
+   ```rust
+   use std::ops::Deref;
+
+   #[derive(PartialEq)]
+   enum NodeKind {
+       Root,
+       Internal,
+       Leaf,
+   }
+
+   struct Node {
+       search_keys: [i32; Node::ORDER - 1],
+       ptrs: [Box<Option<Node>>; Node::ORDER],
+       kind: NodeKind,
+   }
+
+   impl Node {
+       const ORDER: usize = 3;
+   }
+
+   struct BPlusTree {
+       root: Node,
+   }
+
+   impl BPlusTree {
+       fn find_search_key(&self, key: i32) -> Option<&Node> {
+           let mut curr_node = &self.root;
+
+           // We traverse until reaches leaf nodes
+           while curr_node.kind != NodeKind::Leaf {
+               // In the `curr_node`, find the first search-key value that is
+               // bigger than or equal to `key`.
+               if let Some(idx) = curr_node
+                   .search_keys
+                   .iter()
+                   .position(|search_key| *search_key >= key)
+               {
+                   // for search key `ki`, search-key values of the nodes on 
+                   // subtree pointed by `pi` should be **smaller than** `ki`. 
+                   // And search-key values on nodes pointed by `p i+1` should
+                   // be greater than or equal to `ki`.
+
+                   // find a search key that is > key
+                   if curr_node.search_keys[idx] > key {
+                       curr_node = curr_node.ptrs[idx]
+                           .deref()
+                           .as_ref()
+                           .expect("Probably should be non-null");
+                   } else {
+                   // find a search key that is = key
+                       curr_node = curr_node.ptrs[idx + 1]
+                           .deref()
+                           .as_ref()
+                           .expect("Probably should be non-null");
+                   }
+               } else {
+                   // Every search-key in `curr_node` is smaller than `key`,
+                   // Let's check the rightmost child node.
+
+                   if let Some(rightmost_non_null_ptr) =
+                       curr_node.ptrs.iter().rev().find(|ptr| ptr.is_some())
+                   {
+                       curr_node = rightmost_non_null_ptr
+                           .deref()
+                           .as_ref()
+                           .expect("guaranteed to be non-null");
+                   }
+               }
+           }
+
+           if let Some(found_idx) = curr_node
+               .search_keys
+               .iter()
+               .position(|search_key| *search_key == key)
+           {
+               Some(
+                   curr_node.ptrs[found_idx]
+                       .deref()
+                       .as_ref()
+                       .expect("Leaf node's ptr can not be null"),
+               )
+           } else {
+               None
+           }
+       }
+   }
+   ```
+
+2. Find  all tuples in range [low_bound, upper_bound]
+
+   The basic algorithm is:
+   1. Traverse down to the leaf node that possibily contains `low_bound`
+   2. Starting from this leaf node, iterate over all the leaf nodes and collect
+      all pointers with search key `key` s.t. `low_bound <= key <= upper_bound`.
+
+   
+   ```rust
+   use std::ops::{Deref, Range};
+
+   #[derive(PartialEq)]
+   enum NodeKind {
+       Root,
+       Internal,
+       Leaf,
+   }
+
+   struct Node {
+       search_keys: [i32; Node::ORDER - 1],
+       ptrs: [Box<Option<Node>>; Node::ORDER],
+       kind: NodeKind,
+   }
+
+   impl Node {
+       const ORDER: usize = 3;
+   }
+
+   struct BPlusTree {
+       root: Node,
+   }
+
+   impl BPlusTree {
+       /// Assume `key` exists in this B+Tree, return the leaf node containing it.
+       fn find_leaf_node(&self, key: i32) -> &Node {
+           let mut curr_node = &self.root;
+
+           while curr_node.kind != NodeKind::Leaf {
+               if let Some(idx) = curr_node
+                   .search_keys
+                   .iter()
+                   .position(|search_key| *search_key >= key)
+               {
+                   if curr_node.search_keys[idx] > key {
+                       curr_node = curr_node.ptrs[idx]
+                           .deref()
+                           .as_ref()
+                           .expect("Probably should be non-null");
+                   } else {
+                       curr_node = curr_node.ptrs[idx + 1]
+                           .deref()
+                           .as_ref()
+                           .expect("Probably should be non-null");
+                   }
+               } else {
+                   if let Some(rightmost_non_null_ptr) =
+                       curr_node.ptrs.iter().rev().find(|ptr| ptr.is_some())
+                   {
+                       curr_node = rightmost_non_null_ptr
+                           .deref()
+                           .as_ref()
+                           .expect("guaranteed to be non-null");
+                   }
+               }
+           }
+
+           curr_node
+       }
+
+       /// Find search-key `key`
+       ///
+       /// Return `None` if it does not exist in this B+Tree.
+       fn find_search_key(&self, key: i32) -> Option<&Node> {
+           let leaf_node = self.find_leaf_node(key);
+
+           if let Some(found_idx) = leaf_node
+               .search_keys
+               .iter()
+               .position(|search_key| *search_key == key)
+           {
+               Some(
+                   leaf_node.ptrs[found_idx]
+                       .deref()
+                       .as_ref()
+                       .expect("Leaf node's ptr can not be null"),
+               )
+           } else {
+               None
+           }
+       }
+
+       fn find_range(&self, range: Range<i32>) -> Vec<&Node> {
+           let lb = range.start;
+           let up = range.end;
+           let mut ret = Vec::new();
+
+           let mut leaf_node = self.find_leaf_node(lb);
+
+           loop {
+               ret.extend(
+                   leaf_node
+                       .search_keys
+                       .iter()
+                       .enumerate()
+                       .filter(|(_, &search_key)| search_key >= lb && search_key <= up)
+                       .filter(|(idx, _)| leaf_node.ptrs[*idx].deref().is_some())
+                       .map(|(idx, _)| {
+                           leaf_node.ptrs[idx]
+                               .deref()
+                               .as_ref()
+                               .expect("guaranteed to be non-null")
+                       }),
+               );
+
+               if let Some(next_leaf_node) = leaf_node
+                   .ptrs
+                   .last()
+                   .expect("should have at least one element")
+                   .deref()
+                   .as_ref()
+               {
+                   leaf_node = next_leaf_node;
+                   continue;
+               } else {
+                   break;
+               }
+           }
+
+           ret
+       }
+   }
+   ```
+
+3. Cost of querying on a B+Tree
+
 ## 14.3.3 Updates on B+Tree
 ### 14.3.3.1 Insertion
 ### 14.3.3.2 Deletion
