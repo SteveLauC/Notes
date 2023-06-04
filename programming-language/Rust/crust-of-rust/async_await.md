@@ -109,3 +109,135 @@
    }
    ```
 
+5. Side effects with `select!`
+   
+   This macro will wait on multiple concurrent branches, returning when the 
+   first branch completes, cancelling the remaining branches.
+
+   When a branch completes, there is a possibility that the other branches
+   are still doing theirs work, resulting in a partial state.
+
+   You need to make sure the partial branches will be finished.
+
+   > [ref](https://docs.rs/tokio/latest/tokio/macro.select.html#cancellation-safety)
+
+
+6. Functions from `std` know nothing about async, when they are blocked, the whole
+   thread just gets blocked, there is no `yield` in that world. You need to use
+   the counterparts from runtime.
+
+7. `join!/join_all/FuturesUnordered/FuturesOrdered`, they all run futures 
+   concurrently. 
+
+8. By default, `tokio` creates the runtime with multiple threads, but only one
+   thread will be busy as there is ONLY one future (task) to be executed.
+
+   ```rust
+   use tokio::runtime::Runtime;
+
+   async fn a_future() {
+       println!("Hello");
+   }
+
+   fn main() {
+       let rt = Runtime::new().unwrap();
+
+       // `main_future` is the ONLY future we have
+       let main_future = async {
+           a_future().await; 
+       };
+       
+       rt.block_on(main_future);
+   }
+   ```
+
+   `a_future()` is a sub future inside of `main_future`, so in the executor's view,
+   there is ONLY one future to execute, and thus ONLY one thread will be busy.
+
+   How can we solve this? Use `spawn()` to create more tasks:
+
+   ```rust
+   fn main() {
+       let rt = Runtime::new().unwrap();
+       let main_future = async {
+           
+           // Alright, `a_future` is no longer a sub future, another task,
+           // another thread can do its job
+           let handle = spawn(a_future());
+           handle.await.unwrap();
+       };
+
+       rt.block_on(main_future);
+   }
+   ```
+
+   With `spawn()`, tasks are no longer executed concurrently, they are in parallel.
+
+   > If you call `spawn()` without a tokio runtime, it panics.
+
+9. Why is async function not allowed in trait
+
+   ```rust
+   trait AsyncRead {
+       async fn read(&mut self, buf: &mut [u8]) -> Result<usize, std::io::Error>;
+   }
+   ``` 
+
+   We know that async function is basically a syntax sugar for:
+
+   ```rust
+   trait AsyncRead {
+       fn read(&mut self, buf: &mut [u8]) -> impl Future<Output = Result<usize, std::io::Error>>;
+   }
+   ```
+
+   And that `impl Future<Output = Result<usize, std::io::Error>>`, the anonymous 
+   State machine is not something that has fixed size.
+
+   > State machine needs to store the state, i.e., the used variables.
+
+   ```rust
+   struct Foo;
+
+   impl AsyncRead for Foo {
+       fn read(&mut self, buf: &mut [u8]) -> impl Future<Output = Result<usize, Error>> {
+           async { Ok(0) }
+       }
+   }
+
+   fn main() {
+       let mut foo = Foo;
+       let mut buf = [0; 1024];
+
+       // What is the size for this fut?
+       let fut = <Foo as AsyncRead>::read(&mut foo, &mut buf);
+   }
+   ```
+
+
+   How does `async-trait` solve this problem? It turns your function into 
+   something like this:
+
+   ```rust
+   trait AsyncRead {
+       fn read(&mut self, buf: &mut [u8]) -> Pin<Box<dyn Future<Output = Result<usize, Error>>>>;
+   }
+
+   struct Foo;
+
+   impl AsyncRead for Foo {
+       fn read(&mut self, buf: &mut [u8]) -> Pin<Box<dyn Future<Output = Result<usize, Error>>>> {
+           let fut = async { Ok(0) };
+
+           Box::pin(fut)
+       }
+   }
+   ```
+
+   Great, now the type of `fut` becomes `Box<Pin<dyn Future>>` and is fixed-sized
+   now as `Future` is behind a pointer.
+
+   But this is inefficient because every call of `async read()` does a heap allocation,
+   and an address jump is needed to locate the actual `Future`.
+
+

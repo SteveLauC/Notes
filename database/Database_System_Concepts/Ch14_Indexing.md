@@ -225,7 +225,7 @@
 ## 14.2.2 Multilevel Indices
 
 > We want our index to be in memory, if the data volume is big and we only have
-> one layer of index, then it cannot be fetched into memory.
+> one layer of index, then it probably cannot be fetched into memory.
 
 1. 没有什么是一层索引解决不了的，如果有，那就再加一层索引。
 
@@ -345,7 +345,7 @@
    > search can be used in some cases.
    >
    > To answer this question, you should note that index exists both in Memory
-   > (with type system support)and disk (just some bytes).
+   > (probably with type system support?)and disk (just some bytes).
 
    1. Sorted Array
       
@@ -390,18 +390,25 @@
 
    All leaf nodes appear in the same level.
 
+   And the depth of a B+Tree **ONLY changes** when you modify the Root node.
+
 4. `order` and children amount bound
    
    We say that a B+Tree has `order` of `n` when its **internal node** has `n` 
    **children** at most (upper bound).
+
+   > And the minimal `order` of a B+Tree is 2. If `order` is 1, then it will be
+   > a link list. And for a B+Tree stored on the disk, you may want the `order`
+   > to be as large (storing more children in a disk page) as possible to make 
+   > the disk read more efficient
 
    1. Internal node, has `([n/2], n)` children to make the tree balanced.
 
       > `[x]` denotes that the smallest integer that is bigger than x, e.g., 
       > [1.9] = 2.
 
-   2. Leaf node has 0 children, but leaf nodes in a B+Tree with order n have 
-       [[(n-1)/2], n-1] search-key values.
+   2. Leaf node has 0 children, but leaf nodes in a B+Tree with order `n` have 
+      `[[(n-1)/2], n-1]` search-key values.
 
       > You should note that `order` is the upper bound on the amount of 
       > children, leaf node has no children but is still kinda restricted 
@@ -411,7 +418,12 @@
       1. 0 children when it is a leaf node
       2. Otherwise, [2, n) children
 
-5. B+Tree can be seen as a multilevel index
+         > Why it is gt or eq to 2 here? Think about a B+tree with oder 2, it 
+         > becomes a nonleaf node ONLY when there are 3 entries in the tree,
+         > when the third entry comes, the B+tree branches, now the root node 
+         > has 2 children(from 0 to 2).
+
+5. B+Tree index can be seen as a multilevel index
 
 6. A node(regardless of its kind) in B+Tree, if has n pointers, then it has
    n-1 search key values. For nodes other than leaf node, n pointers means 
@@ -434,6 +446,20 @@
 
    One common approach that almost every implementation does is to add the
    primary key to search-key to ensure the absence of duplciates.
+
+9. Some properties of B+Tree
+
+   1. Leaf nodes are always leaf nodes, internal nodes are always internal nodes.
+
+      > The first node in a B+Tree is both leaf node and root node.
+
+   2. B+Tree grows by splitting the Root node.
+
+   3. One difference between B+Tree and B-Tree is that B+Tree has duplicated 
+      keys, such a duplication occurrs when **splitting leaf nodes**.
+
+      > Splitting non-leaf node won't result in a duplicated key as the selected
+      > key will ONLY be inserted into the parent node.
 
 
 ## 14.3.2 Queries on B+Tree
@@ -690,9 +716,58 @@
    ```
 
 3. Cost of querying on a B+Tree
+   
+   When querying a B+Tree, we traverse a tree from the root node to the leaf node,
+   assume it this tree has N entries and order of `n`, typically this path has 
+   length that is not longer than `[log[n/2] N]`.
+
+   > Remeber that the amount of children of a non-leaf node is `[n/2]`
+
+   On disk, each node takes a disk page, assume that the search key is fix-sized
+   and takes 12 bytes, and a disk pointer has size 8, then a index entry takes 20
+   bytes, a disk page (assume it is 4000 bytes), can accommodate 200 index entries,
+   i.e., n = 200, `[log[n/2] N]` = `[log100 N]`. If we have 1 million index entries
+   in the index file, this value is [log100 100_000_000] = 4, which means 4 pages
+   need to accessed in this query. In practise, the root node is usually heavily 
+   accessed, and thus will be fetched in memory, then we only need to access 3
+   nodes.
+
+   After traversing down to the leaf node, we find the appropriate pointer, 
+   accessing the contents pointed by that pointer needs another random I/O.
+
+4. An important distinction between in-memory tree and disk tree
+
+   For disk tree, the node size is typically the size of a disk page, and thus
+   can have more entries accommodated, which means the tree is usually fat and
+   shot, and thus takes less steps to traverse.
+
+5. When dealing with duplicate search-key using composite search-key such as
+   adding primary key to the search-key, how to do query in such case?
+
+   Assume the search-key is `ai`, it is not unique, we add the PK to it: `(ai, PK)`,
+   to search entries with `ai` set to `v`, we use `find_range(lb, up)` with `lb`
+   set to `(v, -∞)` and `up` set to `(v, +∞)` respectively.
 
 ## 14.3.3 Updates on B+Tree
+
+> We ONLY focus on insertion and deletion as update can be modeled by insertion
+> and deletion.
+>
+> If you are building a set backed by B+Tree (i.e., all the operations are 
+> operated on keys), you cannot modify a key in place as modification to its 
+> value will change its position. HashSet also suffers from this problem, 
+> changes on keys will potentially put it into another bucket(No `get_mut()`
+> method).
+>
+> If you are building a Map, then in-place modification should be fine as changes
+> are operated on values. 
+
+1. Insertion and deletion are more expensive than lookup as a B+tree needs to
+   rebalence itself by spliting (more than `order`) or coalescing(fewer than [n/2])
+   nodes.
+
 ### 14.3.3.1 Insertion
+
 ### 14.3.3.2 Deletion
 ## 14.3.4 Complexity of B+Tree updates
 ## 14.3.5 Nonunique Search Keys
