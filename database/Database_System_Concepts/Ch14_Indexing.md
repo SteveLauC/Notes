@@ -464,6 +464,8 @@
 
 ## 14.3.2 Queries on B+Tree
 
+> [B+Tree set implementation(no values, just keys)](https://github.com/SteveLauC/BPlusTreeSet)
+
 > B+Tree supports:
 >
 > 1. Equality query
@@ -494,226 +496,60 @@
    >
    > 2. Whether a pointer should be null needs futuer research.
 
-   ```rust
-   use std::ops::Deref;
+   1. Since all values are stored in leaf nodes, we first traverse down to the
+      leaf node that possibily contains our target value:
 
-   #[derive(PartialEq)]
-   enum NodeKind {
-       Root,
-       Internal,
-       Leaf,
-   }
+      ```rust
+      fn traverse_to_leaf_node<Q>(&self, value: &Q) -> Node<T>
+      where
+          Q: PartialOrd,
+          T: Borrow<Q>,
+      {
+          let mut ptr = Node::clone(&self.root);
 
-   struct Node {
-       search_keys: [i32; Node::ORDER - 1],
-       ptrs: [Box<Option<Node>>; Node::ORDER],
-       kind: NodeKind,
-   }
+          while !ptr.is_leaf() {
+              let idx = ptr.search_non_leaf_node(value);
+              let ptr_read_guard = ptr.read();
+              let node = Node::clone(&ptr_read_guard.ptrs[idx]);
+              drop(ptr_read_guard);
 
-   impl Node {
-       const ORDER: usize = 3;
-   }
+              ptr = node;
+          }
 
-   struct BPlusTree {
-       root: Node,
-   }
+          assert!(ptr.is_leaf());
 
-   impl BPlusTree {
-       fn find_search_key(&self, key: i32) -> Option<&Node> {
-           let mut curr_node = &self.root;
+          ptr
+      }
+      ```
 
-           // We traverse until reaches leaf nodes
-           while curr_node.kind != NodeKind::Leaf {
-               // In the `curr_node`, find the first search-key value that is
-               // bigger than or equal to `key`.
-               if let Some(idx) = curr_node
-                   .search_keys
-                   .iter()
-                   .position(|search_key| *search_key >= key)
-               {
-                   // for search key `ki`, search-key values of the nodes on 
-                   // subtree pointed by `pi` should be **smaller than** `ki`. 
-                   // And search-key values on nodes pointed by `p i+1` should
-                   // be greater than or equal to `ki`.
+   2. Within that leaf node, do binary search.
+    
+      ```rust
+      /// Returns a `Rc` to the value in the set, if any.
+      pub fn get<Q>(&self, value: &Q) -> Option<Rc<T>>
+      where
+          T: Borrow<Q>,
+          Q: Ord,
+      {
+          let leaf = self.traverse_to_leaf_node(value);
+          let leaf_guard = leaf.read();
+          let idx = leaf_guard
+              .keys
+              .binary_search_by(|item| (item as &T).borrow().cmp(value))
+              .ok()?;
 
-                   // find a search key that is > key
-                   if curr_node.search_keys[idx] > key {
-                       curr_node = curr_node.ptrs[idx]
-                           .deref()
-                           .as_ref()
-                           .expect("Probably should be non-null");
-                   } else {
-                   // find a search key that is = key
-                       curr_node = curr_node.ptrs[idx + 1]
-                           .deref()
-                           .as_ref()
-                           .expect("Probably should be non-null");
-                   }
-               } else {
-                   // Every search-key in `curr_node` is smaller than `key`,
-                   // Let's check the rightmost child node.
+          Some(Rc::clone(&leaf_guard.keys[idx]))
+      }
+      ```
 
-                   if let Some(rightmost_non_null_ptr) =
-                       curr_node.ptrs.iter().rev().find(|ptr| ptr.is_some())
-                   {
-                       curr_node = rightmost_non_null_ptr
-                           .deref()
-                           .as_ref()
-                           .expect("guaranteed to be non-null");
-                   }
-               }
-           }
 
-           if let Some(found_idx) = curr_node
-               .search_keys
-               .iter()
-               .position(|search_key| *search_key == key)
-           {
-               Some(
-                   curr_node.ptrs[found_idx]
-                       .deref()
-                       .as_ref()
-                       .expect("Leaf node's ptr can not be null"),
-               )
-           } else {
-               None
-           }
-       }
-   }
-   ```
-
-2. Find  all tuples in range [low_bound, upper_bound]
+2. Find all tuples in range [low_bound, upper_bound]
 
    The basic algorithm is:
    1. Traverse down to the leaf node that possibily contains `low_bound`
    2. Starting from this leaf node, iterate over all the leaf nodes and collect
       all pointers with search key `key` s.t. `low_bound <= key <= upper_bound`.
 
-   
-   ```rust
-   use std::ops::{Deref, Range};
-
-   #[derive(PartialEq)]
-   enum NodeKind {
-       Root,
-       Internal,
-       Leaf,
-   }
-
-   struct Node {
-       search_keys: [i32; Node::ORDER - 1],
-       ptrs: [Box<Option<Node>>; Node::ORDER],
-       kind: NodeKind,
-   }
-
-   impl Node {
-       const ORDER: usize = 3;
-   }
-
-   struct BPlusTree {
-       root: Node,
-   }
-
-   impl BPlusTree {
-       /// Assume `key` exists in this B+Tree, return the leaf node containing it.
-       fn find_leaf_node(&self, key: i32) -> &Node {
-           let mut curr_node = &self.root;
-
-           while curr_node.kind != NodeKind::Leaf {
-               if let Some(idx) = curr_node
-                   .search_keys
-                   .iter()
-                   .position(|search_key| *search_key >= key)
-               {
-                   if curr_node.search_keys[idx] > key {
-                       curr_node = curr_node.ptrs[idx]
-                           .deref()
-                           .as_ref()
-                           .expect("Probably should be non-null");
-                   } else {
-                       curr_node = curr_node.ptrs[idx + 1]
-                           .deref()
-                           .as_ref()
-                           .expect("Probably should be non-null");
-                   }
-               } else {
-                   if let Some(rightmost_non_null_ptr) =
-                       curr_node.ptrs.iter().rev().find(|ptr| ptr.is_some())
-                   {
-                       curr_node = rightmost_non_null_ptr
-                           .deref()
-                           .as_ref()
-                           .expect("guaranteed to be non-null");
-                   }
-               }
-           }
-
-           curr_node
-       }
-
-       /// Find search-key `key`
-       ///
-       /// Return `None` if it does not exist in this B+Tree.
-       fn find_search_key(&self, key: i32) -> Option<&Node> {
-           let leaf_node = self.find_leaf_node(key);
-
-           if let Some(found_idx) = leaf_node
-               .search_keys
-               .iter()
-               .position(|search_key| *search_key == key)
-           {
-               Some(
-                   leaf_node.ptrs[found_idx]
-                       .deref()
-                       .as_ref()
-                       .expect("Leaf node's ptr can not be null"),
-               )
-           } else {
-               None
-           }
-       }
-
-       fn find_range(&self, range: Range<i32>) -> Vec<&Node> {
-           let lb = range.start;
-           let up = range.end;
-           let mut ret = Vec::new();
-
-           let mut leaf_node = self.find_leaf_node(lb);
-
-           loop {
-               ret.extend(
-                   leaf_node
-                       .search_keys
-                       .iter()
-                       .enumerate()
-                       .filter(|(_, &search_key)| search_key >= lb && search_key <= up)
-                       .filter(|(idx, _)| leaf_node.ptrs[*idx].deref().is_some())
-                       .map(|(idx, _)| {
-                           leaf_node.ptrs[idx]
-                               .deref()
-                               .as_ref()
-                               .expect("guaranteed to be non-null")
-                       }),
-               );
-
-               if let Some(next_leaf_node) = leaf_node
-                   .ptrs
-                   .last()
-                   .expect("should have at least one element")
-                   .deref()
-                   .as_ref()
-               {
-                   leaf_node = next_leaf_node;
-                   continue;
-               } else {
-                   break;
-               }
-           }
-
-           ret
-       }
-   }
-   ```
 
 3. Cost of querying on a B+Tree
    
@@ -768,10 +604,251 @@
 
 ### 14.3.3.1 Insertion
 
+1. How to do insertion on a B+Tree
+
+   1. Traverse to the leaf node that will contains this `value`
+   2. If that leaf node contains `value`, return
+   3. If the amount of entries in that leaf node is smaller than `order`, insert
+      `value` to it and return
+   4. The leaf node is full, let's do split on it.
+
+   ```rust
+   /// Insert `value` into the set.
+   ///
+   /// Return `true` if insertion is successful.
+   pub fn insert(&mut self, value: T) -> bool
+   where
+       T: Ord + Debug,
+   {
+       let order = self.order;
+       let (leaf_node, parent_nodes) = self.traverse_to_leaf_node_with_parents(value.borrow());
+       if leaf_node.contains(value.borrow()) {
+           return false;
+       }
+
+       // `leaf_node.len()` will be either smaller than or equal to `order`.
+       if leaf_node.len() < order {
+           // have enough room, just insert
+           leaf_node.insert_in_leaf(value);
+       } else {
+           // split leaf node
+           //
+           // 1. Create a new Node
+           // 2. Move the entries in this `leaf_node` to `tmp`
+           // 3. Insert `value` into `tmp`
+           // 4. `leaf_node_plus.ptrs.last()` = `leaf_node.ptrs.last()`;
+           //    `leaf_node.ptrs.last()` = `leaf_node_plus`
+           //
+           //     Since we are implementing a BPlusTreeSet, leaf node in such
+           //     trees ONLY have one pointer, i.e., the pointer to the next
+           //     leaf node.
+           // 5. Move `tmp[0..(order/2)]` to `leaf_node.keys`
+           // 6. Move the remaining elements in `tmp` to `leaf_node_plus`.
+           // 7. Let `K'` be the smallest entry in `leaf_node_plus`, insert it
+           //    and a pointer to `leaf_node_plus` to the parent node of `leaf_node`.
+           let leaf_node_plus = Node::new(leaf_node.kind());
+
+           let mut leaf_node_write_guard = leaf_node.write();
+           let mut leaf_node_plus_write_guard = leaf_node_plus.write();
+
+           let mut tmp = leaf_node_write_guard.keys.drain(..).collect::<Vec<Rc<T>>>();
+           insert_into_vec(&mut tmp, value);
+
+           if !leaf_node_write_guard.ptrs.is_empty() {
+               assert_eq!(leaf_node_write_guard.ptrs.len(), 1);
+               leaf_node_plus_write_guard.ptrs.push(
+                   leaf_node_write_guard
+                       .ptrs
+                       .pop()
+                       .expect("Should have exactly 1 ptr"),
+               );
+           }
+           leaf_node_write_guard
+               .ptrs
+               .push(Node::clone(&leaf_node_plus));
+
+           assert_eq!(leaf_node_write_guard.keys.len(), 0);
+           let idx = (order as f64 / 2.0).ceil() as usize;
+           leaf_node_write_guard.keys.extend(tmp.drain(0..idx));
+           leaf_node_plus_write_guard.keys = tmp;
+
+           // Duplication occurs here
+           let k = Rc::clone(&leaf_node_plus_write_guard.keys[0]);
+           drop(leaf_node_write_guard);
+           drop(leaf_node_plus_write_guard);
+
+           self.insert_in_parent(leaf_node, parent_nodes, (k, leaf_node_plus));
+       }
+
+       self.len += 1;
+       true
+   }
+   ```
+
+2. Split a **leaf* node
+   
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/split_of_leaf_node_b_plus_tree.jpg)
+
+   Take the above case as an example, the above B+Tree's order is 4, when a leaf
+   node has entries `1, 2, 3`, and we want to insert `4` to it, the leaf node is
+   full, we have to split it.
+
+   1. Create a new `Node` that has the same kind with the split node.
+   2. Move the values stored in the split node to a temporary place.
+
+      > Since we are implementing a Set, not a key-value store, and a set's leaf
+      > node ONLY has 1 or 0 pointer(to the next leaf node), so in this step, we
+      > only need to move the keys.
+
+      ```
+      // tmp
+      1, 2, 3
+      ```
+
+   3. Insert the value to be inserted to that temporary place.
+
+      ```
+      // tmp
+      1, 2, 3, 4
+      ```
+   4. Migrate pointer if it exists
+      
+      If the split node contains a pointer, move this pointer to the new node.
+
+   5. Update the split node's pointer to the new node
+
+   6. `tmp` has `order` entries now, move `tmp[0, [order/2])` to the split node,
+      and the remaining ones to the new node.
+
+   7. Clone the first entry in the new node
+
+   8. Insert `(fist_entry_clone, pointer_to_new_node)` to the parent node of the
+      split node.
+
+3. Insert into parent node
+   
+   > To find the parent node of the split node, we collect the parent nodes that
+   > are in our path when traversing down to the leaf node.
+
+   1. If the split node has no parent node, i.e., the split node is the Root node,
+      create a new Node, insert a pointer to the split node to it(Don't need this
+      for the case where parent node already exists).
+
+      Insert `(first_entry_clone, pointer_to_new_node)` to the new Root.
+
+      Make this new root node the Root.
+
+   2. Find the parent node of the split node. If the amount of its entries is
+      smaller than the `order`, insert `(first_entry_clone, pointer_to_new_node)`
+      to it and return.
+   
+   3. Alright, unforunately, split the parent node (non-leaf node)
+
+4. Split a non-leaf node
+
+   1. Create a new node, let's call it `parent_plus`.
+   2. Create a temporary node `tmp`, move all the keys and pointers of the parent node
+      to it.
+
+   3. Insert `(fist_entry_clone, pointer_to_new_node)` to the tmp node.
+
+   4. Move `tmp.keys[0, [order/2])` to the parent node, move `tmp.ptrs[0, [order/2]`
+      to the parent node.
+
+   5. Move the first entry of `tmp` out, name it `k`
+
+   6. Replace `parent_plus` with `tmp`.
+
+   7. Recursion: Insert `k, pointer_to_parent_plus` to the parent of the parent node.
+
+
+   ```rust
+   /// Insert key and pointer `kp` to the parent node of `split`, i.e.,
+   /// `parents.pop().unwrap()`.
+   ///
+   /// We have a vector of parent nodes as this operation can be recursive.
+   ///
+   /// # Recursion exits:
+   /// 1. `parents.is_empty()`, which means that the root node has just been split.
+   /// 2. Split is no more triggered.
+   fn insert_in_parent(&mut self, split: Node<T>, mut parents: Vec<Node<T>>, kp: (Rc<T>, Node<T>))
+   where
+       T: Ord + Debug,
+   {
+       if parents.is_empty() {
+           // We are gonna do insertion on the parent node of `split`, but
+           // unfortunately it does not have a parent node, no worries, we can
+           // create one for it.
+           let new_root = Node::new(NodeKind::ROOT);
+           let mut new_root_write_guard = new_root.write();
+           new_root_write_guard.keys.push(kp.0);
+           new_root_write_guard.ptrs.extend([split, kp.1]);
+           drop(new_root_write_guard);
+
+           self.root = new_root;
+       } else {
+           let parent_of_split = parents.pop().expect("parents is not empty");
+           let order = self.order;
+
+           // Finally, no recursions anymore!
+           if parent_of_split.len() < order {
+               let mut parent_write_guard = parent_of_split.write();
+               let idx = parent_write_guard
+                   .ptrs
+                   .binary_search(&split)
+                   .expect("`split` should be there");
+               parent_write_guard.ptrs.insert(idx + 1, kp.1);
+               parent_write_guard.keys.insert(idx, kp.0);
+           } else {
+               // split `parent_of_split` (non leaf node)
+               let parent_plus = Node::new(parent_of_split.kind());
+               let mut parent_write_guard = parent_of_split.write();
+               let mut tmp_keys = parent_write_guard.keys.drain(..).collect::<Vec<Rc<T>>>();
+               let mut tmp_ptrs = parent_write_guard.ptrs.drain(..).collect::<Vec<Node<T>>>();
+               let idx = tmp_keys
+                   .binary_search(&kp.0)
+                   .expect_err("kp.0 should not be there");
+               tmp_keys.insert(idx, kp.0);
+               tmp_ptrs.insert(idx + 1, kp.1);
+
+               assert_eq!(tmp_keys.len(), order);
+               assert_eq!(tmp_ptrs.len(), order + 1);
+
+               let idx_of_k = (order as f64 / 2.0).ceil() as usize;
+               parent_write_guard.keys.extend(tmp_keys.drain(0..idx_of_k));
+               parent_write_guard.ptrs.extend(tmp_ptrs.drain(0..=idx_of_k));
+
+               let k = tmp_keys.remove(0);
+
+               let mut parent_plus_write_guard = parent_plus.write();
+               parent_plus_write_guard.keys = tmp_keys;
+               parent_plus_write_guard.ptrs = tmp_ptrs;
+
+               drop(parent_write_guard);
+               drop(parent_plus_write_guard);
+
+               self.insert_in_parent(parent_of_split, parents, (k, parent_plus));
+           }
+       }
+   }
+   ```
+
+5. Difference between spliting a leaf node and a non-leaf node
+
+   1. When splitting leaf node, `tmp.pointers[0, [order/2])` should be given to
+      the old leaf, but when splitting non-leaf nodes, `tmp.pointers[0, [order/2]]`
+      should be given. (One more pointer)
+
+   2. Splitting a leaf node can result in key duplication (in both the new leaf 
+      node and the parent node), this replication won't happen when splitting
+      non-leaf node as the selected entry(first entry in the new node) will be
+      **moved** to the parent node.
+
 ### 14.3.3.2 Deletion
+
+
 ## 14.3.4 Complexity of B+Tree updates
 ## 14.3.5 Nonunique Search Keys
-
 
 
 # 14.4 B+Tree Extensions
