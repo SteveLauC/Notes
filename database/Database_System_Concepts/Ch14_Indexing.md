@@ -350,15 +350,20 @@
    1. Sorted Array
       
       To insert a new entry in the middle, you have to move all the entries
-      after the new one backwards, which will uses a lot of useless I/O.
+      after the new one backwards, which will result in a lot of useless I/O.
       
       Same applies to removal.
       
    2. Sorted Linked List
 
       (On disk)To apply binary search to linked list, you have to find the 
-      middle node, and this requires two pointer to traverse the list with 
-      different speeds, which needs two sequential scans.
+      middle node, and this requires two pointer with different speeds to traverse
+      the list, the fast pointer moves 2 steps each time and the slower one
+      move one step, when the fast one reaches the end, the slower one will be
+      in the middle node.
+
+      This operation will sequentially scan the list, which possibily needs
+      tons of random I/O.
 
    3. Binary Search Tree
       
@@ -420,8 +425,8 @@
 
          > Why it is gt or eq to 2 here? Think about a B+tree with oder 2, it 
          > becomes a nonleaf node ONLY when there are 3 entries in the tree,
-         > when the third entry comes, the B+tree branches, now the root node 
-         > has 2 children(from 0 to 2).
+         > when the third entry comes, the B+tree **branches(split)**, now the 
+         > root node has 2 children(from 0 to 2).
 
 5. B+Tree index can be seen as a multilevel index
 
@@ -451,6 +456,9 @@
 
    1. Leaf nodes are always leaf nodes, internal nodes are always internal nodes.
 
+      > This is true because B+Tree grows by making new Root node and turning
+      > the old one into a internal node.
+
       > The first node in a B+Tree is both leaf node and root node.
 
    2. B+Tree grows by splitting the Root node.
@@ -459,12 +467,34 @@
       keys, such a duplication occurrs when **splitting leaf nodes**.
 
       > Splitting non-leaf node won't result in a duplicated key as the selected
-      > key will ONLY be inserted into the parent node.
+      > key will be moved into the parent node.
 
+   4. B+Tree's self-rebalance is amazing 
+
+      * Image inserting `[1, 2, 3, 4, 5]` to a BST
+
+        ![BST](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-08%2016-24-37.png)
+
+        This tree is absolutely not balanced, and actually, you will get `O(n)` 
+        time complexity when searching this tree.
+
+        > There are self-rebalancing BST, 
+        > [AVL tree](https://www.cs.usfca.edu/~galles/visualization/AVLtree.html)
+      
+      * With a B+Tree
+
+        ![B+Tree](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-08%2016-29-36.png)
+
+        When splitting a full node, we always copy(or move) the selected (the 
+        middle one) node to the parent node, which can be used to speed up the
+        query.
+
+        As you can see, the root node has entry 3, if you wanna find the values 
+        smaller than 3, you know that they are on the left subtree.
 
 ## 14.3.2 Queries on B+Tree
 
-> [B+Tree set implementation(no values, just keys)](https://github.com/SteveLauC/BPlusTreeSet)
+> [B+Tree **set** implementation(no values, just keys)](https://github.com/SteveLauC/BPlusTreeSet)
 
 > B+Tree supports:
 >
@@ -480,21 +510,6 @@
 >    ```
 
 1. How to do equality query on a B+Tree
-
-   > The following rust code should be seen as a pseudocode for the following
-   > reason:
-   >
-   > 1. Pointer on leaf nodes should be something like this:
-   >    ```rust
-   >    struct LeafNodePtr {
-   >        /// file path and offset 
-   >        page_id: (PathBuf, u64),
-   >        /// slot id
-   >        slot_id: u64,
-   >    }
-   >    ```
-   >
-   > 2. Whether a pointer should be null needs futuer research.
 
    1. Since all values are stored in leaf nodes, we first traverse down to the
       leaf node that possibily contains our target value:
@@ -543,19 +558,21 @@
       ```
 
 
-2. Find all tuples in range [low_bound, upper_bound]
+2. Find all tuples in range `[low_bound, upper_bound]`
 
    The basic algorithm is:
    1. Traverse down to the leaf node that possibily contains `low_bound`
    2. Starting from this leaf node, iterate over all the leaf nodes and collect
       all pointers with search key `key` s.t. `low_bound <= key <= upper_bound`.
 
+   > For range queries, B+Tree can do this easily since its leaf node stores
+   > a pointer to the next leaf node. B-Tree cannot do this I guess.
 
 3. Cost of querying on a B+Tree
    
-   When querying a B+Tree, we traverse a tree from the root node to the leaf node,
-   assume it this tree has N entries and order of `n`, typically this path has 
-   length that is not longer than `[log[n/2] N]`.
+   When querying a B+Tree, we traverse the tree from the root node to the leaf 
+   node, assume this tree has N entries and order of `n`, typically this 
+   path has length that is not longer than `[log[n/2] N]`.
 
    > Remeber that the amount of children of a non-leaf node is `[n/2]`
 
