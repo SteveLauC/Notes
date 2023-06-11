@@ -387,8 +387,14 @@
 2. Three kinds of nodes
 
    * Root node
-   * Internal node(nonleaf node)
+   * Internal node (nonleaf node)
+     Has children
+
    * Leaf node
+     Has no children
+
+   > Root node can be internal node and leaf node, which depends whether it has
+   > children or not.
 
 3. B+Tree is balanced, which means that every path from the root of the tree
    to a leaf node **has the same length**.
@@ -407,7 +413,7 @@
    > to be as large (storing more children in a disk page) as possible to make 
    > the disk read more efficient
 
-   1. Internal node, has `([n/2], n)` children to make the tree balanced.
+   1. Internal node, should have `[[n/2], n]` children to make the tree balanced.
 
       > `[x]` denotes that the smallest integer that is bigger than x, e.g., 
       > [1.9] = 2.
@@ -421,20 +427,25 @@
 
    3. Root node can has
       1. 0 children when it is a leaf node
-      2. Otherwise, [2, n) children
+      2. Otherwise, `[2, n]` children
 
-         > Why it is gt or eq to 2 here? Think about a B+tree with oder 2, it 
-         > becomes a nonleaf node ONLY when there are 3 entries in the tree,
-         > when the third entry comes, the B+tree **branches(split)**, now the 
-         > root node has 2 children(from 0 to 2).
+      > Why it is gt or eq to 2 here? Think about a B+tree with oder 2, it 
+      > becomes a nonleaf node ONLY when there are 3 entries in the tree,
+      > when the third entry comes, the B+tree **branches(split)**, now the 
+      > root node has 2 children(from 0 to 2).
+
+   > When updating a B+Tree, we split when a node becomes full, a leaf node is
+   > full if it has `[n-1]` search key values, an internal node is full if it
+   > has `n` children(pointers).
 
 5. B+Tree index can be seen as a multilevel index
 
-6. A node(regardless of its kind) in B+Tree, if has n pointers, then it has
-   n-1 search key values. For nodes other than leaf node, n pointers means 
-   n children.
+6. A node(regardless of its kind) in B+Tree, if has `n` pointers, then it should 
+   have `n-1` search key values. For nodes other than leaf node, `n` pointers means 
+   `n` children.
 
-   If it is a leaf node, then the last pointer points to the next leaf node.
+   If it is a leaf node, then the last pointer points to the next leaf node. 
+   The last leaf node ONLY has `n` pointers as it is the last one.
 
 7. Search-key values within a node remains ordered.
 
@@ -478,7 +489,7 @@
         This tree is absolutely not balanced, and actually, you will get `O(n)` 
         time complexity when searching this tree.
 
-        > There are self-rebalancing BST, 
+        > There is self-rebalancing BST, 
         > [AVL tree](https://www.cs.usfca.edu/~galles/visualization/AVLtree.html)
       
       * With a B+Tree
@@ -625,8 +636,8 @@
 
    1. Traverse to the leaf node that will contains this `value`
    2. If that leaf node contains `value`, return
-   3. If the amount of entries in that leaf node is smaller than `order`, insert
-      `value` to it and return
+   3. If the amount of search keys in that leaf node is smaller than `order - 1`, 
+      insert `value` to it and return
    4. The leaf node is full, let's do split on it.
 
    ```rust
@@ -643,8 +654,7 @@
            return false;
        }
 
-       // `leaf_node.len()` will be either smaller than or equal to `order`.
-       if leaf_node.len() < order {
+       if !self.is_node_full(&leaf_node) {
            // have enough room, just insert
            leaf_node.insert_in_leaf(value);
        } else {
@@ -702,7 +712,7 @@
    }
    ```
 
-2. Split a **leaf* node
+2. Split a **leaf** node
    
    ![diagram](https://github.com/SteveLauC/pic/blob/main/split_of_leaf_node_b_plus_tree.jpg)
 
@@ -761,7 +771,7 @@
    
    3. Alright, unforunately, split the parent node (non-leaf node)
 
-4. Split a non-leaf node
+4. Split a **non-leaf** node
 
    1. Create a new node, let's call it `parent_plus`.
    2. Create a temporary node `tmp`, move all the keys and pointers of the parent node
@@ -862,6 +872,62 @@
       **moved** to the parent node.
 
 ### 14.3.3.2 Deletion
+
+1. How to do deletion on a B+Tree
+   
+   1. Traverse down to the leaf node
+   2. `delete(target_value, Key, Pointer)`
+
+2. How to do `delete(Node, Key, Pointer)`
+
+   > Delete `(key, Pointer)` from `Node`
+
+   1. Just Delete them
+
+   2. If `Node` is a Root node and it has ONLY one child,
+      
+      > A Root with one child is NOT a leaf node (leaf node has 0 children),
+      > and a Root node that is not a leaf node should have `[2, n]` children.
+
+      1. Make the child the new Root node 
+      2. Abandon the old root `Node`
+      3. Return
+   
+   3. If `Node` has too few search-key values or pointers
+
+      > ```rust
+      > pub(crate) fn node_has_too_few_entries(&self, node: &Node<T>) -> bool {
+      >    let search_key_threshold = ((self.order - 1) as f64 / 2.0).ceil() as usize;
+      >    let ptr_threshold = ((self.order as f64) / 2.0).ceil() as usize;
+      >
+      >    if node.is_leaf() {
+      >        node.read().keys.len() < search_key_threshold
+      >    } else {
+      >        node.read().ptrs.len() < ptr_threshold
+      >    }
+      > }
+      > ```
+
+      1. Let `Node'` be a sibling of `Node`
+      2. Let `K'` be the value between pointers `Node` and `Node'` in `parent(Node)`
+         
+         ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-10%2015-52-40.png)
+
+      3. If entries in `Node` and `Node'` can fit into a single node, begin coalescence:
+
+         > * leaf node
+         >
+         >   The # of Search-key <= `n-1`
+         >
+         > * non-leaf node
+         >
+         >   The # of pointer <= `n`
+
+         1. If `Node` is a predecessor of `Node'`, then let's rename `Node` to
+            `Node'`, `Node'` to `Node`.
+
+            > Make `Node'` **always the left one** so that we can **append** to it.
+ 
 
 
 ## 14.3.4 Complexity of B+Tree updates
