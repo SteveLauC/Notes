@@ -408,10 +408,15 @@
    We say that a B+Tree has `order` of `n` when its **internal node** has `n` 
    **children** at most (upper bound).
 
-   > And the minimal `order` of a B+Tree is 2. If `order` is 1, then it will be
+   > And the minimal `order` of a B+Tree is 3. If `order` is 1, then it will be
    > a link list. And for a B+Tree stored on the disk, you may want the `order`
    > to be as large (storing more children in a disk page) as possible to make 
    > the disk read more efficient
+
+   > I am actually NOT sure about the minimal `order` B+Tree, in this
+   > answer, the author states it is 3. I tried to insert `1, 2, 3` to a B+Tree
+   > with order 2, and this results in an **empty**(has 0 key) internal node.
+   > So I guess order of 2 is not allowed.
 
    1. Internal node, should have `[[n/2], n]` children to make the tree balanced.
 
@@ -467,8 +472,8 @@
 
    1. Leaf nodes are always leaf nodes, internal nodes are always internal nodes.
 
-      > This is true because B+Tree grows by making new Root node and turning
-      > the old one into a internal node.
+      > This is true because B+Tree grows by splitting the old Root and making
+      > a new root.
 
       > The first node in a B+Tree is both leaf node and root node.
 
@@ -779,14 +784,16 @@
 
    3. Insert `(fist_entry_clone, pointer_to_new_node)` to the tmp node.
 
-   4. Move `tmp.keys[0, [order/2])` to the parent node, move `tmp.ptrs[0, [order/2]`
-      to the parent node.
+   4. let idx = [order/2]
 
-   5. Move the first entry of `tmp` out, name it `k`
+   5. Move `tmp.keys[0, idx)` to the parent node, move `tmp.ptrs[0, idx]`to the
+      parent node.
 
-   6. Replace `parent_plus` with `tmp`.
+   6. Move the first entry(tmp[idx]) of `tmp` out, name it `k`
 
-   7. Recursion: Insert `k, pointer_to_parent_plus` to the parent of the parent node.
+   7. Replace `parent_plus` with `tmp`.
+
+   8. Recursion: Insert `k, pointer_to_parent_plus` to the parent of the parent node.
 
 
    ```rust
@@ -841,7 +848,7 @@
                assert_eq!(tmp_keys.len(), order);
                assert_eq!(tmp_ptrs.len(), order + 1);
 
-               let idx_of_k = (order as f64 / 2.0).ceil() as usize;
+               let idx_of_k = ((order as f64 + 1.0) / 2.0).ceil() as usize - 1;
                parent_write_guard.keys.extend(tmp_keys.drain(0..idx_of_k));
                parent_write_guard.ptrs.extend(tmp_ptrs.drain(0..=idx_of_k));
 
@@ -909,6 +916,13 @@
       > ```
 
       1. Let `Node'` be a sibling of `Node`
+         
+         > Here, you have to choose which sibling to use
+         >
+         > In my implementation, I prefer coalescence rather than redistribution,
+         > so I will try to find the best sibling (i.e., the sibling has fewer
+         > entries)
+
       2. Let `K'` be the value between pointers `Node` and `Node'` in `parent(Node)`
          
          ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-10%2015-52-40.png)
@@ -926,7 +940,19 @@
          1. If `Node` is a predecessor of `Node'`, then let's rename `Node` to
             `Node'`, `Node'` to `Node`.
 
-            > Make `Node'` **always the left one** so that we can **append** to it.
+            > Make `Node'` **always the left one** so that we can **append** to
+            > it.
+         
+         2. If `Node` is not a leaf node, append `K'` and all keys and pointers
+            in `Node` to `Node'`
+
+            Else(`Node` is a leaf node), simply append all keys and pointerss in
+            `Node` to `Node'`
+
+         3. Delete `Node` (drop a `Rc`)
+
+         4. Recursion: `delete_entry( parent(Node), K', Node)` 
+
  
 
 
