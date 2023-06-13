@@ -946,19 +946,78 @@
          2. If `Node` is not a leaf node, append `K'` and all keys and pointers
             in `Node` to `Node'`
 
-            Else(`Node` is a leaf node), simply append all keys and pointerss in
-            `Node` to `Node'`
+            Else(`Node` is a leaf node), simply append all keys and pointers in
+            `Node` to `Node'`, and set `node_plus.next_leaf` to `node.next_leaf`
 
          3. Delete `Node` (drop a `Rc`)
 
          4. Recursion: `delete_entry( parent(Node), K', Node)` 
 
- 
+      4. Redistribution
+
+         > Always remeber that redistribution **borrows** an entry from `Node'`
+
+         1. If `Node'` is predecessor of `Node`
+            1. Move `Node'`'s last key and pointer out
+            2. If `Node` is a non-leaf node
+               1. Prepend `K'` to `Node`'s keys
+               2. Prepend `Node'`'s last pointer to `Node`'s pointers
+               3. replace `k_plus` in the `parent` with the last key in `node_plus`
+            3. Else
+               1. Prepend `Node'`'s last key to `Node`'s keys
+               2. Prepend `Node'`'s last pointer to `Node`'s pointers
+               3. replace `k_plus` in the `parent` with the last key in `node_plus`
+         2. Else
+            1. Move `Node'`'s first key and pointer out
+            2. If `Node` is a non-leaf node
+               1. Prepend `K'` to `Node`'s keys
+               2. Prepend `Node'`'s first pointer to `Node`'s pointers
+               3. replace `k_plus` in the `parent` with the first key in `node_plus`
+            3. Else
+               1. Prepend `Node'`'s first key to `Node`'s keys
+               2. Prepend `Node'`'s first pointer to `Node`'s pointers
+               3. replace `k_plus` in the `parent` with the first key in `node_plus`
 
 
 ## 14.3.4 Complexity of B+Tree updates
+
+1. Although insertion and deletion on B+Tree are complicated, they require 
+   relatively few I/O operations as the `order` will be pretty big, and thus
+   the tree will be short.
+
+   And the amount of I/O operations of insertion and deletion is proportional
+   to the height of the B+Tree(recursion until the Root in the worse case), 
+   and is therefore low.
+
 ## 14.3.5 Nonunique Search Keys
 
+1. Recall what we have learned eariler, for non-unique search key values, we
+   can add extra attributes to it to compose a conposite search key that is
+   unique for all the rows.
+
+   A common way is to add the primary key to the search key.
+
+   The extra attribute added is called a **uniquifier** attribute
+
+2. Or we can modify the algorithm to make B+Tree support duplicate entries.
+
+   > NOTE: this is for the B+Tree index
+   >
+   > i.e., `BPlueTreeMap<SearchKey, PointerToDisk>`
+
+   * For duplicate search-key entries, assign a Bucket for each search-key, store
+     all pointer in that bucket.
+
+     > This method is spcae-efficient as the duplicate search-keys are only stored
+     > once.
+
+   * Store the search-key value once per record, this way is not space efficient
+     as a search-key may be stored multiple times, and the worse thing is it is 
+     possible that two nodes have two search-keys with the same value, which makes
+     lookup significantly more complicated.
+
+   All the ways other than composite search-key will have its hard-to-deal drawback,
+   so most databases choose to use composite search-key.
 
 # 14.4 B+Tree Extensions
 # 14.5 Hash Indices
