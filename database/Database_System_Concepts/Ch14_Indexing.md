@@ -20,6 +20,8 @@
 >   * 14.3.5 Nonunique Search Keys
 >
 > * 14.4 B+Tree Extensions
+>   * 14.4.1 B+Tree File Organization
+>
 > * 14.5 Hash Indices
 > * 14.6 Multiple-key Access
 > * 14.7 Creation of Indices
@@ -418,13 +420,10 @@
    > with order 2, and this results in an **empty**(has 0 key) internal node.
    > So I guess order of 2 is not allowed.
 
-   1. Internal node, should have `[[n/2], n]` children to make the tree balanced.
-
-      > `[x]` denotes that the smallest integer that is bigger than x, e.g., 
-      > [1.9] = 2.
+   1. Internal node, should have `[ceil(n/2), n]` children to make the tree balanced.
 
    2. Leaf node has 0 children, but leaf nodes in a B+Tree with order `n` have 
-      `[[(n-1)/2], n-1]` search-key values.
+      `[ceil((n-1)/2), n-1]` search-key values.
 
       > You should note that `order` is the upper bound on the amount of 
       > children, leaf node has no children but is still kinda restricted 
@@ -440,7 +439,7 @@
       > root node has 2 children(from 0 to 2).
 
    > When updating a B+Tree, we split when a node becomes full, a leaf node is
-   > full if it has `[n-1]` search key values, an internal node is full if it
+   > full if it has `ceil(n-1)` search key values, an internal node is full if it
    > has `n` children(pointers).
 
 5. B+Tree index can be seen as a multilevel index
@@ -588,14 +587,14 @@
    
    When querying a B+Tree, we traverse the tree from the root node to the leaf 
    node, assume this tree has N entries and order of `n`, typically this 
-   path has length that is not longer than `[log[n/2] N]`.
+   path has length that is not longer than `[log ceil(n/2) N]`.
 
-   > Remeber that the amount of children of a non-leaf node is `[n/2]`
+   > Remeber that the amount of children of a non-leaf node is `ceil(n/2)`
 
    On disk, each node takes a disk page, assume that the search key is fix-sized
    and takes 12 bytes, and a disk pointer has size 8, then a index entry takes 20
    bytes, a disk page (assume it is 4000 bytes), can accommodate 200 index entries,
-   i.e., n = 200, `[log[n/2] N]` = `[log100 N]`. If we have 1 million index entries
+   i.e., n = 200, `[log ceil(n/2) N]` = `[log100 N]`. If we have 1 million index entries
    in the index file, this value is [log100 100_000_000] = 4, which means 4 pages
    need to accessed in this query. In practise, the root node is usually heavily 
    accessed, and thus will be fetched in memory, then we only need to access 3
@@ -632,7 +631,7 @@
 > are operated on values. 
 
 1. Insertion and deletion are more expensive than lookup as a B+tree needs to
-   rebalence itself by spliting (more than `order`) or coalescing(fewer than [n/2])
+   rebalence itself by spliting (more than `order`) or coalescing(fewer than ceil(n/2))
    nodes.
 
 ### 14.3.3.1 Insertion
@@ -749,7 +748,7 @@
 
    5. Update the split node's pointer to the new node
 
-   6. `tmp` has `order` entries now, move `tmp[0, [order/2])` to the split node,
+   6. `tmp` has `order` entries now, move `tmp[0, ceil(order/2))` to the split node,
       and the remaining ones to the new node.
 
    7. Clone the first entry in the new node
@@ -784,7 +783,7 @@
 
    3. Insert `(fist_entry_clone, pointer_to_new_node)` to the tmp node.
 
-   4. let idx = [order/2]
+   4. let idx = ceil(order/2)
 
    5. Move `tmp.keys[0, idx)` to the parent node, move `tmp.ptrs[0, idx]`to the
       parent node.
@@ -869,8 +868,8 @@
 
 5. Difference between spliting a leaf node and a non-leaf node
 
-   1. When splitting leaf node, `tmp.pointers[0, [order/2])` should be given to
-      the old leaf, but when splitting non-leaf nodes, `tmp.pointers[0, [order/2]]`
+   1. When splitting leaf node, `tmp.pointers[0, ceil(order/2))` should be given to
+      the old leaf, but when splitting non-leaf nodes, `tmp.pointers[0, ceil(order/2)]`
       should be given. (One more pointer)
 
    2. Splitting a leaf node can result in key duplication (in both the new leaf 
@@ -1020,6 +1019,22 @@
    so most databases choose to use composite search-key.
 
 # 14.4 B+Tree Extensions
+
+> In this section, we discuss several extensions and variations of B+Tree index
+> structure.
+
+## 14.4.1 B+Tree File Organization
+
+1. B+Tree File Organization
+
+   In a B+Tree index, we store pointers in the leaf nodes, but we can also store
+   records in them. Storing records in a B+Tree within a file is called B+Tree
+   file organization.
+
+   > SQLite stores its records in a B+Tree file organization.
+
+2. 
+
 # 14.5 Hash Indices
 # 14.6 Multiple-key Access
 # 14.7 Creation of Indices
