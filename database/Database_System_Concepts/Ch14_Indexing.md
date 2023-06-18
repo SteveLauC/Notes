@@ -21,6 +21,7 @@
 >
 > * 14.4 B+Tree Extensions
 >   * 14.4.1 B+Tree File Organization
+>   * 14.4.2 Secondary Indexes and Record Relocation
 >
 > * 14.5 Hash Indices
 > * 14.6 Multiple-key Access
@@ -119,14 +120,13 @@
 
 2. What is `Clustering Index/Primary Index/Clustered Index`
 
-   The entries stored in a table may themselves be sorted in some sorted order,
+   The entries stored in a table **may themselves be sorted in some sorted order**,
    just as books in a library are stored according to some attribute such as
    the Dewey decimal number.
 
    A `Clustering Index` is an index whose `Search key` also defines the 
-   sequential order of the entries, i.e., relects the phycial order of how
+   sequential order of the entries, i.e., reflects the phycial order of how
    those entries are stored. `Clustering Index` is also called `Primary Index`.
-
 
    > The term `Primary Index` may refer to denote an index on `Primary key`,
    > in most cases, this is true, but it is not necessarily so.
@@ -1033,7 +1033,55 @@
 
    > SQLite stores its records in a B+Tree file organization.
 
-2. 
+2. Space utilization of B+Tree file organization
+
+   Space utilization becomes more important because records are much larger than
+   keys and pointers. We can improve this (make it use less space) by involving
+   more sibling nodes during split and merge.
+
+   > Adjusting the split and merge strategy.
+
+   * Insertion
+
+     If the node to insert is full, try to redistribute some entries with its 
+     sibling node.(In the prev algorithm, we directly create a new node and
+     split). 
+
+     > Assume each node can hold 6 entries at most, then the node to insert
+     > has 6 entries, the sibling may have `3-5` entries, plus the one to be
+     > inserted, we have `10-12` entries in total.
+     >
+     > Assume the redistribution algorithm used here is to evenly redistribute
+     > them, each node will have `5-6` entries, which is pretty efficient in
+     > space utilization.
+
+
+     If the sibling node is also full, then we split a new node and
+     evenly redistribute the entries with these 3 nodes (orig node, split node,
+     sibling).
+
+     > With the assumption stated in the prev node, we have `6+6+1` entries, 
+     > each node will have `13/3 = 4.3` entries.
+     >
+     > As a comparsion, if we follow the orig algorithm, i.e., directly splitting
+     > the node, each node will have `7/2=3.5` enties. Our assumption of `n` is 6
+     > is not pratical, in real work, it should be greatly bigger than this, and
+     > thus the new algorithm should be much more efficient.
+
+   * Deletion
+
+     Duration deletion of a record, if the occupancy of a node falls below 
+     `floor(2n/3)`, we attempts to borrow an entry from one of its sibling nodes.
+
+     > Now we are asking every node should be at least `2/3` full.
+
+     If the above attempt fails due to the reason that both sibling nodes have
+     `floor(2n/3)` entries, then we distribute all the entries in these 3 nodes
+     (2 sibling nodes and the middle, orig node) into 2 nodes and delete the 
+     third node. After this, the remaining 2 nodes will be almost full 
+     ([3 * (2n/3)] -1 = 2n - 1, each node has `n-0.5` entries).
+
+## 14.4.2 Secondary Indexes and Record Relocation
 
 # 14.5 Hash Indices
 # 14.6 Multiple-key Access
