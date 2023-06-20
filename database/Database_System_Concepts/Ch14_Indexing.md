@@ -22,6 +22,11 @@
 > * 14.4 B+Tree Extensions
 >   * 14.4.1 B+Tree File Organization
 >   * 14.4.2 Secondary Indexes and Record Relocation
+>   * 14.4.3 Indexing Strings
+>   * 14.4.4 Bulk Loading of B+Tree Indexes
+>   * 14.4.5 B-Tree Index Files
+>   * 14.4.6 Indexing on Flash Storage
+>   * 14.4.7 Indexing in Main Memory
 >
 > * 14.5 Hash Indices
 > * 14.6 Multiple-key Access
@@ -1082,6 +1087,46 @@
      ([3 * (2n/3)] -1 = 2n - 1, each node has `n-0.5` entries).
 
 ## 14.4.2 Secondary Indexes and Record Relocation
+
+1. The problem, Record Relocation
+
+   Say we use B+Tree File Organization to store the actual records, when 
+   inserting records, assume a split is needed, half node records need to be
+   moved to a new node, i.e., a new location.
+
+   Secondary Indexes, which stores the actual location in leaf nodes, need to
+   be updated as well to be in sync with the data, which causes tons of I/O, 
+   and could be very expensive.
+
+2. Workaround
+
+   Rather than storing record locations in leaf nodes, we can actually store
+   the values of the primary-index search-key attributes.
+
+   With this, we don't need to update the secondary indexes anymore. However,
+   querying on a secondary index requires 2 steps now:
+
+   1. Find the primary index search-key value
+   2. Query the priamry index
+
+## 14.4.3 Indexing Strings
+
+1. Creating B+Tree index on an attribute that is of type `String` can cause 
+   problems:
+
+   1. String is variable-sized
+   2. String can be long, leading to a low fanout and a correspondingly increased
+      tree height.
+
+2. Solve the low fanout problem with prefix compression
+   
+   If a prefix of a string is able to distinguish it from other strings, you
+   can ONLY store the prefix instead of the whole string. (make it smaller).
+
+## 14.4.4 Bulk Loading of B+Tree Indexes
+## 14.4.5 B-Tree Index Files
+## 14.4.6 Indexing on Flash Storage
+## 14.4.7 Indexing in Main Memory
 
 # 14.5 Hash Indices
 # 14.6 Multiple-key Access
