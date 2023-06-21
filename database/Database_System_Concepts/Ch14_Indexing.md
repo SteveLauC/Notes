@@ -1123,8 +1123,43 @@
    If a prefix of a string is able to distinguish it from other strings, you
    can ONLY store the prefix instead of the whole string. (make it smaller).
 
-## 14.4.4 Bulk Loading of B+Tree Indexes
+## 14.4.4 Bulk Loading of B+Tree Indexes (important)
+
+1. What is bulk loading of index
+
+   > Insertion of a large number of entries at a time into an index is called 
+   > bulk loading of the index.
+
+   Let's assume that our relation is so huge that the index is bigger than the
+   memory, under such cases, it is quite likely that each leaf node is not in
+   the memory buffer when accessed. Inserting to this index will probably needs 
+   2 random disk accesses, one for fetching the block containing the leaf node, 
+   the other for writing the block back (buffer is full, evict a page beforing 
+   loading another page).
+
+   Since our relation is huge, building an index for such a relation requires
+   tons of random accesses. 
+
+   One solution to this issue is bulk loading, and to do bulk loading:
+
+   1. Create a temporary file containing the index entries (This file is not a B+Tree)
+   2. Sort the index entries
+      > For how to sort a large relation, see in Section 15.4
+
+   3. Iterating over the ordered entries, and insert them into the B+Tree.
+      
+   The key idea of bulking loading is you need to insert entries **in sorted order**,
+   in this way, insertion into a leaf node will be **continuous** and done **ONLY 
+   ONCE**, which means ONLY 1 I/O is needed for a leaf node.
+
 ## 14.4.5 B-Tree Index Files
+
+1. Diff between B-Tree and B+Tree
+   
+   In B-Tree, keys (assume they are unique) ONLY exist once, while in a B+Tree,
+   they exist both in leaf node (actual storage) and non-leaf node (for 
+   navigation)
+
 ## 14.4.6 Indexing on Flash Storage
 ## 14.4.7 Indexing in Main Memory
 
