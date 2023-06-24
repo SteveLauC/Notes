@@ -382,6 +382,21 @@
 
    4. B-Tree
 
+      Using B-Tree as an index file:
+
+      * Pros
+        1. No redudant storage (but marginally different)
+        2. If the key to be searched is not in the leaf node, it would be faster.
+
+      * Cons
+        1. In non-leaf node, an extra pointer have to be stored for each search
+           key.(complicates storage )
+        2. Deletion is more complicated compared to B+Tree.
+        3. B+Tree can do sequential scan as leaf nodes are linked together, this
+           is not possible with B-Tree.
+
+      > So basically every DBMS uses B+Tree for index.
+
 ## 14.3.1 Structure of a B+Tree
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/b%2Btree.jpg)
@@ -1156,14 +1171,73 @@
 
 1. Diff between B-Tree and B+Tree
    
-   In B-Tree, keys (assume they are unique) ONLY exist once, while in a B+Tree,
-   they exist both in leaf node (actual storage) and non-leaf node (for 
-   navigation)
+   1. In B-Tree, keys (assume they are unique) ONLY exist once, while in a 
+      B+Tree, they exist both in leaf node (actual storage) and non-leaf 
+      node (for navigation)
 
-## 14.4.6 Indexing on Flash Storage
+   2. If we use B-Tree as index, then in non-leaf nodes, every key (excpet 
+      the last one), should have another pointer pointering to the record.
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/b-tree_index.jpg)
+
+      Since some space in non-leaf nodes are used to store the extra pointers, 
+      non-leaf nodes can accommodate fewer search-keys.
+
+   3. Since we store values in non-leaf nodes, in look-up, it is sometimes possible
+   to find the desired key beforing reaching leaf nodes.
+
+## 14.4.6 Indexing on Flash Storage (SSD but not HDD)
+
+1. Random I/O is bad, this statement is still right, but kinda needs to be 
+   updated when it comes to SSD.
+
+   SSD, unlike HDD, doesn't have seek time (which is the main time consumed
+   in random I/O on HDD), and thus random read becomes much faster on SSD.
+
+   > Look-up in a B+Tree (Random Read) becomes way more faster than it on HDD.
+
+   For write, SSD does not permit in-place update. For a write of a byte, you
+   need to write the existing data and this new byte to a **new page**, and
+   mark the old page as deleted. If you want to erase the old page, you have
+   to erase the **whole block**(multiple pages) containing that page, really 
+   complicated and inefficient.
+
+2. SSD page is smaller than block in HDD, thus a B+Tree on SSD has smaller 
+   fan-out and is taller. But for look-up, SSD is so fast that the overhead
+   (more page accesses) is ignorable.
+
+3. Several B+Tree variants are devised for SSD, to reduce the amount of 
+   the erase operations.
+
+   [The Bw-Tree: A B-tree for New Hardware Platforms](https://www.microsoft.com/en-us/research/publication/the-bw-tree-a-b-tree-for-new-hardware/)
+
 ## 14.4.7 Indexing in Main Memory
 
+1. B+Tree can be used in memory, but
+
+   1. Since memory is costlier than disk, the structure has to be designed to
+      to reduce space utilizations.
+
+      > We have discussed this in section 14.4.1 by involving more siblings in
+      > splitting and merge.
+
+   2. Memory is good at random access, so multiple layers of indirection (pointer)
+      is acceptable, which means a B+Tree can be tall.
+
+   3. To make full use of cache, the node should be small and able to be put
+      in the cache (small node makes tree tall, matches with 2).
+
 # 14.5 Hash Indices
+
+> You may want to review how a HashMap works under the hood, it may help you
+> understand this section.
+>
+> ![Crust of Rust: HashMap](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/crust-of-rust/Live-coding_a_linked_hash_map_in_Rust.md)
+
+1. Hash index can handle equality queries efficiently (`O(1)` time complexity)
+
+   Unlike B+Tree, hash index cannot do range query.
+
 # 14.6 Multiple-key Access
 # 14.7 Creation of Indices
 # 14.8 Write-Optimized Index Structures

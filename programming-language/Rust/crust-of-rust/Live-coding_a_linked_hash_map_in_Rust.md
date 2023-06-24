@@ -2,7 +2,7 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-18%2019-43-48.png)
 
-   A hashmap consists of an array of `Bucket`, each `Bucket` is a list of key-value
+   A hashmap consists of an array of `Bucket`s, each `Bucket` is a list of key-value
    pairs.
 
 
@@ -33,7 +33,9 @@
 
    `Total amount of entries` / amount of buckets is called `load factor`, and
    theoretically, to get the best performance of hashmap, `load factor` should
-   be kept at `0.75`.
+   be kept under `0.75`.
+
+   > 1/4 of hashmap has to be empty.
 
    With more entries inserted into the hashmap, your `load factor` can exceed
    `0.75`, at this time, you need to double the buckets.
@@ -42,7 +44,8 @@
 
 4. Rehashing
 
-   Doubling the bucket means you need to create another bucket that is twice large
-   as the previous one, and re`insert` the existing entries to the new bucket.
+   Doubling the bucket means you need to create another `HashMap` that is twice
+   large as the previous one, and re`insert` the existing entries to the new 
+   bucket.
 
-   This is quite expensive, we should try to avoid this as much as possible.
+   This is **quite expensive**, we should try to avoid this as much as possible.
