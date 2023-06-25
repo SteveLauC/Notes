@@ -39,7 +39,7 @@
 
 # 14.1 Basic Concepts
 
-0. Relation between:
+0. Relationship between:
    
    > Read the other notes first if you have no idea what these concepts are.
 
@@ -136,11 +136,27 @@
    > The term `Primary Index` may refer to denote an index on `Primary key`,
    > in most cases, this is true, but it is not necessarily so.
 
+   > In PostgreSQL, there is a command 
+   > [`CLUSTER`](https://www.postgresql.org/docs/current/sql-cluster.html)
+   > to sort a table based on a index, but it won't maintain this state for you.
+   >
+   > This will make the used index a `Clustering Index`, at least for one time.
+   >
+   > BUT, PostgreSQL does not have a concept of `Clustering Index`.
+
 
 3. What is `Nonclustering Index/Secondary Index/Nonclustered Index`?
 
    Index whose `Search key` specifies an order different from the phycial
    order is called `Nonclustering Index`, and is also called `Secondary Index`.
+
+   > Accessing entries in the order specified by a `Nonclustering Index` can
+   > be inefficient, we may get random I/Os, and for a single page, it may be
+   > accessed for more than once.
+   >
+   > We can collect the pageIDs first, then sort them, then access them.
+   >
+   > But this would break the order...
 
 4. `index-sequential file`
 
@@ -385,15 +401,20 @@
       Using B-Tree as an index file:
 
       * Pros
+
         1. No redudant storage (but marginally different)
         2. If the key to be searched is not in the leaf node, it would be faster.
 
       * Cons
-        1. In non-leaf node, an extra pointer have to be stored for each search
-           key.(complicates storage )
+
+        1. In non-leaf node, an extra pointer has to be stored for each search
+           key.(complicates storage)
         2. Deletion is more complicated compared to B+Tree.
         3. B+Tree can do sequential scan as leaf nodes are linked together, this
            is not possible with B-Tree.
+
+           > If you want to do this with B-Tree, you have to jump up and down in
+           > the tree, which is hard to implement and causes random I/O
 
       > So basically every DBMS uses B+Tree for index.
 
@@ -526,6 +547,10 @@
 
         As you can see, the root node has entry 3, if you wanna find the values 
         smaller than 3, you know that they are on the left subtree.
+
+   5. A search-key value can occur in an internal node but not in a leaf node
+
+      > This will happen during deletion.
 
 ## 14.3.2 Queries on B+Tree
 
@@ -1109,8 +1134,8 @@
    inserting records, assume a split is needed, half node records need to be
    moved to a new node, i.e., a new location.
 
-   Secondary Indexes, which stores the actual location in leaf nodes, need to
-   be updated as well to be in sync with the data, which causes tons of I/O, 
+   Secondary Indexes, if store the actual location in its leaf nodes, need
+   to be updated to be in sync with the actual data, which causes tons of I/O, 
    and could be very expensive.
 
 2. Workaround
@@ -1123,6 +1148,12 @@
 
    1. Find the primary index search-key value
    2. Query the priamry index
+
+   > MySQL does this.
+   >
+   > [Uber switched from PostgreSQL to MySQL for this feature](https://www.uber.com/en-DE/blog/postgres-to-mysql-migration/)
+   >
+   > But they switched back later...
 
 ## 14.4.3 Indexing Strings
 
@@ -1232,11 +1263,58 @@
 > You may want to review how a HashMap works under the hood, it may help you
 > understand this section.
 >
-> ![Crust of Rust: HashMap](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/crust-of-rust/Live-coding_a_linked_hash_map_in_Rust.md)
+> [Crust of Rust: HashMap](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/crust-of-rust/Live-coding_a_linked_hash_map_in_Rust.md)
+
+0. Open Hashing(Closed Addressing) and Closed Hashing(Open Addressing)
+
+   > The defs in the book seem to be wrong.  
+
+   They are 2 different hashing schemas, and the difference between them is how
+   they deal with collision.
+
+   In Open Hashing, we have an array, with each item is a linked list that is used
+   to store entries that have the same hash value.
+
+   > This is how `HashMap` works
+   >
+   > And you can infer that Open Hashing is more popular.
+
+   For Closed Hashing, we only have that array, in your data structure class,
+   you have learned some ways to handle collision, they belong to Closed Hashing.
+
+   [Open Hashing vs Closed Hashing](https://programming.guide/hash-tables-open-vs-closed-addressing.html)
+
 
 1. Hash index can handle equality queries efficiently (`O(1)` time complexity)
 
    Unlike B+Tree, hash index cannot do range query.
+
+2. For a disk-based hash indexes, a bucket could be a linked list of blocks.
+   Every block contains records or index entries.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-24%2013-58-56.png)
+
+   When insrting to a disk-based hash index, we `hash(key)` to find which bucket
+   this key belongs to, if the corresponding bucket has space, then the new entry
+   is inserted into that bucket.
+
+   If the bucket does not have space, a `bucket overflow` is said to occur, we 
+   hanle it by using `overflow buckets`, i.e., adding another bucket to this 
+   bucket, this is not good as lookup becomes more complicated.
+
+3. Static Hashing vs. Dynamic Hashing
+
+   * Static Hashing: The number of buckets is fixed. Beforing using a static 
+     hashing index, we should know how many records are going to be stored
+     in the index (to avoid bucket overflow).
+
+   * Dynamic Hashing: When the number of entries reaches its threshold, we could
+     increase buckets and rebuild the hash index.
+
+     In `HashMap`, we double the buckets. This is NOT ACCEPTABLE in DBMS as it 
+     is way too time-consuming, several shemas have been proposed to allow the
+     number of buckets to be increased in a more incremental fashion, e.g., 
+     `linear hashing` and `extendible hashing`.
 
 # 14.6 Multiple-key Access
 # 14.7 Creation of Indices

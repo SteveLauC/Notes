@@ -183,7 +183,7 @@
 ## 13.2.3 Storing Large Objects
 
 1. Many databases choose to store very large objectss, such as video data, 
-   outside of the database, in a file system. In such cases, the database
+   outside of the database, in file system. In such cases, the database
    may store the filename(usually a path in the file system) as an attribute
    of a tuple in the database.
 

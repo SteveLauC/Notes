@@ -1,3 +1,25 @@
+> Today's agenda
+>
+> * B+Tree Overview
+> * Use in DBMS
+> * Design Choices
+> * Optimizations
+
+> Read 
+> [DBSC: Ch14 note](https://github.com/SteveLauC/Notes/blob/main/database/Database_System_Concepts/Ch14_Indexing.md)
+> for more information about B+Tree.
+
+# B+Tree Overview & Use in DBMS
+
+1. Family of B-Tree
+
+   * B-Tree (1971)
+   * B+Tree (1973)
+   * B*Tree (1977?)
+   * B link-Tree (1981)
+
+   > Nowadays, B+Tree borrows things from other tree structures.
+
 1. Properties of a B+Tree
 
    1. It is perfectly balanced (All the leaf nodes are in the same level)
@@ -12,6 +34,7 @@
 2. What should be stored in the leaf node:
 
    1. Pointer (Record ID)
+
       A pointer to the location of the tuple to which the index entry corresponds. 
 
       > Then you have to do a second look-up to fetch the actual data.
@@ -21,6 +44,9 @@
       > * SQL Server
 
    2. Actual data
+
+      > B+Tree file organization 
+
       We store the actual data in leaf nodes
 
       > Implementations that use this approach:
@@ -80,21 +106,58 @@
 7. How to handle duplicate keys in B+TREE
 
    1. Append RecordID
-      Add the tuple's unique RecordID as part of the key to ensure that are the
-      keys are unique.
+
+      Add the tuple's unique RecordID as part of the search key to ensure that 
+      the keys are unique.
 
       > The DBMS can still use partial key to find the tuple.
       > 
       > Then if the key for which we are building index includes RecordID, then
-      > the key will never be duplicate?
+      > the key will never be duplicate? Yes.
 
    2. Overflow Leaf Nodes
+
       Allow leaf nodes to spill into overflow nodes that contain the duplicate
       keys.
 
       > This is more complex to maintain and modify
 
-8. What is clustered index
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-25%2011-00-10.png)
+
+      > This is kinda similar to how we handle collision in Open Hashing HashMap.
+
+8. What is `Clustered Index`
+
    A clustered index is a special kind of index that reorders the way that
    records are phycially stored on the disk. And ONLY one clustered index 
    can exist for a table.
+
+
+9. Sequential iterting over entries using a non-clustering index can be 
+   inefficient
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-25%2011-42-33.png)
+
+   As we may access one page more than once. We can collect the pageIDs first, and
+   sort the pageIDs, then access them.
+
+   > This is a simple query optimization
+
+   > Wait, we sort them so we no longer access entries in the order of that 
+   > non-clustering index...
+
+
+> The following stuff is actually in the next video, but I just put it here.
+
+# Design Choices
+
+1. Node Size
+
+2. Merge Threshold
+
+3. Var-len keys
+
+4. Intra-Node Search
+
+
+# Optimizations

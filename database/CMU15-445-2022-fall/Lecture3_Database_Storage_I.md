@@ -20,19 +20,24 @@
 4. Why does't DBMS use the OS kernel buffer
    
    1. Transaction safety
+
       The OS can flush dirty pages at any time.
 
       For a transaction in DBMS, we want to flush dirty pages only if the 
       transaction has been commited.
 
    2. I/O stalls (block thread)
+
       DBMS has no idea which page are in the memory, if a thread tries to access
       a page that is not in, this blocked gets blocked for page fault.
 
    3. Error handling
+
       Difficult to validate pages(checksum, maintained outside of the page). Any 
       access can cause a SIGBUS that the DBMS must handle.
+
    4. Performance
+
       For a large database, the data structure used in the OS can be the bottleneck.
 
    > The DBMS knows better than the OS.
