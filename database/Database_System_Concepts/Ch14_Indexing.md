@@ -107,7 +107,7 @@
 
 4. Search Key
 
-   An attribute or set of attributes used to look up records in a file is 
+   An attribute or a set of attributes used to look up records in a file is 
    called a `Search Key`.
 
    > We should note that this definition of `key` differs from that used in
@@ -130,10 +130,12 @@
    the Dewey decimal number.
 
    A `Clustering Index` is an index whose `Search key` also defines the 
-   sequential order of the entries, i.e., reflects the phycial order of how
+   sequential order of the entries, i.e., reflects the *phycial* order of how
    those entries are stored. `Clustering Index` is also called `Primary Index`.
 
-   > The term `Primary Index` may refer to denote an index on `Primary key`,
+   > By `phycial`, it means at the file level, not at the phycial disk level.
+
+   > The term `Primary Index` may be used to denote an index on `Primary key`,
    > in most cases, this is true, but it is not necessarily so.
 
    > In PostgreSQL, there is a command 
@@ -143,6 +145,10 @@
    > This will make the used index a `Clustering Index`, at least for one time.
    >
    > BUT, PostgreSQL does not have a concept of `Clustering Index`.
+
+   > A `Clustering Index` does NOT guarantee sequential storage on the disk,
+   > as the actual data is ONLY sequential in the data file (logically), how
+   > this logical file is stored on the disk is a job of the OS.
 
 
 3. What is `Nonclustering Index/Secondary Index/Nonclustered Index`?
@@ -234,17 +240,6 @@
    from disk into memory, after that, the time took by scanning a block in the
    memory is negligible as memory is pretty fast.
 
-   > Generally I think this idea makes sense, but I cannot image how such an
-   > index looks like, someting like this?
-   >
-   > ```rust
-   > struct IndexEntry {
-   >     search_key: Key,
-   >     ptr: PageID,
-   > } 
-   > ```
-
-
 ## 14.2.2 Multilevel Indices
 
 > We want our index to be in memory, if the data volume is big and we only have
@@ -253,6 +248,8 @@
 1. 没有什么是一层索引解决不了的，如果有，那就再加一层索引。
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/two_levels_index.jpg)
+
+   > i-node (index node) of ext file system uses multi-level index.
 
 2. When the data volume becomes huge, our index becomes **too big** to be fetched
    into memory, and thus, needs **disk access** when accessing it, which is obviously
@@ -1265,7 +1262,17 @@
 >
 > [Crust of Rust: HashMap](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/crust-of-rust/Live-coding_a_linked_hash_map_in_Rust.md)
 
-0. Open Hashing(Closed Addressing) and Closed Hashing(Open Addressing)
+1. Is Hash Index `Clustering Index` or `Nonclustering Index`
+
+   If the actual records are stored in `Hash File Organization`, then a `Hash Index`
+   (If both hashings take the same attributes) is `Clustering Index`.
+
+   > But, if we are using `Hash File organization`, there is actually **NO REASON**
+   > to build another Hash index.
+
+   Else, I guess it is `Nonclustering Index`.
+
+2. Open Hashing(Closed Addressing) and Closed Hashing(Open Addressing)
 
    > The defs in the book seem to be wrong.  
 
@@ -1279,17 +1286,18 @@
    >
    > And you can infer that Open Hashing is more popular.
 
-   For Closed Hashing, we only have that array, in your data structure class,
-   you have learned some ways to handle collision, they belong to Closed Hashing.
+   For Closed Hashing, we only have that array, in my data structure class,
+   I have learned some ways to handle collision using just the array, they 
+   belong to Closed Hashing.
 
    [Open Hashing vs Closed Hashing](https://programming.guide/hash-tables-open-vs-closed-addressing.html)
 
 
-1. Hash index can handle equality queries efficiently (`O(1)` time complexity)
+3. Hash index can handle equality queries efficiently (`O(1)` time complexity)
 
    Unlike B+Tree, hash index cannot do range query.
 
-2. For a disk-based hash indexes, a bucket could be a linked list of blocks.
+4. For a disk-based hash index, a bucket could be a linked list of blocks.
    Every block contains records or index entries.
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-24%2013-58-56.png)
@@ -1302,19 +1310,23 @@
    hanle it by using `overflow buckets`, i.e., adding another bucket to this 
    bucket, this is not good as lookup becomes more complicated.
 
-3. Static Hashing vs. Dynamic Hashing
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-25%2014-23-45.png)
+
+5. Static Hashing vs. Dynamic Hashing
 
    * Static Hashing: The number of buckets is fixed. Beforing using a static 
      hashing index, we should know how many records are going to be stored
-     in the index (to avoid bucket overflow).
+     into the index (to avoid `bucket overflow`).
 
    * Dynamic Hashing: When the number of entries reaches its threshold, we could
      increase buckets and rebuild the hash index.
 
-     In `HashMap`, we double the buckets. This is NOT ACCEPTABLE in DBMS as it 
-     is way too time-consuming, several shemas have been proposed to allow the
-     number of buckets to be increased in a more incremental fashion, e.g., 
-     `linear hashing` and `extendible hashing`.
+     > Rehashing
+
+     In the impl of `HashMap`, we double the buckets. This is NOT ACCEPTABLE in 
+     DBMS as it is way too time-consuming, several schemas have been proposed 
+     to allow the number of buckets to be increased in a more incremental fashion,
+     without causing disruption, e.g., `linear hashing` and `extendible hashing`.
 
 # 14.6 Multiple-key Access
 # 14.7 Creation of Indices

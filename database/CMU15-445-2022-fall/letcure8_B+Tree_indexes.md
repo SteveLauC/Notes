@@ -11,7 +11,7 @@
 
 # B+Tree Overview & Use in DBMS
 
-1. Family of B-Tree
+0. Family of B-Tree
 
    * B-Tree (1971)
    * B+Tree (1973)
@@ -23,13 +23,13 @@
 1. Properties of a B+Tree
 
    1. It is perfectly balanced (All the leaf nodes are in the same level)
-   2. Every node other than root is half full (i.e., amount of keys range: `[M/2, M-1]`)
+   2. Every node other than root is at least half full (i.e., amount of keys range: `[M/2, M-1]`)
    3. Every internal node with `k` keys has `k+1` non-null children
    4. When used as an index:
       1. Every node is an array of key-value pairs.
-      2. The keys are derived from the attributes that the index is based on
-      3. The values will differ based on whehter this is a internal node or leaf node.
-      4. The array is (usually) kept in order.
+      2. The keys are derived from the attributes that the index is based on(search key)
+      3. The values will differ based on whehter it is a internal node or leaf node.
+      4. The array is (usually) kept in order (for binary search)
 
 2. What should be stored in the leaf node:
 
@@ -57,7 +57,7 @@
 
    In B-TREE, each key ONLY appears once in the tree, which is obviously more
    space-efficient. But when traversing the tree, you need to jump up and down,
-   have accesses to different pages and thus more random access.
+   accessing different pages and thus causing more random access.
 
    In B+TREE, all the data are stored in the leaf nodes, above problems naturally
    disappears.
@@ -82,7 +82,7 @@
     > node. In other words, this tree grows from bottom up. (The depth of a B+TREE
     > gets increased when the root node is split)
 
-5. Deletion a entry in a B+TREE
+5. Deletion in a B+TREE
    1. Find the leaf node `L` that contains this entry
    2. Remove the entry
       1. If `L` is at least half full, done. 
@@ -100,8 +100,8 @@
    * (c = 3)
 
    But for a hash index, ONLY queries that have ALL the attributes in search 
-   key can be boosted, i.e., a query that exactly selects attributes `a, b, c`
-   can be accelerated.
+   key can be boosted, i.e., a query that exactly selects attributes `a, b, c`.
+   
 
 7. How to handle duplicate keys in B+TREE
 

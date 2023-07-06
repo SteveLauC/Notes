@@ -195,14 +195,14 @@
    ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-09-21_12-32-29.jpg)
 
    Under ext2, each i-node entry has 15 pointers. The first 12 are direct pointers.
-   Number 12 (the thirteenth) is an indirect pointer pointing to a block of pointers. 
-   Number 13 is a double-indirect pointer pointing to an indirect pointer.
+   Number 12 (the thirteenth one) is an indirect pointer pointing to a block of 
+   pointers. Number 13 is a double-indirect pointer pointing to an indirect pointer.
    Number 14 is a triple-indirect pointer.
 
    Such a design has the following advantages:
    1. Small files can be accessed rapidly because 12 direct pointers are sufficient
       for them.
-   2. It allows i-node entry to be a fixed size.
+   2. It allows i-node entry to be **fixed-sized**.
    3. File can reside on the disk incontiguously.
    4. Data can be randomly accessed through `lseek(2)` (just calculate which 
       pointer to follow)
