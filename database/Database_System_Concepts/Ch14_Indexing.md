@@ -235,10 +235,11 @@
    time** and **space overhead**.
 
    In practice, it would be great if we have a sparse index that has an index
-   entry for each disk block. The reason for this is that the dominant cost
-   of processing a database query is the time that it takes to bring a block
-   from disk into memory, after that, the time took by scanning a block in the
-   memory is negligible as memory is pretty fast.
+   entry for each disk block(i.e., an index entry pointing to the first record
+   in this block). The reason for this is that the dominant cost of processing 
+   a database query is the time that it takes to bring a block from disk into 
+   memory, after that, the time took by scanning a block in the memory is 
+   negligible as memory is pretty fast.
 
 ## 14.2.2 Multilevel Indices
 
@@ -353,7 +354,7 @@
 
 2. Comparsion of search keys that have more than one attribute
 
-   > Basically a string comparsion
+   > Basically a string(has many characters) comparsion
 
 # 14.3 B+Tree Index Files
 
@@ -383,7 +384,7 @@
       in the middle node.
 
       This operation will sequentially scan the list, which possibily needs
-      tons of random I/O.
+      tons of random I/O (if the list entries are not out.
 
    3. Binary Search Tree
       
@@ -399,19 +400,24 @@
 
       * Pros
 
-        1. No redudant storage (but marginally different)
+        1. No redundant storage (but marginally different)
         2. If the key to be searched is not in the leaf node, it would be faster.
+           Search path would be shorter.
 
       * Cons
 
         1. In non-leaf node, an extra pointer has to be stored for each search
-           key.(complicates storage)
+           key(complicates storage).
+
+           1. One pointer points to its child node
+           2. The other one points to the record.
+
         2. Deletion is more complicated compared to B+Tree.
-        3. B+Tree can do sequential scan as leaf nodes are linked together, this
-           is not possible with B-Tree.
+        3. B+Tree can do sequential(logically) scan as leaf nodes are linked 
+           together, this is not possible with B-Tree.
 
            > If you want to do this with B-Tree, you have to jump up and down in
-           > the tree, which is hard to implement and causes random I/O
+           > the tree, which is hard to implement and causes random I/O.
 
       > So basically every DBMS uses B+Tree for index.
 
@@ -1150,12 +1156,15 @@
    >
    > [Uber switched from PostgreSQL to MySQL for this feature](https://www.uber.com/en-DE/blog/postgres-to-mysql-migration/)
    >
+   > > PostgreSQL does not have clustering index so that it cannot use this 
+   > > workaround.
+   >
    > But they switched back later...
 
 ## 14.4.3 Indexing Strings
 
-1. Creating B+Tree index on an attribute that is of type `String` can cause 
-   problems:
+1. Creating B+Tree index on an attribute (search key) that is of type `String` 
+   can cause problems:
 
    1. String is variable-sized
    2. String can be long, leading to a low fanout and a correspondingly increased
@@ -1178,7 +1187,7 @@
    the memory buffer when accessed. Inserting to this index will probably needs 
    2 random disk accesses, one for fetching the block containing the leaf node, 
    the other for writing the block back (buffer is full, evict a page beforing 
-   loading another page).
+   loading another one).
 
    Since our relation is huge, building an index for such a relation requires
    tons of random accesses. 
@@ -1189,11 +1198,29 @@
    2. Sort the index entries
       > For how to sort a large relation, see in Section 15.4
 
-   3. Iterating over the ordered entries, and insert them into the B+Tree.
+      > The data is too big to fit into the memory, you need 
+      > [external sorting](https://en.wikipedia.org/wiki/External_sorting)
+
+   3. Iterating over the ordered entries, and insert them into the B+Tree (index).
       
    The key idea of bulking loading is you need to insert entries **in sorted order**,
    in this way, insertion into a leaf node will be **continuous** and done **ONLY 
    ONCE**, which means ONLY 1 I/O is needed for a leaf node.
+
+   > Bulk loading has 2 approaches:
+   > 1. Top down approach
+   >    Normal insertion, just insert entries one by one.
+   >    
+   >    ##### Pros
+   >    1. Building in this way is fast
+   >    ##### Cons
+   >    1. Every node is half-full, which is space-inefficient.
+   >
+   > 2. Bottom up approach
+   >    ##### Pros
+   >    1. Space efficient
+   >    ##### Cons
+   >    1. Slow to build
 
 ## 14.4.5 B-Tree Index Files
 
@@ -1217,7 +1244,7 @@
 ## 14.4.6 Indexing on Flash Storage (SSD but not HDD)
 
 1. Random I/O is bad, this statement is still right, but kinda needs to be 
-   updated when it comes to SSD.
+   updated when talking about SSD.
 
    SSD, unlike HDD, doesn't have seek time (which is the main time consumed
    in random I/O on HDD), and thus random read becomes much faster on SSD.
