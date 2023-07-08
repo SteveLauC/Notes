@@ -1285,7 +1285,7 @@
 # 14.5 Hash Indices
 
 > You may want to review how a HashMap works under the hood, it may help you
-> understand this section.
+> understand this section.(Open Hashing and Dynamic Hashing)
 >
 > [Crust of Rust: HashMap](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/crust-of-rust/Live-coding_a_linked_hash_map_in_Rust.md)
 
@@ -1303,15 +1303,19 @@
 
    > The defs in the book seem to be wrong.  
 
+   > Visualzation of Open Hashing: https://www.cs.usfca.edu/~galles/visualization/OpenHash.html
+
+   > Visualization of Closed Hashing: https://www.cs.usfca.edu/~galles/visualization/ClosedHash.html
+
    They are 2 different hashing schemas, and the difference between them is how
    they deal with collision.
 
    In Open Hashing, we have an array, with each item is a linked list that is used
-   to store entries that have the same hash value.
+   to store entries that have the same hash value (collision).
 
    > This is how `HashMap` works
    >
-   > And you can infer that Open Hashing is more popular.
+   > And we can infer that Open Hashing is more popular.
 
    For Closed Hashing, we only have that array, in my data structure class,
    I have learned some ways to handle collision using just the array, they 
@@ -1320,7 +1324,8 @@
    [Open Hashing vs Closed Hashing](https://programming.guide/hash-tables-open-vs-closed-addressing.html)
 
 
-3. Hash index can handle equality queries efficiently (`O(1)` time complexity)
+3. Hash index can ONLY handle equality queries, but in an efficient way (`O(1)` 
+   time complexity)
 
    Unlike B+Tree, hash index cannot do range query.
 
