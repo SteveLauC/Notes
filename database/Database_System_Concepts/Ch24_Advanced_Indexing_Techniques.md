@@ -84,9 +84,9 @@
    2. For split, every time, ONLY one bucket will be splitted (i.e., the overflow
       one), other buckets are not affected.
 
-      Rehashing is incremental, which is lightweight.
+      > Rehashing is incremental, which is lightweight.
 
-3. Properties of an extendable hashset
+3. Properties of an extendable hash structure
    
    1. A bucket may have more than one pointer pointing to it if the local depth
       is smaller than the global depth.
@@ -94,8 +94,11 @@
       Specifically, every bucket should have `2^(global_depth - local_depth)`
       pointers.
 
+      > local depth should always be smaller than or equal to global depth.
+
    2. When a bucket becomes full, we split it and increase the local depth by 1,
-      and the global depth will also be incremented.
+      global depth will also be increased if the local depth equals to the global
+      depth.
 
    3. Buckets are created **on demand**, say the global depth is `i`, we don't
       necessarily have `2^i` buckets.
@@ -105,5 +108,105 @@
       common prefix (or suffix).
 
 ### 24.5.2.2 Queries and Updates
+
+1. Locate the bucket
+   
+   hash(T), and use its first-i (i is the global depth) bits, look at the 
+   corresponding directory entry, then follow the bucket pointer.
+
+2. Look-up
+
+   1. Locate the bucket
+   2. Sequentially scan the items in the bucket.
+
+3. Split the Bucket `Bj`
+
+   1. If the local depth (call it j) is smaller than the global depth
+
+      > There are more than one directory entry pointing to this bucket.
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-09%2018-29-35.png)
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-09%2018-53-02.png)
+
+      1. Increase the local depth (`j`) by 1
+      2. `tmp_bits` = `Bj`'s bits
+      3. Update `Bj`'s bits to `tmp_bits` + `0`
+      2. Create a the bucket (`Bz`) with 
+         1. local depth set to `j`
+         2. `bits` set to `tmp_bits` + `1`
+      3. Leaves the first half directory entries pointing to `Bj`, make the other
+         half directory entries point to the newly created bucket (`Bz`) 
+
+         > These entries are consecutive.
+         >
+         > Taking index of `Bj`'s value, for example, global depth is 3, `Bj`'s
+         > `bits` is `[1]`, index will be in range `[4, 7]`.
+         >
+         > Directory entries that are in range `[4, 5]` should point to `Bj` 
+         > (remain untouched), the other half should point to the newly allocated
+         > `Bz`.
+
+      5. Rehash the items in bucket `Bj`
+      6. If they all have the same `j` bits of prefix, split `Bj` again.
+
+         > Practically, this is unlikely to happen.
+
+      7. Else, distribute them to `Bj` or `Bz` 
+
+   2. If the local depth equals to the global depth
+
+      > ONLY one entry in the directory entry points to bucket `Bj`
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-09%2017-09-15.png)
+
+      1. Increase the global depth by 1.
+      2. Increate the local depth `j` by 1.
+      3. `tmp_bits` = `bits` of `Bj`
+      4. Update `bits` of `Bj` with `tmp_bits` + `0`
+      5. Allocate a new bucket, with `bits` set to `tmp_bits` + `1`
+      6. Double the directory entries.
+
+
+         You can see that we are prepending `0` and `1` to the old entries.
+
+         ```
+         # numeric value: (0, 1) -> (0, 1, 2, 3)
+         [0, 1] -> [00, 01, 10, 11] 
+
+         # numeric value: (0, 1, 2, 3) -> (0, 1, 2, 3, 4, 5, 6, 7)
+         [00, 01, 10, 11] -> [000, 001, 010, 011, 100, 101, 110, 111] 
+         ```
+
+         > Benefits of doing so:
+         >
+         > 1. This enables us do appending instead of inserting.
+         > 2. The numeric values are continuous, and we don't need to manipulate
+         >    bits string, number-calculation is fast.
+         >
+         > Drawback
+         >
+         > 1. Entries for `Bj` and `Bz` are not adjacent.
+         > 2. You need to
+
+     7. Update bucket pinters in the bucket directory
+        
+        1. Move (clone) buckets to a temporary place
+        2. Iterating over the buckets, calculate their value
+        3. Use theirs values as indexes, update directory entries' bucket pointers.
+
+3. Insertion
+
+   1. Locate the bucket, call it `Bj`.
+   2. If the bucket is not full, insert to it and return.
+   3. If the bucket is full, do split.
+   4. Double check
+      
+      If the 
+      
+
+
+4. Deletion
+
 ### 24.5.2.3 Static Hashing vs. Dynamic Hashing
 ## 24.5.3 Comparsion of Ordered Indexing and Hashing
