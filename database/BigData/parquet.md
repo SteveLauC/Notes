@@ -10,13 +10,19 @@ encoding schemes with enhanced performance to handle complex data in bulk.
 
 Parquest is expressed in schema that starts with the `message` keyword, every schema 
 contains one or multiple fields, each of which has 3 associated attributes:
+
 1. Repeatability
+
    * Required: means that this field occurs ONLY once
    * Optional: Occurrence: 0 or 1
    * Repeated: Occurrence: 0 or x
 
 2. Type
+
    * Primitative types like:
+
+     > Phycial type
+     
      * `INT32`
      * `INT64`
      * `INT96`
@@ -33,6 +39,9 @@ contains one or multiple fields, each of which has 3 associated attributes:
    > For more information, see 
    > [LogicalTypes.md](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md)
    > from their github repo.
+   >
+   > To get the type (phycial and logical) of a column, use 
+   > `parquet::schema::types::ColumnDescriptor`.
 
    * group
      > group type is for nested structure, the support for nested structure is one
@@ -74,6 +83,7 @@ Address Book
 # Phycial Format
 
 Each parquet file consists of 3 parts:
+
 1. Header
 2. Data
 3. Footer
@@ -119,15 +129,17 @@ magic number "PAR1" (4B)
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/parquet_phycial_format_simplified_version.png)
 
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-16%2016-37-12.png)
+
 Hierarchically, a file consists of one or more row groups. A row group contains 
 exactly one column chunk **per column**. Column chunks contain one or more pages.
 
 
 1. Row Group
-   A logical horizontal partitioning of the data into rows. There is no physical 
-   structure that is guaranteed for a row group. 
 
-   A row group consists of a column chunk for each column in the dataset.
+   Each row group contains a **subset** of the rows of the table.
+
+   A row group consists of **a column chunk for each column* in the dataset.
 
 2. Column Chunk
 
@@ -168,7 +180,10 @@ exactly one column chunk **per column**. Column chunks contain one or more pages
 
 3. Column Chunk Metadata
    
-   Type in `parquet`: `parquet::format::ColumnMetaData`
+   Type in `parquet`: `parquet::file::metadata::ColumnChunkMetaData`
+
+   > what is this: `parquet::format::ColumnMetaData`
+
 
 > See the format diagram from section [Phycial Format](#phycial-format) for 
 > more detail.

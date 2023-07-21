@@ -59,11 +59,11 @@
    > Visualization: https://www.cs.usfca.edu/~galles/visualization/ClosedHash.html
 
    This is one way to handle collisions with `Closed Hashing`, if a bucket is 
-   full, we use the next available bucket (cylic order).
+   full, we use the next available bucket (cyclic order).
 
 ## 24.5.2 Dynamic Hashing
 
-1. We need to increase or shink the structure **gradually** (incrementally) so 
+1. We need to increase or shrink the structure **gradually** (incrementally) so 
    that the database won't needs to be stopped at runtime.
 
    > minimize the cost of rehashing.
@@ -76,6 +76,9 @@
 1. Overview of an Extendable Hash Structure
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/IMG_1722.jpg)
+
+   The table on left is called `bucket address table` or `directory`, it has 
+   pointers pointing to the buckets on the right.
 
 2. Pros of Extendable Hashing
    
@@ -96,16 +99,16 @@
 
       > local depth should always be smaller than or equal to global depth.
 
-   2. When a bucket becomes full, we split it and increase the local depth by 1,
-      global depth will also be increased if the local depth equals to the global
-      depth.
+   2. When a bucket becomes full(buckets have limited capacity), we split it 
+      and increase the local depth by 1, global depth will also be increased 
+      if the local depth equals to the global depth.
 
    3. Buckets are created **on demand**, say the global depth is `i`, we don't
       necessarily have `2^i` buckets.
       
-   4. Several directory entries that have the same prefix (or suffix) will point
-      to the same bucket, the local depth of that bucket is the length of that 
-      common prefix (or suffix).
+   4. Several directory entries that have the same prefix (or suffix, depends 
+      on your implementation) will point to the same bucket, the local depth 
+      of that bucket is the length of that common prefix (or suffix).
 
 ### 24.5.2.2 Queries and Updates
 
@@ -118,6 +121,8 @@
 
    1. Locate the bucket
    2. Sequentially scan the items in the bucket.
+    
+      > To make the look-up fast, every bucket should have few entries.
 
 3. Split the Bucket `Bj`
 
@@ -138,7 +143,7 @@
       3. Leaves the first half directory entries pointing to `Bj`, make the other
          half directory entries point to the newly created bucket (`Bz`) 
 
-         > These entries are consecutive.
+         > These entries are **consecutive**.
          >
          > Taking index of `Bj`'s value, for example, global depth is 3, `Bj`'s
          > `bits` is `[1]`, index will be in range `[4, 7]`.
@@ -150,6 +155,8 @@
       5. Rehash the items in bucket `Bj`
       6. If they all have the same `j` bits of prefix, split `Bj` again.
 
+         > All the items in `Bj` will still be in `Bj`...
+         >
          > Practically, this is unlikely to happen.
 
       7. Else, distribute them to `Bj` or `Bz` 
@@ -166,7 +173,6 @@
       4. Update `bits` of `Bj` with `tmp_bits` + `0`
       5. Allocate a new bucket, with `bits` set to `tmp_bits` + `1`
       6. Double the directory entries.
-
 
          You can see that we are prepending `0` and `1` to the old entries.
 
@@ -189,7 +195,7 @@
          > 1. Entries for `Bj` and `Bz` are not adjacent.
          > 2. You need to
 
-     7. Update bucket pinters in the bucket directory
+      7. Update bucket pinters in the bucket directory
         
         1. Move (clone) buckets to a temporary place
         2. Iterating over the buckets, calculate their value
@@ -201,11 +207,8 @@
    2. If the bucket is not full, insert to it and return.
    3. If the bucket is full, do split.
    4. Double check
+   5. If double check passed, rehash the values in `Bj`.
       
-      If the 
-      
-
-
 4. Deletion
 
 ### 24.5.2.3 Static Hashing vs. Dynamic Hashing
