@@ -131,6 +131,13 @@ magic number "PAR1" (4B)
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-16%2016-37-12.png)
 
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-21%2020-56-03.png)
+
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-23%2016-20-56.png)
+
+> Technically, Parquet is not a columnar format, it is a hybrid format, which 
+> combines columnar storage and row storage.
+
 Hierarchically, a file consists of one or more row groups. A row group contains 
 exactly one column chunk **per column**. Column chunks contain one or more pages.
 
@@ -139,7 +146,9 @@ exactly one column chunk **per column**. Column chunks contain one or more pages
 
    Each row group contains a **subset** of the rows of the table.
 
-   A row group consists of **a column chunk for each column* in the dataset.
+   A **logical horizontal partitioning** of the data into rows. There is no physical
+   structure that is guaranteed for a row group. A row group consists of a column 
+   chunk for each column in the dataset.
 
 2. Column Chunk
 
@@ -163,8 +172,55 @@ exactly one column chunk **per column**. Column chunks contain one or more pages
 3. Page
 
    Column chunks are divided up into pages. A page is conceptually an indivisible 
-   unit (in terms of compression and encoding). There can be multiple page types 
+   unit (**in terms of compression and encoding**). There can be multiple page types 
    which are interleaved in a column chunk.
+
+   Page Type: parquet::basic::PageType
+
+   ```
+   pub enum PageType {
+       DATA_PAGE,
+       INDEX_PAGE,
+       // Used in dictionary encoding, storing the dictionary
+       // https://parquet.apache.org/docs/file-format/data-pages/encodings/#dictionary-encoding-plain_dictionary--2-and-rle_dictionary--8
+       DICTIONARY_PAGE,
+       DATA_PAGE_V2,
+   }
+   ```
+
+   Page has statistics info that is NOT stored in PageMetdata (crate parquet 
+   does not have such types), it is directly stored in `parquet::column::page::Page`.
+
+   ```
+   pub enum Page {
+       DataPage {
+           buf: ByteBufferPtr,
+           num_values: u32,
+           encoding: Encoding,
+           def_level_encoding: Encoding,
+           rep_level_encoding: Encoding,
+           statistics: Option<Statistics>,
+       },
+       DataPageV2 {
+           buf: ByteBufferPtr,
+           num_values: u32,
+           encoding: Encoding,
+           num_nulls: u32,
+           num_rows: u32,
+           def_levels_byte_len: u32,
+           rep_levels_byte_len: u32,
+           is_compressed: bool,
+           statistics: Option<Statistics>,
+       },
+       DictionaryPage {
+           buf: ByteBufferPtr,
+           num_values: u32,
+           encoding: Encoding,
+           is_sorted: bool,
+       },
+   }
+   ```
+
 
 # Metadata
 
@@ -282,8 +338,8 @@ impl<W: Write> ArrowWriter<W> {
 # Statistic Info
 `parquet` stores statistics data at the following levels:
 
-* ColumnChunk
-* Page
+* ColumnChunk (In ColumnChunkMetadata)
+* Page (In Page)
 
 ```rust
 /// Statistics for a column chunk and data page.
