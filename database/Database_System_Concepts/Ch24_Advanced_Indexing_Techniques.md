@@ -72,6 +72,8 @@
 
 > In this section, we will introduce 
 > [`Extendable Hashing`](https://en.wikipedia.org/wiki/Extendible_hashing)
+>
+> Implementation [here](https://github.com/SteveLauC/ExtendableHashMap)
 
 1. Overview of an Extendable Hash Structure
 
@@ -84,8 +86,8 @@
    
    1. It copes with changes in database size by **splitting and coalescing [bucket]s**
 
-   2. For split, every time, ONLY one bucket will be splitted (i.e., the overflow
-      one), other buckets are not affected.
+   2. For split, every time, ONLY one bucket will be splitted and rehashed (i.e., 
+      the overflow one), other buckets are not affected
 
       > Rehashing is incremental, which is lightweight.
 
@@ -105,6 +107,8 @@
 
    3. Buckets are created **on demand**, say the global depth is `i`, we don't
       necessarily have `2^i` buckets.
+
+      > A new bucket is created when a bucket overflow happens.
       
    4. Several directory entries that have the same prefix (or suffix, depends 
       on your implementation) will point to the same bucket, the local depth 
@@ -153,13 +157,9 @@
          > `Bz`.
 
       5. Rehash the items in bucket `Bj`
-      6. If they all have the same `j` bits of prefix, split `Bj` again.
 
-         > All the items in `Bj` will still be in `Bj`...
-         >
-         > Practically, this is unlikely to happen.
-
-      7. Else, distribute them to `Bj` or `Bz` 
+         These items, either they go into the bucket `Bj`, or they go into the 
+         newly created bucket `Bz`.
 
    2. If the local depth equals to the global depth
 
@@ -201,15 +201,64 @@
         2. Iterating over the buckets, calculate their value
         3. Use theirs values as indexes, update directory entries' bucket pointers.
 
-3. Insertion
+      8. Rehashing the entries in the bucket `Bj`
+
+         These items, either they go into the bucket `Bj`, or they go into the 
+         newly created bucket `Bz`.
+   
+   3. Try locating the bucket for `key` and inserting it again
+    
+      > This `key` should go to either bucket `Bj` or `Bz`.
+
+      If the bucket is still full, call split again (recursion).
+
+3. Insertion(key, value)
 
    1. Locate the bucket, call it `Bj`.
    2. If the bucket is not full, insert to it and return.
    3. If the bucket is full, do split.
-   4. Double check
-   5. If double check passed, rehash the values in `Bj`.
       
 4. Deletion
+
+   1. Locate the bucket, call it `Bj` 
+   2. Remove the `(key, value)` from `Bj`
+   3. Let's see if we can remove this bucket and coalesce it with its sibling:
+
+      If the following conditions are satisfied:
+
+      1. This bucket's local depth is greater than or equal to 2
+      2. This bucket's sibling bucket exists
+
+         > Sibling buckets have the same local depth but they differ in their last
+         > bit, and the directory entries for siblings are always consecutive.
+
+      3. The items of this bucket and its sibling can fit into one bucket
+
+         > In real life, we won't merge two sibling buckets unless they are
+         > less than full, or they will probably get a split in the next insert.
+
+      Then we can coalesce it and its sibling by:
+
+      1. Appending the `(key, value)` of the bucket at the back to the bucket at 
+         the front, remove the bucket at the back.
+
+         > They are in an array, removing the last one is more lightweight. 
+
+      2. Update the directory entry pointing to the back bucket to the front one.
+      3. Decrease the bucket at the front's local depth by 1
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-27%2010-47-43.png)
+
+   4. Cut the directory entry in half
+
+      > This operation is expensible!!! You may not want to do this.
+
+      After the coalescence, if all the bucket has the local depth that is 
+      `global depth - 1`, then every two directory entries should point
+      to the same bucket.
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-27%2011-09-28.png)
+      
 
 ### 24.5.2.3 Static Hashing vs. Dynamic Hashing
 ## 24.5.3 Comparsion of Ordered Indexing and Hashing
