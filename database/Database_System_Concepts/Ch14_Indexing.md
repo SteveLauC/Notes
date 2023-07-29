@@ -1355,10 +1355,14 @@
 
      > Rehashing
 
-     In the impl of `HashMap`, we double the buckets. This is NOT ACCEPTABLE in 
-     DBMS as it is way too time-consuming, several schemas have been proposed 
-     to allow the number of buckets to be increased in a more incremental fashion,
-     without causing disruption, e.g., `linear hashing` and `extendible hashing`.
+     In the impl of `HashMap`, we double the buckets and rehashing all the items. 
+     This is NOT ACCEPTABLE in DBMS as it is way too time-consuming, several 
+     schemas have been proposed to allow the number of buckets to be increased 
+     in a more incremental fashion, without causing disruption, e.g., 
+     `linear hashing` and `extendable hashing`.
+
+     > For `extendable hashing`, please refer to 
+     > [Ch24_Advanced_Indexing_Techniques.md](https://github.com/SteveLauC/Notes/blob/main/database/Database_System_Concepts/Ch24_Advanced_Indexing_Techniques.md)
 
 # 14.6 Multiple-key Access
 # 14.7 Creation of Indices

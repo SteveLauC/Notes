@@ -31,11 +31,11 @@
    To maintain a O(1) complexity of lookup, the amount of entries in a bucket
    needs to be small (so that iterating can be done in constant time).
 
-   `Total amount of entries` / amount of buckets is called `load factor`, and
+   `Total amount of entries` / `amount of buckets` is called `load factor`, and
    theoretically, to get the best performance of hashmap, `load factor` should
    be kept under `0.75`.
 
-   > 1/4 of hashmap has to be empty.
+   > Every bucket should have 0.75 kv pair.
 
    With more entries inserted into the hashmap, your `load factor` can exceed
    `0.75`, at this time, you need to double the buckets.

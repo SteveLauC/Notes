@@ -217,6 +217,11 @@
    1. Locate the bucket, call it `Bj`.
    2. If the bucket is not full, insert to it and return.
    3. If the bucket is full, do split.
+
+      > split is a recursive process, the split function will be called until 
+      > `key` is inserted into the map.
+      >
+      > What a bad hash algorithm.
       
 4. Deletion
 
@@ -229,29 +234,37 @@
       1. This bucket's local depth is greater than or equal to 2
       2. This bucket's sibling bucket exists
 
-         > Sibling buckets have the same local depth but they differ in their last
+         > Sibling buckets have the same local depth but differ in their last 
          > bit, and the directory entries for siblings are always consecutive.
 
       3. The items of this bucket and its sibling can fit into one bucket
 
          > In real life, we won't merge two sibling buckets unless they are
-         > less than full, or they will probably get a split in the next insert.
+         > less than full, or they will probably get a split in the next 
+         > insertion.
 
       Then we can coalesce it and its sibling by:
 
-      1. Appending the `(key, value)` of the bucket at the back to the bucket at 
-         the front, remove the bucket at the back.
+      1. Append the `(key, value)` of the bucket at the back to the bucket at 
+         the front, remove **the bucket at the back**.
 
-         > They are in an array, removing the last one is more lightweight. 
+         > In my impl, they are in an array, removing the last one is more 
+         > lightweight. 
+         >
+         > And directory entries store the index of its bucket,
+         > remove a bucket would invalidate these indexes. Using real pointers
+         > won't suffer from this.
 
       2. Update the directory entry pointing to the back bucket to the front one.
       3. Decrease the bucket at the front's local depth by 1
+      4. Update the invalid directory entries 
 
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-27%2010-47-43.png)
 
    4. Cut the directory entry in half
 
-      > This operation is expensible!!! You may not want to do this.
+      > This operation is expensible!!! You may only want to do this when a big 
+      > amount of items have been removed from the map.
 
       After the coalescence, if all the bucket has the local depth that is 
       `global depth - 1`, then every two directory entries should point
@@ -259,6 +272,46 @@
 
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-27%2011-09-28.png)
       
-
 ### 24.5.2.3 Static Hashing vs. Dynamic Hashing
+
+1. Pros and Cons of Extendable Hashing
+
+   * Pros
+
+     1. It supports dynamic bucket allocation and thus suitblae for time-sensitive
+        applications like file system and database.
+
+   * Cons
+
+     1. It adds another indirection layer, you have to access the directory 
+        entry beforing accessing the bucket.
+         
+        > The traditional HashMap is basically something like:
+        > 
+        > ```rust
+        > struct HashMap<K, V> {
+        >     buckets: Vec<Vec<(K, V)>>,
+        > }
+        > ```
+        >
+        > To access the bucket, you `hash()` the key, and calculate the bucket
+        > index by moding the `self.bucket.len()`, then you get the bucket.
+
+     2. Directory entry also has some storage overhead.
+
+     3. Doubling the directory entry is also costly
+     
 ## 24.5.3 Comparsion of Ordered Indexing and Hashing
+
+For disk-based index, most DBMS prefer B+Tree over Hash Index because:
+
+1. Support range query
+2. When inserting nodes, the relation size increases gracefully. 
+
+   Extendable hash index solves the issue of rehashing, but doubling the directory
+   entry is still condiered heavy.
+
+For memeory index where range query is not common, hash index can still be used.
+
+
+  
