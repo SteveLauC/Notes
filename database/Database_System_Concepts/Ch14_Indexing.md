@@ -69,7 +69,7 @@
    the reasons that:
 
    1. The index itself wuold be very big
-   2. Find a student can still be rather time-consuming
+   2. Find an entry can still be rather time-consuming
 
       > Temporal Complexity of `binary search` is `O(log n)`, which theoretially
       > should be the best choice, but pratically, with big volume of data, I 
@@ -87,6 +87,15 @@
    1. Access types: the types of access that are supported efficiently
 
       > See [doc of index of PostgreSQL](https://www.postgresql.org/docs/current/indexes.html)
+      >
+      > Index types supported by PostgreSQL:
+      >
+      > 1. B+Tree
+      > 2. Hash
+      > 3. GiST (for geometric data types)
+      > 4. SP-GiST
+      > 5. GIN (inverted index)
+      > 6. BRIN 
 
    2. Access Time: The time it takes to find a particular data item, or set
       of items.
@@ -135,6 +144,11 @@
 
    > By `phycial`, it means at the file level, not at the phycial disk level.
 
+   > A `Clustering Index` does NOT guarantee sequential storage on the disk,
+   > as the actual data is ONLY sequential in the data file (logically), how
+   > this logical file is stored on the disk is a job of the OS.
+
+
    > The term `Primary Index` may be used to denote an index on `Primary key`,
    > in most cases, this is true, but it is not necessarily so.
 
@@ -145,10 +159,6 @@
    > This will make the used index a `Clustering Index`, at least for one time.
    >
    > BUT, PostgreSQL does not have a concept of `Clustering Index`.
-
-   > A `Clustering Index` does NOT guarantee sequential storage on the disk,
-   > as the actual data is ONLY sequential in the data file (logically), how
-   > this logical file is stored on the disk is a job of the OS.
 
 
 3. What is `Nonclustering Index/Secondary Index/Nonclustered Index`?
@@ -388,11 +398,11 @@
 
    3. Binary Search Tree
       
-      Theoretically, BST has the best complexity when invoking CRUD, but in 
-      memory, each node ONLY stores one entry, which requires a heap memory
+      Theoretically, BST has the best complexity when involving CRUD, but in 
+      memory, each node stores ONLY one entry, which requires a heap memory
       allocation and makes the performance bad.
 
-      And incontiuous memory (tree) is not good for caching.
+      And incontiuous memory (tree, or linked list) is not good for caching.
 
    4. B-Tree
 
@@ -401,8 +411,8 @@
       * Pros
 
         1. No redundant storage (but marginally different)
-        2. If the key to be searched is not in the leaf node, it would be faster.
-           Search path would be shorter.
+        2. If the key to be searched is not in the leaf node, it would be faster
+           as the search path would be shorter.
 
       * Cons
 
@@ -410,7 +420,7 @@
            key(complicates storage).
 
            1. One pointer points to its child node
-           2. The other one points to the record.
+           2. The other one points to the **record**.
 
         2. Deletion is more complicated compared to B+Tree.
         3. B+Tree can do sequential(logically) scan as leaf nodes are linked 
@@ -428,15 +438,17 @@
 1. B+Tree is performant on lookup but not that good on insertion and deletion
    as it needs to re-balance itself.
 
-   > This kind of trade-off is unavoidable.
+   > This kind of trade-off is unavoidable, you have to take it.
 
 2. Three kinds of nodes
 
    * Root node
    * Internal node (nonleaf node)
+
      Has children
 
    * Leaf node
+
      Has no children
 
    > Root node can be internal node and leaf node, which depends whether it has
@@ -449,9 +461,13 @@
 
    And the depth of a B+Tree **ONLY changes** when you modify the Root node.
 
+   * The root node splitted, depth + 1
+   * The root node has too few entries and ONLY one child, make its child the
+     new root, depth - 1
+
 4. `order` and children amount bound
    
-   We say that a B+Tree has `order` of `n` when its **internal node** has `n` 
+   We say that a B+Tree has an `order` of `n` when its **internal node** has `n` 
    **children** at most (upper bound).
 
    > And the minimal `order` of a B+Tree is 3. If `order` is 1, then it will be
@@ -459,10 +475,10 @@
    > to be as large (storing more children in a disk page) as possible to make 
    > the disk read more efficient
 
-   > I am actually NOT sure about the minimal `order` B+Tree, in this
-   > answer, the author states it is 3. I tried to insert `1, 2, 3` to a B+Tree
-   > with order 2, and this results in an **empty**(has 0 key) internal node.
-   > So I guess order of 2 is not allowed.
+   > [I am actually NOT sure about the minimal `order` B+Tree](https://stackoverflow.com/a/76455007/14092446),
+   > in this answer, the author states it is 3. I tried to insert `1, 2, 3` 
+   > to a B+Tree with order 2, and this results in an **empty**(has 0 key) 
+   > internal node. So I guess order of 2 is not allowed.
 
    1. Internal node, should have `[ceil(n/2), n]` children to make the tree balanced.
 
@@ -950,15 +966,31 @@
    3. If `Node` has too few search-key values or pointers
 
       > ```rust
-      > pub(crate) fn node_has_too_few_entries(&self, node: &Node<T>) -> bool {
-      >    let search_key_threshold = ((self.order - 1) as f64 / 2.0).ceil() as usize;
-      >    let ptr_threshold = ((self.order as f64) / 2.0).ceil() as usize;
+      > fn node_has_too_few_entries(&self, node: &Node<T>) -> bool {
+      >     if node.is_root() {
+      >         if !node.is_leaf() {
+      >             // A root that is not leaf should have at least 2 children(pointers)
+      >             let num_children = node.read().ptrs.len();
+      >             if num_children < 2 {
+      >                 // If so, it should have exactly 1 child
+      >                 assert_eq!(num_children, 1);
+      >                 true
+      >             } else {
+      >                 false
+      >             }
+      >         } else {
+      >             false
+      >         }
+      >     } else {
+      >         let search_key_threshold = ((self.order - 1) as f64 / 2.0).ceil() as usize;
+      >         let ptr_threshold = ((self.order as f64) / 2.0).ceil() as usize;
       >
-      >    if node.is_leaf() {
-      >        node.read().keys.len() < search_key_threshold
-      >    } else {
-      >        node.read().ptrs.len() < ptr_threshold
-      >    }
+      >         if node.is_leaf() {
+      >             node.read().keys.len() < search_key_threshold
+      >         } else {
+      >             node.read().ptrs.len() < ptr_threshold
+      >         }
+      >     }
       > }
       > ```
 
