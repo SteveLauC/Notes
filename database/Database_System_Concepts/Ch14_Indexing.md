@@ -539,7 +539,8 @@
    2. B+Tree grows by splitting the Root node.
 
    3. One difference between B+Tree and B-Tree is that B+Tree has duplicated 
-      keys, such a duplication occurrs when **splitting leaf nodes**.
+      keys, such a duplication occurrs when **splitting leaf nodes**, a copy
+      of the middle key will be put into the parent node.
 
       > Splitting non-leaf node won't result in a duplicated key as the selected
       > key will be moved into the parent node.
@@ -656,7 +657,7 @@
    > Remeber that the amount of children of a non-leaf node is `ceil(n/2)`
 
    On disk, each node takes a disk page, assume that the search key is fix-sized
-   and takes 12 bytes, and a disk pointer has size 8, then a index entry takes 20
+   and takes 12 bytes, and a disk pointer has size 8, then an index entry takes 20
    bytes, a disk page (assume it is 4000 bytes), can accommodate 200 index entries,
    i.e., n = 200, `[log ceil(n/2) N]` = `[log100 N]`. If we have 1 million index entries
    in the index file, this value is [log100 100_000_000] = 4, which means 4 pages
@@ -682,12 +683,15 @@
 
 ## 14.3.3 Updates on B+Tree
 
-> We ONLY focus on insertion and deletion as update can be modeled by insertion
-> and deletion.
+> NOTE/WARNING: the src code in this node may be outdated, please refer to the 
+> git repo for the latest src code.
+
+> We ONLY focus on insertion and deletion as modification can be modeled by 
+> insertion and deletion.
 >
 > If you are building a set backed by B+Tree (i.e., all the operations are 
-> operated on keys), you cannot modify a key in place as modification to its 
-> value will change its position. HashSet also suffers from this problem, 
+> operated on keys), you cannot modify a key in place as modification to the 
+> key will change its position. HashSet also suffers from this problem, 
 > changes on keys will potentially put it into another bucket(No `get_mut()`
 > method).
 >
@@ -946,7 +950,7 @@
 1. How to do deletion on a B+Tree
    
    1. Traverse down to the leaf node
-   2. `delete(target_value, Key, Pointer)`
+   2. `delete(leaf_node, Key, Pointer)`
 
 2. How to do `delete(Node, Key, Pointer)`
 
@@ -1020,7 +1024,7 @@
             `Node'`, `Node'` to `Node`.
 
             > Make `Node'` **always the left one** so that we can **append** to
-            > it.
+            > it and drop `Node`.
          
          2. If `Node` is not a leaf node, append `K'` and all keys and pointers
             in `Node` to `Node'`
@@ -1035,6 +1039,55 @@
       4. Redistribution
 
          > Always remeber that redistribution **borrows** an entry from `Node'`
+         >
+         > You don't need to worry that borrowing an item from the sibling would
+         > make the sibling have too few entries, this is not possible as they
+         > cannot fit into a single node.
+         >
+         > Proof:
+         >
+         > Take `leaf node` as an example, assume `node` has too few entries,
+         > we use `x` to denote the amount of the keys in `node`, and we will
+         > borrow from its sibling node `node'`, `y` is used to denote the amount
+         > of keys in `node'`. 
+         >
+         > ```
+         > Conditions:
+         > 
+         > * x < ceil((n-1)/2) 
+         > * x + y >= n 
+         > * n >= 3 && x >= 0 && y >= 0 && n, x and y are all integers
+         >
+         > When n is odd:
+         >     ceil((n-1)/2) = (n-1)/2
+         >     x < (n-1)/2
+         >     y >= n - (n-1)/2
+         >     y >= (n+1)/2
+         > 
+         > If we borrow ono item from it, then it would be `y-1=(n-1)/2`, which is 
+         > exactly the lower bound.
+         > 
+         >
+         > When n is even:
+         >     ceil((n-1)/2) = n/2 
+         >     x < n/2
+         >     y >= n - n/2
+         >     y >= n/2
+         >
+         >     y-1 = (n-2)/2, which does not necessarily be greater than or 
+         >     equal to `ceil((n-1/2))` = `n/2`
+         >
+         > But let's think in another perspective:
+         > x + y >= n
+         > x is in range: [0, n/2)
+         > y would be in range: (n/2, n]
+         > y-1 would be in range: ((n-2)/2), n-1]
+         > 
+         > Since they are all integers, this range can be rewritten as [(n-2)/2 + 1, n-1], 
+         > that is, [n/2, n-1], n/2 is also the lower bound.
+         > ```
+         >
+         > > leaf node with order n have [ceil((n-1)/2), n-1] search-key values.
 
          1. If `Node'` is predecessor of `Node`
             1. Move `Node'`'s last key and pointer out
