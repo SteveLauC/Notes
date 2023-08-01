@@ -572,6 +572,11 @@
 
       > This will happen during deletion.
 
+   6. For leaf nodes that has a left sibling, there should be a key duplication
+      like what the following pic shows:
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-31%2010-43-26.png)
+
 ## 14.3.2 Queries on B+Tree
 
 > [B+Tree **set** implementation(no values, just keys)](https://github.com/SteveLauC/BPlusTreeSet)
@@ -1010,6 +1015,9 @@
          
          ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-10%2015-52-40.png)
 
+      > No matter it is coalescence or redistribution, for non-leaf node, you need
+      > to take care of the `k_plus` key.
+
       3. If entries in `Node` and `Node'` can fit into a single node, begin coalescence:
 
          > * leaf node
@@ -1064,7 +1072,7 @@
          >     y >= n - (n-1)/2
          >     y >= (n+1)/2
          > 
-         > If we borrow ono item from it, then it would be `y-1=(n-1)/2`, which is 
+         > If we borrow ono item from it, then it would be `y-1>=(n-1)/2`, which is 
          > exactly the lower bound.
          > 
          >
@@ -1077,11 +1085,11 @@
          >     y-1 = (n-2)/2, which does not necessarily be greater than or 
          >     equal to `ceil((n-1/2))` = `n/2`
          >
-         > But let's think in another perspective:
-         > x + y >= n
-         > x is in range: [0, n/2)
-         > y would be in range: (n/2, n]
-         > y-1 would be in range: ((n-2)/2), n-1]
+         >     But let's think in another perspective:
+         >     x + y >= n
+         >     x is in range: [0, n/2)
+         >     y would be in range: (n/2, n]
+         >     y-1 would be in range: ((n-2)/2), n-1]
          > 
          > Since they are all integers, this range can be rewritten as [(n-2)/2 + 1, n-1], 
          > that is, [n/2, n-1], n/2 is also the lower bound.
@@ -1374,6 +1382,15 @@
 >
 > [Crust of Rust: HashMap](https://github.com/SteveLauC/Notes/blob/main/programming-language/Rust/crust-of-rust/Live-coding_a_linked_hash_map_in_Rust.md)
 
+0. Relationship between:
+
+   * Closed Hashing
+   * Open Hashing
+   * Static Hashing
+   * Dynamic Hashing
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-07-31%2012-04-46.png)
+
 1. Is Hash Index `Clustering Index` or `Nonclustering Index`
 
    If the actual records are stored in `Hash File Organization`, then a `Hash Index`
@@ -1384,7 +1401,7 @@
 
    Else, I guess it is `Nonclustering Index`.
 
-2. Open Hashing(Closed Addressing) and Closed Hashing(Open Addressing)
+2. Hashing Schema: Open Hashing(Closed Addressing) and Closed Hashing(Open Addressing)
 
    > The defs in the book seem to be wrong.  
 
