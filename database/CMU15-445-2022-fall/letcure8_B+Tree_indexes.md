@@ -153,11 +153,96 @@
 
 1. Node Size
 
+   General idea should be, the slower the device is, the larger the node should 
+   be as we want more sequential I/O.
+
+   * HDD: 1MB
+   * SSD: 10KB
+   * Memory: 512B
+
+   > In some enterprise system, one can have different page sizes for different
+   > components.
+
 2. Merge Threshold
+
+   In B+Tree, a node that is less than half-full should be merged with other 
+   nodes or borrows some entry from the other node. But sometimes you may want
+   to delay such operations so that it won't be split in the near future.
 
 3. Var-len keys
 
-4. Intra-Node Search
+   1. Pointers
+
+      Store a pointer to the key instead of the key itself, you don't want to 
+      do this in a disk system as everytime you access a node, you have to
+      access the address pointed by that pointer, which is a random access.
+
+   2. Var-len node
+
+      Also a bad idea as these will be fragments.
+
+   3. Padding
+
+      Always pad the key to its type's max length.
+
+      Say I build an index on varchar(32), always store 32 bytes for the key no
+      matter what the size of the key it.
+
+      > MySQL does this.
+
+   4. key map / indirection (Most common one)
+
+      Store a HashMap in the node mapping a fix-sized integer to the key, then
+      store the key in the node.
+
+      > We have seen this in the compression class.
+
+
+4. Intra-Node Search (Search within the node)
+
+   1. Linear search
+
+      > Slow but can be sped up by SIMD
+      >
+      > In memory, if your array is short, then linear can be fast for the cache.
+
+   2. Binary Search 
+
+   3. Interpolation
+      
+      Approximate location of desired key based on known distribution of keys.
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-03%2008-54-39.png)
+
+      Find 8 in the above node.
+
+      > This is the fastest one if you can implement it, Andy said he hasn't 
+      > seen any non-academic databases that have this implemented.
 
 
 # Optimizations
+
+1. Pointer swizzing
+
+   On disk, a node's pointers are alwasy `PageID`s, say I have two pages in the 
+   memory buffer pool, one is the parent of the other one, when accessing the 
+   child node, we follow the `PageID` stored in the parent node, access the 
+   `PageTable` (If you have no idea what the `PageTable` is, read the note of the
+   lecture 6, it is the metadata for the buffer pool), find the corresponding
+   memory frame.
+
+   If a page is **pined** in the memory, we can store raw addresses instead 
+   of `PageID`s, to avoid `PageTablel` accesses.
+
+   > The PageTable possibly is behind a lock, this optimization could avoid 
+   > a access to the lock.
+
+2. Bulk Insertion (Bulk Loading)
+
+   The fastest way to construct a B+Tree is to:
+   1. Sort the items
+   2. Insert them
+
+   With doing this, we will always access a page for ONLY one time. This advantage
+   will be magnified if the relation we are building index against is huge that
+   a page will be evicted after loading into memory and accessing it.
