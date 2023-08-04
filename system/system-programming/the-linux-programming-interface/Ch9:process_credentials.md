@@ -218,7 +218,7 @@
 
    This is a set of additional groups to which a process belongs. Login shell
    obtains its supplementary group IDs from `/etc/group` (check out 
-   [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md):
+   [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8:users_and_groups.md)
    5 to see how to get all the groups a user belongs to), and a child process
    get this from its parent process just like `RUID` and `RGID`.
 

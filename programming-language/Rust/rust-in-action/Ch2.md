@@ -451,7 +451,7 @@
    3. &String
    4. &[char]
    5. &&str
-   6. F: [FnMut](../../ops/trait.FnMut.html)([char](../../primitive.char.html)) -> [bool](../../primitive.bool.html)
+   6. F: FnMut(char) -> bool
 
    实现了这个trait.
 
