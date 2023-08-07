@@ -12,8 +12,7 @@
 
    > Redis is single thread per process, voltDB can have multiple threads within
    > a single process, but they are all bound to differnt cores so that they 
-   > won't touch the same query at the same time.
-
+   > won't touch the same query at the same time (violated)
 
 # Latches Overview
 
@@ -29,7 +28,7 @@
 
    * Latches
 
-     > Basically this is what we call locks in a programming language, for 
+     > Basically this is what we call lock in a programming language, for 
      > example, `Mutex`, `RwLock`, `SpinLock`...
 
      Latches are the low-level protection primitives used for **critical sections**
@@ -70,8 +69,8 @@
 We use Linear Probe Hashing to demo the Hash Table Latching, because it 
 is simple and it is easy to make a simple structure concurrent.
 
-And, with Linear Probe Hashing, all threads will access the table in the 
-same direction, deadlock is impossible to happen.
+And, with Linear Probe Hashing, **all threads will access the table in the 
+same direction, deadlock is impossible to happen**.
 
 These are two modes you can use when implementing Hash Table Latching:
 
@@ -80,6 +79,10 @@ These are two modes you can use when implementing Hash Table Latching:
 1. Page Latches
 
    One latch per page, this will reduce parallelism but takes less metadata.
+
+   > Takes less metadata as latches are implemented and stored on disk.
+   >
+   > How?
 
 2. Slot Latches
 
@@ -90,9 +93,9 @@ These are two modes you can use when implementing Hash Table Latching:
 
 1. Two problems we need to deal with in B+Tree Latching:
 
-   1. Modifications from multiplt threads at the same time
+   1. Modifications from multiple threads at the same time
 
-      > This is easy. 
+      > This is easy cause write latches inheriently prohibits this.
 
    2. One thread traversing the tree while another thread splits/merges 
       nodes.
@@ -182,14 +185,15 @@ These are two modes you can use when implementing Hash Table Latching:
    A better algorithm (for insert/delete) is that: we just assume that path 
    from root node to the target leaf node is safe, and modifications won't 
    happen along the path, and thus we can always acquire a shared (read) 
-   latch, and release it after we land on the child node. When reached the 
+   latch, and release it after we land on the child node. When reach the 
    target leaf node, acquire the write latch on the target leaf node, we 
-   judge if we are safe, if we are safe, then we acquire the latch that 
-   we should take, then do the things we need.
+   judge if we are safe, if we are safe, then do the things we need.
 
    If we are not safe, release all the latches (one or multiple read latches and one 
    write latch), abort our current opeartion and fall back to the "bad" 
    algorithm.
+
+   > This better algorithm is more like a gamble. 
 
 # Leaf Node Scans
 

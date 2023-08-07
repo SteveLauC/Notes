@@ -539,11 +539,16 @@
    2. B+Tree grows by splitting the Root node.
 
    3. One difference between B+Tree and B-Tree is that B+Tree has duplicated 
-      keys, such a duplication occurrs when **splitting leaf nodes**, a copy
+      keys, such a duplication occurrs when **splitting leaf nodes**, a **copy**
       of the middle key will be put into the parent node.
 
+      > Why do we need a duplication here (or why doesn't internal node need this)
+      >
+      > Because data is stored in leaf node, you cannot **move** it to the parent
+      > node, which means that key does not exist in the tree.
+
       > Splitting non-leaf node won't result in a duplicated key as the selected
-      > key will be moved into the parent node.
+      > key will be **moved** into the parent node.
 
    4. B+Tree's self-rebalance is amazing 
 
