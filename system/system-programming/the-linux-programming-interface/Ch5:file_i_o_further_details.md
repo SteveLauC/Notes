@@ -99,16 +99,19 @@
 
    In the above diagram, fd 1 and 20 of process A both refer to the open file 
    labeled by 23. This could happen after a call to `dup`. Fd 2 of process A and
-   fd 2 of process refer to the same open file labeled by 73 (note the fds are 
+   fd 2 of process B refer to the same open file labeled by 73 (note the fds are 
    both `2`), this could occur after a call to `fork`(i.e. process A is the 
    parent process of process B, or vice versa), or if one process passed an 
    open file descriptor to another process using a UNIX domain socket
 
    Fd 0 of process A and fd 3 of process B refer to different open file descriptions
-   but these two file descriptions do refer to the same I-node entry
-   > Currently, I don't understand why does this happen.(Page 96)
+   but these two file descriptions do refer to the same I-node entry, this occurs
+   because process A and B individually call `open()` on the same file.
 
-   What conclusions we can draw from the processing diagram:
+   As long as the file descriptors are created through multiple `open()`, they
+   will be different and point to different open file descriptions.
+
+   What conclusions we can draw from the preceeding diagram:
    1. Two different fds refer to the same open file description share a file `offset`
    value(as this is recorded in the `system-wide open file descriptions table`).
    2. Two different fds refer to the same open file description also share a status flag

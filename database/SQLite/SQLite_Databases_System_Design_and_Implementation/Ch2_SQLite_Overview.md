@@ -20,6 +20,15 @@
 >   * 2.2.1 A Simple Application
 >   * 2.2.2 SQLite APIs
 >   * 2.2.3 Direct SQL execution
+>   * 2.2.4 Multithreaded applications
+>   * 2.2.5 Working with multiple databases
+>   * 2.2.6 Working with transactions
+>   * 2.2.7 Working with a catalog
+>   * 2.2.8 Using the sqlite3 executable
+> * 2.3 Transaction Support
+>   * 2.3.1 Concurrency control
+>   * 2.3.2 Database recovery
+> * 2.4 SQLite Catalog
 
 # Before the first section
 
@@ -153,3 +162,250 @@
        .unwrap();
    }
    ```
+
+## 2.2.4 Multithreaded applications
+
+1. Thread model in SQLite is controlled by the `SQLITE_THREADSAFE` macro:
+
+   * 0: single-threaded mode: unsafe to use in multiple-threaded context
+
+        > `!Send + !Sync`
+
+   * 1: multi-thread mode: can be used by multiple threads as long as no database 
+        connection is used by two or more threads simultaneously
+
+        > Each database connection is `Send` but not `Sync`.
+
+   * 2: serialized mode: thread-safe, no restriction
+
+        > `Send + Sync`
+
+   > ref: https://www.sqlite.org/threadsafe.html 
+
+2. In the Rust library `sqlite`, there are actually two `Connection` types
+
+   1. [`Connection`](https://docs.rs/sqlite/latest/sqlite/struct.Connection.html)
+      
+      This corresponds to `1: multi-thread` mode 
+
+   2. [`ConnectionWithFullMutex`](https://docs.rs/sqlite/latest/sqlite/struct.ConnectionWithFullMutex.html)
+
+      This corresponds to `2: thread-safe` mode 
+
+3. For multiple processes support, SQLite uses file system RwLock to handle 
+   concurrency.
+
+   But file locks on POSIX platforms are `advisory locks`, not `mandatory locks`,
+   if a process is not aware of the locks, then it can access the file without
+   any issues.
+
+4. It is not safe to use SQLite after the `fork()` syscall:
+
+   SQLite uses file system locks to handle process concurrency, but these locks 
+   are mostly `advisory locks` instead of `mandatory locks`, i.e., if a process is 
+   not aware of the lock, then it can still access (read or write) the file 
+   without any issues. For a spawned child process, it is not aware of the lock 
+   (as the connection has already been created in the program, parent process 
+   and child process are the same program until the child process involves `exec_*`
+   functions), thus it can do anything with the database file without any 
+   restrictions, which is totally unsafe.
+
+   > [File locking in Linux](https://gavv.net/articles/file-locks/)
+
+## 2.2.5 Working with multiple databases
+## 2.2.6 Working with transactions
+## 2.2.7 Working with a catalog
+
+1. The catalog table used by SQLite are started with `sqlite_*`, e.g., `sqlite_master`.
+
+   Users are not allowedd to drop or modify it.
+
+   ```
+   $ litecli -D :memory:
+   Version: 1.9.0
+   Mail: https://groups.google.com/forum/#!forum/litecli-users
+   GitHub: https://github.com/dbcli/litecli
+
+   :memory:> drop table sqlite_master;
+   You're about to run a destructive command.
+   Do you want to proceed? (y/n): y
+   Your call!
+   table sqlite_master may not be dropped
+
+   :memory:> insert into sqlite_master values(1);
+   table sqlite_master may not be modified
+   ```
+
+   And we are not allowed to create tables named like the catalog tables:
+
+   ```
+   :memory:> create table sqlite_xxxx (id int);
+   object name reserved for internal use: sqlite_xxxx
+   ```
+
+## 2.2.8 Using the sqlite3 executable
+
+# 2.3 Transaction Support
+
+1. By default, SQLite runs at *autocommit* mode, i.e., a transaction will be 
+   created for every SQL statement (without manual `BEGIN`), and every transaction
+   will be automatically committed.
+
+   Autocommit can be detrimental to performance, as for each transaction, SQLite
+   requires to open, access and close the database file. If it is used in multi-threaded
+   context, then there is also the lock overhead.
+
+2. The `BEGIN` command takes SQLite out of the *autocommit* state, into the manual
+   commit mode, and thus starts a transaction.
+
+   Command `COMMIT` or `ROLLBACK` ends the transaction, making SQLite back to
+   the *autocommit* mode.
+
+   If a `COMMIT` or `ROLLBACK` is not provided, then SQLite automatically rolls 
+   back the transaction when the connection closes.
+
+3. Nested transaction is NOT supported in SQLite, i.e.:
+
+   ```
+   :memory:> BEGIN;
+   Query OK, 0 rows affected
+   Time: 0.000s
+
+   :memory:> BEGIN;
+   cannot start a transaction within a transaction
+   ```
+
+4. Try this:
+
+   SQLite:
+
+   ```rust
+   :memory:> create table student (id int unique);
+   Query OK, 0 rows affected
+   Time: 0.000s
+
+   :memory:> begin;
+   Query OK, 0 rows affected
+   Time: 0.000s
+
+   :memory:> insert into student values (1);
+   Query OK, 1 row affected
+   Time: 0.000s
+
+   :memory:> insert into student values (1);
+   UNIQUE constraint failed: student.id
+   :memory:> commit;
+   Query OK, 0 rows affected
+   Time: 0.000s
+
+   :memory:> select * from student;
+   +----+
+   | id |
+   +----+
+   | 1  |
+   +----+
+   1 row in set
+   Time: 0.006s
+   ```
+
+   PostgreSQL:
+
+   ```
+   steve@(none):steve> create table student ( id int unique);
+   CREATE TABLE
+   Time: 0.009s
+
+   steve@(none):steve> begin;
+   BEGIN
+   Time: 0.001s
+
+   steve@(none):steve> insert into student values (1);
+   INSERT 0 1
+   Time: 0.001s
+
+   steve@(none):steve> insert into student values (1);
+   duplicate key value violates unique constraint "student_id_key"
+   DETAIL:  Key (id)=(1) already exists.
+   Time: 0.002s
+
+   steve@(none):steve> commit;
+   ROLLBACK
+   Time: 0.001s
+
+   steve@(none):steve> select * from student;
+   +----+
+   | id |
+   |----|
+   +----+
+   SELECT 0
+   Time: 0.003s
+   ```
+
+   Differnet DBMSes handle failure in a transaction differently.
+
+## 2.3.1 Concurrency control
+
+## 2.3.2 Database recovery
+
+1. The rollback is supported via a separate journal file
+
+   > Such a rollback is mostly for write-transactions, there is no need to rollback
+   > a read-transaction.
+
+   The jouranl file will always be created in the same directory where the database
+   file resides and have the same name but with `-journal` appended.
+
+   ```
+   # Shell A
+
+   $ litecli -D db
+   Version: 1.9.0
+   Mail: https://groups.google.com/forum/#!forum/litecli-users
+   GitHub: https://github.com/dbcli/litecli
+
+   db> begin
+   Query OK, 0 rows affected
+   Time: 0.000s
+
+   db> create table student (id int unique);
+   Query OK, 0 rows affected
+   Time: 0.000s
+   db>
+   ```
+
+   ```shell
+   # Shell B
+
+   $ ls -l db*
+   .rw-r--r--@   0 steve 14 Aug 20:14 db
+   .rw-r--r--@ 512 steve 14 Aug 20:14 db-journal
+   ```
+
+   ```
+   # Shell A
+
+   db> commit
+   ```
+
+   ```
+   # Shell B
+
+   $ ls -l db*
+   .rw-r--r--@ 12k steve 14 Aug 20:16 db
+   ```
+
+   > SQLite logging is inefficient: every log record contains the image of the
+   > **entire database page** even when the transaction modifies a single byte in
+   > the page.
+   >
+   > Because the log stores everything, the recovery logic becomes simple.
+
+2. Lifecycle of a journal file 
+
+   By default, SQLite creates a journal file for every write-transaction, and 
+   deletes it when the transaction commits.
+
+   But there are some options so that journal file won't be deleted on commit,
+   see the `journal_mode` macro.
+
+# 2.4 SQLite Catalog
