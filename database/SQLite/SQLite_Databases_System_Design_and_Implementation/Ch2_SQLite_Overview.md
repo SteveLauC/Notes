@@ -29,6 +29,8 @@
 >   * 2.3.1 Concurrency control
 >   * 2.3.2 Database recovery
 > * 2.4 SQLite Catalog
+> * 2.5 SQLite Limitations
+> * 2.6 SQLite Architecture
 
 # Before the first section
 
@@ -81,6 +83,7 @@
        }
    }
    ``` 
+
 ## 2.2.2 SQLite APIs
 
 > Reference: [C-language Interface Specification for SQLite](https://www.sqlite.org/capi3ref.html)
@@ -220,7 +223,7 @@
 
    Users are not allowedd to drop or modify it.
 
-   ```
+   ```shell
    $ litecli -D :memory:
    Version: 1.9.0
    Mail: https://groups.google.com/forum/#!forum/litecli-users
@@ -238,7 +241,7 @@
 
    And we are not allowed to create tables named like the catalog tables:
 
-   ```
+   ```shell
    :memory:> create table sqlite_xxxx (id int);
    object name reserved for internal use: sqlite_xxxx
    ```
@@ -266,7 +269,7 @@
 
 3. Nested transaction is NOT supported in SQLite, i.e.:
 
-   ```
+   ```shell
    :memory:> BEGIN;
    Query OK, 0 rows affected
    Time: 0.000s
@@ -310,7 +313,7 @@
 
    PostgreSQL:
 
-   ```
+   ```shell
    steve@(none):steve> create table student ( id int unique);
    CREATE TABLE
    Time: 0.009s
@@ -341,7 +344,7 @@
    Time: 0.003s
    ```
 
-   Differnet DBMSes handle failure in a transaction differently.
+   Differnet DBMSs handle failure in a transaction differently.
 
 ## 2.3.1 Concurrency control
 
@@ -355,7 +358,7 @@
    The jouranl file will always be created in the same directory where the database
    file resides and have the same name but with `-journal` appended.
 
-   ```
+   ```shell
    # Shell A
 
    $ litecli -D db
@@ -381,13 +384,13 @@
    .rw-r--r--@ 512 steve 14 Aug 20:14 db-journal
    ```
 
-   ```
+   ```shell
    # Shell A
 
    db> commit
    ```
 
-   ```
+   ```shell
    # Shell B
 
    $ ls -l db*
@@ -409,3 +412,162 @@
    see the `journal_mode` macro.
 
 # 2.4 SQLite Catalog
+
+1. In RDBMSs, catalogs themselves are tables (often called system tables).
+
+   For example, the schema descriptions (SQL create statements) are stored as
+   rows in catalogs.
+
+   By default, `sqlite_master` is the ONLY catalog that is enabled in SQLite.
+
+   Schema for the `sqlite_master` table:
+
+   ```SQL
+   create table sqlite_master (
+       -- available types: table/index/view/trigger 
+       type text,
+
+       -- name of the object, for index that does not have a name, the name will 
+       -- be `sqlite_autoindex_TABLE_N`, where `TABLE` is the name of the table,
+       -- `N` is an integer indicating which index this is.
+       name text,
+
+       -- The name of the table if `type` is table or index. Or it is which table 
+       -- this thing is associated with.
+       tbl_name text,
+
+       -- Which page is the root of this thing (B-Tree or B+Tree) on
+       --
+       -- One thing to note is that SQLite page index starts with 1, page 0 
+       -- literally means it does not exist.
+       rootpage integer,
+
+       -- the `CREATE` SQL statement 
+       sql text 
+   )
+   ```
+
+   If you execute a `CREATE xxx` statement, then a new row will be inserted into
+   this table.
+
+   > Every object except for the `sqlite_master` itself will have an entry in 
+   > `sqlite_master`.
+
+   When SQLite opens a database file, it first scans the entire master table, 
+   and processes the `sql` column in each row and produces many in-memory table,
+   these in-memory table can collectively define a schema cache.
+
+
+   ```shell
+   $ sqlite
+   sqlite> select * from sqlite_master;
+
+   sqlite> create table student (id int primary key);
+
+   sqlite> select * from sqlite_master;
+   table|student|student|2|CREATE TABLE student (id int primary key)
+   index|sqlite_autoindex_student_1|student|3|
+   ```
+
+2. There is another catalog `sqlite_temp_master` that is used to store the metadata
+   of all the temporary objects.
+
+   For each `library connection`, SQLite will create a temporary **databse** that 
+   stores all temporary objects.
+
+   > This means that for a library connection, at least 2 database connections will
+   > be established.
+
+   ```shell
+   $ sqlite
+   sqlite> select * from sqlite_temp_master;
+
+   sqlite> create temp table student (id int primary key);
+
+   sqlite> select * from sqlite_temp_master;
+   table|student|student|2|CREATE TABLE student (id int primary key)
+   index|sqlite_autoindex_student_1|student|3|
+   ```
+
+   When the library connection ended, the temporary database will be deleted.
+
+3. `sqlite_sequence` for tables that have `integer primary key autoincrement` 
+   column
+
+   Such a autoincrement feature is implemented based on the following catalog
+   table:
+
+   ```SQL
+   create table sqlite_sequence(
+       -- name of the table
+       name text,
+       
+       -- largest value so far issued for the autoincrement column
+       seq integer 
+   );
+   ```
+
+   > A table can have at most one autoincrement column, that is why
+   > this catelog table does not store the column name.
+
+   ```shell
+   sqlite> create table student (id integer primary key autoincrement);
+
+   sqlite> select * from sqlite_sequence;
+
+   sqlite> insert into student values (0);
+   sqlite> select * from sqlite_sequence;
+   student|0
+
+   sqlite> insert into student values (1);
+   sqlite> select * from sqlite_sequence;
+   student|1
+   ```
+   
+   Note that the sequence catalog will be created ONLY when you attempt to insert
+   a row to a table that has a autoincrement column.
+
+
+3. Users are not allowed to modify the catalog table or create indexes on them.
+
+   And SQLite does not create indexes on them either.
+
+# 2.5 SQLite Limitations
+
+1. The following is a list of shortcomings of SQLite:
+
+   1. Limited SQL-92 support
+
+      For SQL-92 features that are not supported by SQLite, see 
+      http://www.sqlite.org/omitted.html
+
+   2. No nesting transaction (subtransaction) support, i.e.:
+
+      ```shell
+      sqlite> begin;
+      sqlite> begin;
+      ``` 
+
+   3. Low concurrency
+
+   4. Application restriction
+
+      Since SQLite aims to be simple, it is ONLY suitbale for small-size 
+      applications
+
+   5. NFS (Network File system) problems
+
+      SQLite relies on file-level locks to handle concurrency, however, on most
+      NFSs, locks contains bugs in their locking logic.
+
+      Another thing is that NFS has high latency, so SQLite on a NFS is less 
+      performant.
+
+   6. Liminations on the number of objects in a table or index.
+
+   7. Does not have `stored procedure`
+
+      > Like a function in PL, store a group of SQL statements so that you can 
+      > reuse them later.
+
+# 2.6 SQLite Architecture
