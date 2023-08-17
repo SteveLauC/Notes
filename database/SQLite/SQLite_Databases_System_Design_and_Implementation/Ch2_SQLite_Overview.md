@@ -1,6 +1,6 @@
 > This chapter is mainly about:
 >
-> * THe SQLite database system and what it is
+> * The SQLite database system and what it is
 > * What salient features SQLite supports
 > * How SQLite stores tables in database files
 > * How to write, compile, and execute SQLite applications
@@ -31,6 +31,19 @@
 > * 2.4 SQLite Catalog
 > * 2.5 SQLite Limitations
 > * 2.6 SQLite Architecture
+>   * 2.6.1 Frontend
+>   * 2.6.2 Backend
+>   * 2.6.3 The Interface
+> * 2.7 SQLite Source Organization
+>   * 2.7.1 SQLite APIs
+>   * 2.7.2 Tokenizer
+>   * 2.7.3 Parser
+>   * 2.7.4 Code generator
+>   * 2.7.5 Virtual Machine
+>   * 2.7.6 The Tree
+>   * 2.7.7 The Pager
+>   * 2.7.8 OS interface
+> * 2.8 SQLite Build Process
 
 # Before the first section
 
@@ -43,7 +56,7 @@
 ## 2.1.2 Usage simplicity
 ## 2.1.3 SQL features and SQLite commands
 
-1. SQL features that are supported in SQLite
+1. SQL features that are not supported in SQLite
 
    > https://sqlite.org/omitted.html
 
@@ -130,8 +143,8 @@
 
    2. `sqlite3_reset`
 
-      Reset the statement to its initial state, except that the bind variables 
-      remain same.
+      Reset the statement iterator to its initial state, except that the bind 
+      variables remain same.
 
       To clear bind variables, use `sqlite3_clear_bingdings`a.
 
@@ -219,9 +232,9 @@
 ## 2.2.6 Working with transactions
 ## 2.2.7 Working with a catalog
 
-1. The catalog table used by SQLite are started with `sqlite_*`, e.g., `sqlite_master`.
+1. The catalog table used by SQLite are named in `sqlite_*`, e.g., `sqlite_master`.
 
-   Users are not allowedd to drop or modify it.
+   Users are not allowedd to drop or modify it, or create index on it.
 
    ```shell
    $ litecli -D :memory:
@@ -356,7 +369,7 @@
    > a read-transaction.
 
    The jouranl file will always be created in the same directory where the database
-   file resides and have the same name but with `-journal` appended.
+   file resides and have the same name but with a `-journal` appended.
 
    ```shell
    # Shell A
@@ -410,6 +423,9 @@
 
    But there are some options so that journal file won't be deleted on commit,
    see the `journal_mode` macro.
+
+   > There won't be multiple journal files as at most 1 write-transaction exists
+   > at any time.
 
 # 2.4 SQLite Catalog
 
@@ -571,3 +587,163 @@
       > reuse them later.
 
 # 2.6 SQLite Architecture
+
+1. The architecuture of SQLite is quite modular, it consists of 7 major components,
+   and are divided into 2 divisions:
+
+   1. Frontend Parsing System
+
+      Compiles the SQL statement
+
+   2. Backend Engine
+
+      Executes the compiled statement
+
+   ![arch](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-17%2009-51-58.png)
+
+## 2.6.1 Frontend
+
+1. The frontend division is composed of three modules
+
+   1. Tokenizer
+      
+      Splits an input SQL statement into tokens
+
+   2. Parser
+      
+      1. Parse the tokens into an AST.
+      2. Optimize the AST
+
+         > This is kinda weird, never seen any optimization done in such a place.
+
+   3. Code generator
+
+      Generate an equivalent bytecode program 
+
+
+   > The frontend implements the `sqlite3_prepare` API.
+
+## 2.6.2 Backend
+
+1. The backend is the engine that executes the bytecode generated from the
+   frontend.
+
+
+   It consists of four moduels:
+
+   1. The `Virtual Machine`
+      
+      Executes the bytecode
+
+   2. The tree
+      
+      > B+Tree for tables or B-Tree for indexes.
+
+      The underlying data structure
+
+   3. The pager
+
+      More like the buffer pool manager  
+
+   4. OS interface 
+
+      Syscalls, locks...
+
+
+## 2.6.3 The Interface
+
+# 2.7 SQLite Source Organization
+
+1. Directories and their usage
+
+   * [art](https://github.com/sqlite/sqlite/tree/master/art): gif, logo 
+   * [contrib](https://github.com/sqlite/sqlite/tree/master/contrib): TCL/TK console widget
+   * [doc](https://github.com/sqlite/sqlite/tree/master/doc): documentations
+   * [ext](https://github.com/sqlite/sqlite/tree/master/ext): extensions, like async I/O, rtree, full text search
+   * [src](https://github.com/sqlite/sqlite/tree/master/src): source code
+   * [test](https://github.com/sqlite/sqlite/tree/master/test): tests
+   * [tools](https://github.com/sqlite/sqlite/tree/master/tools): sources for code generators
+
+## 2.7.1 SQLite APIs
+## 2.7.2 Tokenizer
+
+> tokenize.c
+
+1. In SQLite, the tokenizer involves parser, this is different from the parser
+   that most people are familiar with, normally, it is the parser that should
+   involves the tokenizer.
+
+## 2.7.3 Parser
+
+It uses Lemon parser under the hood, the source code for the Lemon parser 
+(`lemon.c`) is not in the `src` directory but in `tool`.
+
+The code that drives Lemon parser is in `parse.y`, the files generated from
+Lemon are `parse.h` and `parse.c`
+
+## 2.7.4 Code generator
+
+1. Files involved by the code generartor module are:
+   1. attach.c
+   2. auth.c
+   3. build.c
+   4. delete.c
+   5. expr.c
+   6. insert.c
+   7. pragma.c
+   8. select.c
+   9. trigger.c
+   10. update.c
+   11. vacuum.c
+   12. where.c
+
+   These are files where most of the SQLite arithmetic and logic reside.
+
+## 2.7.5 Virtual Machine
+
+1. A bytecode instruction is similar to the machine code, it consists of
+
+   1. An opcode
+   2. Up to five operands
+
+2. Thes file for the VM are 
+   1. `vdbe.c`
+   2. `vdbe.h` 
+   3. `vdbeInt.h.`
+   4. `vdbeaux.c.`
+   5. `vdbeapi.c.`
+   6. `vdbeapi.c.`
+   7. `vdbemem.c.`
+
+   8. `func.c.`: most functions
+   9. `date.c.`: date-related functions
+
+   10. `util.c`: some utility functions
+   11. `hash.c`: hash fuctions
+
+   12. `utf.c`: conversion between UTF-8 and UTF-16
+
+   13. `printf.c`: custom `printf` impl
+
+   14. `random.c`: random number generator
+   
+   > VDBE: Virtual Database Engine
+
+## 2.7.6 The Tree
+
+> `btree.c` and `btree.h`
+
+## 2.7.7 The Pager
+
+> `pager.c`
+
+## 2.7.8 OS interface
+
+> `os.h`
+> 
+> `os_unix.c` for UNIX
+> `os_win.c` for Windows
+
+# 2.8 SQLite Build Process
+
+1. The source code for the `sqlite3` binary is in `shell.c`
