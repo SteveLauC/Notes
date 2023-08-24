@@ -22,7 +22,7 @@
 >     * 3.3.1.1 Segment header structure
 >     * 3.3.1.2 Log record structure
 >   * 3.3.2 Statement journal
->   * 3.3.3 Multi-database transaction journal, the master journal
+>   * 3.3.3 Multi-database transaction journal, the master journal(super journal)
 
 > Questions I have
 >
@@ -34,7 +34,7 @@
 1. If we create multiple connections to `:memory:`, then multiple in-memory
    database would be created.
 
-2. Naming conventions of temporary files used by SQLite
+2. Naming conventions of tempohttps://www.sqlite.org/fileformat.htmlrary files used by SQLite
 
    `etilqs_` followed by 16 random alphanumeric characters, without any extension.
 
@@ -81,6 +81,8 @@
 
 5. You can `attach` a database file to its unique name by the following command:
 
+   > This is how you open another database that is not named `main` in SQLite.
+
    ```shell
    SQLite> attach path_to_file <db>
    ```
@@ -101,7 +103,7 @@
 
    SQLite pages start from `page 1`, not `page 0`
 
-   > Page 0 liternally means a page that does not exist.
+   > Page 0 liternally means a page that does not exist.(NULL)
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-18%2010-07-17.png)
 
@@ -152,9 +154,8 @@
 
 4. Change the page size
 
-   When you create a new database, beforing creating the first table, you can
-   update the page size via:
-
+   When you create a new database, beforing creating the first table(or Page), 
+   you can update the page size via:
 
    ```
    :memory:> pragma page_size;
@@ -198,9 +199,7 @@
       
       > used by autovacuum and incremental vacuum features
 
-   4. lock-type
-
-   And these pages are sub-typed into:
+   4. lock-byte
 
 ## 3.2.4 Database metadata
 
@@ -213,7 +212,6 @@
    1. A 100 bytes **file** header
    2. A B+Tree internal page storing the page number of the root pages of 
       `sqlite_master` and `sqlite_temp_master`
-
    3. Reserved space
 
 2. The first page, and tables `sqlite_master` and `sqlite_temp_master` are the 
@@ -221,8 +219,8 @@
 
 3. What is vacuum in SQLite
 
-   The VACUUM command rebuilds the database file, repacking it into a minimal 
-   amount of disk space.
+   The `VACUUM` command rebuilds the database file (defragement the file), 
+   repacking it into a minimal amount of disk space.
 
    > Compact the database file.
 
@@ -243,7 +241,7 @@
 
       Involve it via the `vacuum` command. 
 
-5. Format of the file header
+5. Format of the file header of the Page 1
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-18%2011-15-37.png)
 
@@ -252,9 +250,11 @@
      
      > This string can be changed via macro: `SQLITE_FILE_HEADER`
 
-   * Page size
+   * Page size in bytes (u16)
 
    * File format: write version and read version
+
+     > Shouldn't this be only applied to a journaling file?
 
      These version number can either be 1, which is the old legacy rollback 
      journaling, or it is 2 for the new WAL journaling.
@@ -273,12 +273,16 @@
 
    * Max/Min Embedded Payload:
 
-     Embedded Payload is the space that is consumed by a reocrd, max embedded
-     payload is the upper bound, min embedded payload is the lower bound.
+     Embedded Payload is the space that is consumed by a **reocrd**(seems to be 
+     wrong here?) in a tree page, max embedded payload is the upper bound, min 
+     embedded payload is the lower bound.
 
      The max embedded payload is 64 bytes, so the fraction is 25. The min embedded
      payload is 32 bytes, so the fraction is 12.5.
 
+     > If the acutal payload is bigger than the Max embedded payload, then SQLite
+     > move the extra bytes to a (or multiple) overflow pages.
+     >
      > Once SQLite allocates an overflow page, it moves as many bytes as possible
      > into the overflow page as long as the embedded payload does not drop under 
      > the min embedded payload.
@@ -299,7 +303,7 @@
 
    * File Change Counter
 
-     Counter for write-transactions.
+     Counter for write-transactions (only write-transaction will change the file)
 
      Initialized with 0, and will be incremented by 1 when a write-transaction is
      successfully performed on this file (database)
@@ -368,20 +372,119 @@
 1. For the **legacy** journal files, SQLite has
 
    1. Rollback journal
-   2. Statement journal
-   3. Master journal
 
-   > SQLite has introduced the WAL journaling scheme.
+      Rollback journal is used to implement atomic transction(`commit` and 
+      `rollback`)
+
+   2. Statement journal
+
+      Used to undo **partial results** of **a single statement**. For example, 
+      suppose an `UPDATE` statement will attempt to modify 100 rows in the 
+      database. But after modifying the first 50 rows, the `UPDATE` hits a 
+      constraint violation which should block the entire statement. The statement
+      journal is used to undo the first 50 row changes so that the database is 
+      restored to the state it was in at the start of the statement..
+
+   3. Master journal(Super-journal)
+
+      > Seems that master journal has been renamed to super journal
+
+      The super-journal file is used as part of the atomic commit process when a 
+      single transaction makes changes to multiple databases that have been added 
+      to a single database connection using the `ATTACH` statement.
+
+   > SQLite has introduced the WAL journaling scheme in 3.7.0.
    >
    > The structure of the WAL journal file will be talked about in Section 10.17.
 
 
 ## 3.3.1 Rollback Journal 
 
-2. Rollback journal
+1. For every database, SQLite maintains a single rollback journal file.
 
-3. Statement journal
-4. Master journal
+   > In-memory databases do not use journal files, they store journal info
+   > in the memory. 
+
+2. The rollback journal file will always have the same name as the database
+   file with `-journal` appended.
+
+3. By default(journal mode: `DELETE`), a rollback journal file will be deleted
+   when the write-transaction ends.
+
+   You can query what the current journal mode is via: `pragam journal_mode`:
+
+   ```
+   $ litecli -D db
+   Version: 1.9.0
+   Mail: https://groups.google.com/forum/#!forum/litecli-users
+   GitHub: https://github.com/dbcli/litecli
+   db> pragma journal_mode;
+   +--------------+
+   | journal_mode |
+   +--------------+
+   | delete       |
+   +--------------+
+   1 row in set
+   Time: 0.010s
+   ```
+
+   And you can change it via: `pragma journal_mode=XXX`
+
+   ```
+   db> pragma journal_mode=persist;
+   +--------------+
+   | journal_mode |
+   +--------------+
+   | persist      |
+   +--------------+
+   1 row in set
+   Time: 0.006s
+   db> pragma journal_mode;
+   +--------------+
+   | journal_mode |
+   +--------------+
+   | persist      |
+   +--------------+
+   1 row in set
+   Time: 0.005s
+   ```
+
+4. Format of rollback journal file
+
+   Each journal file is devided into varibale-sized log segments, every log segment
+   starts with a header followed by one or more log records.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-23%2011-15-23.png)
+
+### 3.3.1.1 Segment header structure
+
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-23%2011-49-24.png)
+
+1. A rollback journal file is considered to be valid if it exists and have a valid
+   header.
+
+   > Header is used to check if the rollback journal file is valid.
+
+2. Rollback journal header contains several components:
+
+   * Magic Number (8B)
+
+     A 8 bytes string: 0xd9, 0xd5, 0x05, 0xf9, 0x20, 0xa1, 0x63, 0xd7
+
+   * Number of reocrds (in this segment) (4B)
+
+     For synchronous transactions, this field is initialized with 0.
+
+     For asynchronous transactions, it will be initialized with -1 and **will 
+     always be -1**.
+
+   * Random number (4B)
+
+3. What are asynchronous transactions?
 
 
 
+### 3.3.1.2 Log record structure
+
+## 3.3.2 Statement journal
+## 3.3.3 Multi-database transaction journal, the master journal(super journal)
