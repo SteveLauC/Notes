@@ -34,7 +34,7 @@
 1. If we create multiple connections to `:memory:`, then multiple in-memory
    database would be created.
 
-2. Naming conventions of tempohttps://www.sqlite.org/fileformat.htmlrary files used by SQLite
+2. Naming conventions of temporary files used by SQLite
 
    `etilqs_` followed by 16 random alphanumeric characters, without any extension.
 
@@ -373,7 +373,7 @@
 
    1. Rollback journal
 
-      Rollback journal is used to implement atomic transction(`commit` and 
+      Rollback journal is used to implement atomic transaction(`commit` and 
       `rollback`)
 
    2. Statement journal
@@ -385,13 +385,13 @@
       journal is used to undo the first 50 row changes so that the database is 
       restored to the state it was in at the start of the statement..
 
-   3. Master journal(Super-journal)
+   3. Master journal (Super-journal)
 
       > Seems that master journal has been renamed to super journal
 
       The super-journal file is used as part of the atomic commit process when a 
-      single transaction makes changes to multiple databases that have been added 
-      to a single database connection using the `ATTACH` statement.
+      **single transaction** makes changes to **multiple databases** that have 
+      been added to a single database connection using the `ATTACH` statement.
 
    > SQLite has introduced the WAL journaling scheme in 3.7.0.
    >
@@ -473,6 +473,8 @@
 
    * Number of reocrds (in this segment) (4B)
 
+     > This is stored as a signed integer
+
      For synchronous transactions, this field is initialized with 0.
 
      For asynchronous transactions, it will be initialized with -1 and **will 
@@ -480,11 +482,128 @@
 
    * Random number (4B)
 
+     Used to compute the 'checksums' for individual log reocrd
+
+   * Initial database page count(4B)
+
+     How many pages were there in the original database file before this write-transaction.
+
+   * Sector Size
+     
+     Sector size of the underlying file system.  SQLite will query the file system for this
+     value, if not available, the 512 will be used as the default value.
+
+     > The Segment header occupies a complete sector size.
+
+   * Page Size
+
+     SQLite page size
+
+   * Unused spcae
+
 3. What are asynchronous transactions?
 
+   * Much faster than synchronous transactions
+   * Does not flush the database file and the journal file
+   * `number of records` will always be -1
+   * Not recommended to use, mainly for test
 
+4. Normally, a rollback journal file contains a single log segment.
+
+5. In multi-segment journal file, the number of records field will never be -1.
+
+   > No idea why
 
 ### 3.3.1.2 Log record structure
 
+> A log segment consists of:
+>
+> 1. A segment header
+> 2. One or multiple log records
+
+1. Within a write-transaction, every non-SELECT statement creates one or more log 
+   record.
+
+   > A log record stores one page, so if a statement accesses multiple pages, then
+   > multiple log records will be created.
+
+2. Think about it, what is the easiest way to implement the rollback functionality,
+   storing the original pages.
+
+   Indeed, this is how SQLite handles it
+
+   > 惊不惊喜，意不意外
+
+   Every log record has the following structure:
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-24%2010-27-58.png)
+
+   The page number and the page contens, with a checksum on them.
+
+   > The checksum is computed using the random number in the segment header.
+
 ## 3.3.2 Statement journal
-## 3.3.3 Multi-database transaction journal, the master journal(super journal)
+
+> Don't quite understand the contents this sectioin tries to convey
+
+1. The statement journal is for the latest
+
+   * INSERT
+   * UPDATE
+   * DELETE
+
+   SQL statenents that could
+
+   1. Modify muliple rows
+   2. Result in a constraint violation
+   3. Raise an exception within a trigger
+
+2. It is a separate, ordinary, temporary rollback journal file that resides in 
+   the standard temporary directories.
+
+   > For what the standard temporary directories are, see the section Naming 
+   > Conventions.
+
+   > And a temporary file is named as `etilqs_xx`
+
+3. Statement journal file is not required for crash recovery operation, it is 
+   **only needed for statement aborts**.
+
+4. The books said it is an ordinary rollback journal file, and it does not
+   have a header, which makes me so confused...
+   
+
+## 3.3.3 Multi-database transaction journal, the master journal (super journal)
+
+1. We can open multiple database files within a library connection by using the
+   `ATTACH` command, and a transaction involving multiple databases is allowed
+   in SQLite.
+
+   A rollback journal file will be created for a write-transaction, but this is
+   ONLY for a single database, when dealing with multiple databases, multiple
+   rollback journal files will be created.
+
+   But these rollback journal files are indepedent are not aware of each other,
+   transaction on a databsae can be atomically committed or rolled back, but
+   you cannot do this for all the database files **together**.
+
+   Super journal solves this problem.
+
+2. The format of super journal is quite simple: A UTF-8 encoded string containing
+   all the full paths of the rollback files, and are separated by a null character.
+
+3. Super journal resides in the same direcotry as **the main database** file does,
+   and has the stirng "-mj" appended, followed by eight randomly chosen 4-bit hex
+   numbers.
+
+4. It is a transient file, created when the transaction **attempts to commit**, and
+   deleted when the commit procedure is done.
+
+5. When a transaction involves multiple database files, the format of the rollback
+   journal file will also be slightly updated:
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-24%2012-13-30.png)
+
+   
+   As you can see, a "Master journal record" is appended to the end of the 
+   rollback journal file.
