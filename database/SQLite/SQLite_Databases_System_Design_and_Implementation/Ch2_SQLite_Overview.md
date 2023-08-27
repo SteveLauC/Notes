@@ -267,9 +267,12 @@
    created for every SQL statement (without manual `BEGIN`), and every transaction
    will be automatically committed.
 
-   Autocommit can be detrimental to performance, as for each transaction, SQLite
-   requires to open, access and close the database file. If it is used in multi-threaded
+   Autocommit can be detrimental to performance, as for each write-transaction, SQLite
+   requires to open, access and close the journal file. If it is used in multi-threaded
    context, then there is also the lock overhead.
+
+   > For more information on the journal file, see the contens about rollback 
+   > journal in Ch3.
 
 2. The `BEGIN` command takes SQLite out of the *autocommit* state, into the manual
    commit mode, and thus starts a transaction.

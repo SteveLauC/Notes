@@ -4,11 +4,12 @@
 > * The formats of the database and various journal files
 > * The concept of page in the SQLite context and the purpose of various pages
 > * How a database is made platform independent
+>   > All the data is stored in big endian?
 >
 > Basically, we have:
 > 1. The format of the database file
 > 2. The format of the journal file
-> 3. The format of the WAL file
+> 3. The format of the WAL file (not in this chapter)
 
 > * 3.1 Database Naming Conventions
 > * 3.2 Database File Structure
@@ -200,6 +201,12 @@
       > used by autovacuum and incremental vacuum features
 
    4. lock-byte
+
+      > No idea what type of page this is, some bytes that are used as locks?
+      >
+      > The `forbidden page num` field in a master journal file contains the 
+      > number of the page that contains the lock offset bytes, see the end
+      > of this note for more info.
 
 ## 3.2.4 Database metadata
 
@@ -400,6 +407,8 @@
 
 ## 3.3.1 Rollback Journal 
 
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-26%2020-48-00.png)
+
 1. For every database, SQLite maintains a single rollback journal file.
 
    > In-memory databases do not use journal files, they store journal info
@@ -455,6 +464,8 @@
    starts with a header followed by one or more log records.
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-23%2011-15-23.png)
+
+   > Question: how many log segments a rollback journal should have? 
 
 ### 3.3.1.1 Segment header structure
 
@@ -583,7 +594,7 @@
    ONLY for a single database, when dealing with multiple databases, multiple
    rollback journal files will be created.
 
-   But these rollback journal files are indepedent are not aware of each other,
+   But these rollback journal files are indepedent, and not aware of each other,
    transaction on a databsae can be atomically committed or rolled back, but
    you cannot do this for all the database files **together**.
 
@@ -591,6 +602,8 @@
 
 2. The format of super journal is quite simple: A UTF-8 encoded string containing
    all the full paths of the rollback files, and are separated by a null character.
+
+   > Just concatenate them
 
 3. Super journal resides in the same direcotry as **the main database** file does,
    and has the stirng "-mj" appended, followed by eight randomly chosen 4-bit hex
@@ -604,6 +617,13 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-24%2012-13-30.png)
 
+   > Rollback journal files are called `child journal file` at this time.
    
-   As you can see, a "Master journal record" is appended to the end of the 
-   rollback journal file.
+   As you can see, a "Master journal record" is appended to the end of a rollback 
+   journal file.
+
+   The master journal name is the full path of the super journal file, length 
+   stores the length of the name, and the checksum is the checksum of the name.
+
+   The forbidden page number is the number of the page that contains the lock
+   offset bytes.
