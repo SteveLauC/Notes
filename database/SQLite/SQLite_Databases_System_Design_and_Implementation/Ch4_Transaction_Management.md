@@ -6,7 +6,7 @@
 > * How SQLite avoids deadlocks
 > * How SQLite implements journal protocols
 >
->   > BTW, what is journaling protocols
+>   > BTW, what are journaling protocols
 >
 > * How SQLite managers savepoints in user transactions
 >
@@ -14,12 +14,14 @@
 >   > back to a certain point **without rolling back the entire transaction**. 
 
 > * 4.1 Transaction Types
->   * 4.1.1 System transaction
->   * 4.1.2 User transaction
+>   * 4.1.1 System transaction (*autocommit* mode)
+>   * 4.1.2 User transaction (*manual* mode)
 >   * 4.1.3 Savepoint
 >   * 4.1.4 Statement subtransaction
 > * 4.2 Lock Management
-
+>   > There are some notes on transaction isolation in this section.
+>   * 4.2.1 Lock types and their compatibilities
+>   * 4.2.2 Lock acquisition protocol
 
 # 4.1 Transaction Types
 ## 4.1.1 System transaction
@@ -30,11 +32,26 @@
 2. Under the *autocommit* mode, SQLite will create a read-transaction for a 
    `SELECT` statement. For a non-`SELECT` statement, SQLite first creates a
    read-transaction, and then converts it into a write-transaction when it
-   actually modifies the database file.
+   **actually modifies** the database file.
 
    > Why would SQLite do this for non-`SELECT` statement, my thought would be
    > for maximizing concurrency as multiple read-transactions can occur at
    > the same time.
+
+3. Simultaneous Read and Write transactions
+
+   Under the rollback journal mode, since a write-transaction would directly write
+   to the database file and store the original pages in a rollback journal, it is
+   not possible to have read and write transactions at the same time.
+
+   However, under WAL mode, write-transaction won't modify the database file, but
+   write the changes in a WAL file, and ONLY commit these changes to the database
+   file when the transaction commits, under such scenario, you can have read and
+   write transactions at the same time.
+
+   > But you can ONLY have one write-transaction at the same time
+   >
+   > This is limited by the number of WAL files?
 
 ## 4.1.2 User transaction
 
@@ -81,5 +98,224 @@
 
 ## 4.1.4 Statement subtransaction
 
+1. Each non-`SELECT` statement in the transaction is executed in a separate 
+   statement level *sub-transaction*.
+
+   At any point of time, there can be at most one subtransaction in the user
+   transaction.
+
+   > Remeber the statement journal we have introduced in Ch3, it is just for
+   > this.
+   >
+   > Statement journal is for statement abort, not for rollback.
 
 # 4.2 Lock Management
+
+1. What is transaction isolation?
+
+   Isolation determines how transaction integrity is **visible to other users 
+   and systems**
+
+2. Transaction isolation phenomena:
+
+   * Dirty Read
+
+     A read transaction can see uncommitted changes made by another 
+     write-transaction
+
+   * Non-repeatable read
+     
+     A read-transaction reads a row twice and it gets different results.
+
+     > This is specifically related to the `UPDATE` statement.
+
+   * Phantom Read
+
+     A transaction re-executes a query returning a set of rows that satisfy 
+     a search condition and finds that the set of rows satisfying the condition
+     has changed due to another recently-committed transaction.
+
+     > This is specifically related to the `INSERT` or `DELETE` statement, i.e.,
+     > the number of rows has been changed.
+
+   > Here is a question from SO: 
+   > [What is the difference between Non-Repeatable Read and Phantom Read?](https://stackoverflow.com/q/11043712/14092446)
+
+3. There are four levels of transaction isolation, from lowest to highest:
+
+   > This is defined by the SQL standard.
+
+   > Apart from the last one, all the three levels are defined according to
+   > the isolation phenomenon. As under the serializable levels, none of these
+   > phenonenon will happen.
+
+   * Read uncommitted
+     
+     A read-transaction can read data that are not committed by a write-transction,
+     transactions are **NOT isolated at all**.
+
+   * Read committed
+
+     This isolation level guarantees that any data read is committed at the 
+     moment it is read. Thus it does not allow dirty read.
+    
+   * Repeatable read
+
+     This is the most restrictive isolation level. The transaction holds read 
+     locks on all rows it references and writes locks on referenced rows for 
+     update and delete actions. Since other transactions cannot read, update 
+     or delete these rows, consequently it avoids non-repeatable read.
+
+   * Serializable
+
+     This is the highest isolation level. A serializable execution is guaranteed
+     to be serializable. Serializable execution is defined to be an execution of 
+     operations in which **concurrently executing transactions appears to be 
+     SERIALLY executing**.
+
+     > 并发，但看上去是串行。很好实现，只要真的把并发干掉就好了:<
+
+   Serializable is the strictest isolation level, SQLite implements it >:
+
+4. Relationships between phenomenon and isolication levels
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-27%2013-55-15.png)
+
+   > From the [documentation](https://www.postgresql.org/docs/current/transaction-iso.html)
+   > of PostgreSQL.
+
+5. In SQLite, Serializable is implemented using locks on the **database level**.
+
+   > And it uses two-phase locking (2PL) protocol.
+   >
+   > No idea what 2PL is...
+
+6. For the underlying file system locks, SQLite uses 
+   [POSIX record locks](https://gavv.net/articles/file-locks/#posix-record-locks-fcntl).
+
+## 4.2.1 Lock types and their compatibilities
+
+1. From the view of a single transaction, a database file can be in one of the 
+   following **five** locking states:
+
+   > SQLite has 5 lock states, but ONLY 4 types of locks. The underlying file 
+   > system lock, only supports 2 types of locks:
+   >
+   > 1. read (shared)
+   > 2. write (exclusive)
+
+   1. NOLOCK
+
+      No locks are hold by this transaction
+
+   2. SHARED
+
+      This transaction holds a shared (read) lock on the database file, this 
+      lock ONLY permits reading from the database file.
+   
+   3. EXCLUSIVE
+
+      This transaction holds a exclusive (write) lock on the database file, this
+      lock allows both read and write.
+
+   4. RESERVED
+
+      This lock permits reading from the file, but it is a little **more than a
+      shared lock**.
+
+      A reserved lock informs other transactions that this transaction (the lock 
+      holder) is planning to **write** to the database file in the near future,
+      **but it is now just reading the file**.
+
+      There can be at most 1 reserved lock on the file.
+
+      Reserved lock can coexist with shared locks, and other transactions are 
+      **allowed to acquire new shared locks**.
+
+   5. PENDING
+
+      This lock permits reading from the file.
+
+      A pending lock means that the transaction **will write to the database 
+      file immediately**. This transaction is just waiting on all current shared
+      locks to release them.
+
+      There can be at most 1 pending lock on the file.
+
+      It can coexist with shared locks, but other transaction are NOT allowed to
+      acquire shared locks.
+
+2. Compatibility between different locks in SQLite
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-27%2016-05-58.png)
+
+## 4.2.2 Lock acquisition protocol
+
+> Lock acquisition protocol basically means how different transactions acquire
+> locks.
+
+1. The transaction lock management is done in the Pager module.
+
+2. For a read-transaction, it acquires:
+
+   1. shared lock
+
+   > State change:
+   >
+   > ```
+   > nolock -> shared lock -> nolock
+   > ```
+
+3. For a write-transaction, it acquires:
+   
+   1. Shared lock
+
+      When the `BEGIN TRANSACTION` starts.
+
+   2. Reserved Lock
+
+      We say that this transaction now becomes a semi-write-transaction, shard 
+      locks are allowed, but
+
+      * reserved lock
+      * pending lock
+      * exclusive lock
+
+      are NOT allowed.
+
+      This semi-write-transaction can write to in-cache (in-memory) pages
+
+   3. Exclusive Lock
+
+      > No pending locks here as it is internal lock that is not visible to client.
+      >
+      > Pager will never request a pending lock, it will ONLY require a exclusive
+      > lock.
+     
+      After acquiring a exclusive lock, it becomes a (full) write-transaction.
+
+   > State change:
+   >
+   > ```
+   > nolock -> shared -> reserved lock -> pending lock -> exclusive lock -> no lock
+   > ```
+
+4. State machine of lock acquisition
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-27%2017-43-02.png)
+
+5. Source code functions:
+
+   1. [`sqlite3OsLock()`](https://github.com/sqlite/sqlite/blob/60aca33a8b8f8d8364ecaa6565128fc4c1f298fd/src/os.c#L107)
+
+      This fucntion can be used to:
+      
+      1. Obtain a new lock
+      2. Upgrade an existing lock
+
+   2. [`sqlite3OsUnlock()`](https://github.com/sqlite/sqlite/blob/60aca33a8b8f8d8364ecaa6565128fc4c1f298fd/src/os.c#L112)
+      
+      This function can be used to:
+
+      1. Release a lock
+      2. Downgrade a lock

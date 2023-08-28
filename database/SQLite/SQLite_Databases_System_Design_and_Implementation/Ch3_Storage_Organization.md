@@ -482,6 +482,9 @@
 
      A 8 bytes string: 0xd9, 0xd5, 0x05, 0xf9, 0x20, 0xa1, 0x63, 0xd7
 
+     > Different types of files have different magic numbers, for journal files,
+     > their headers would always be something like this.
+
    * Number of reocrds (in this segment) (4B)
 
      > This is stored as a signed integer
@@ -552,6 +555,16 @@
    The page number and the page contens, with a checksum on them.
 
    > The checksum is computed using the random number in the segment header.
+
+3. How does recovery works with rollback journal
+
+   Simple, it just walks throught the rollback journal, and write the pages 
+   stored in it back to the database file, then truncate the database file
+   with the *initial database size* stored in the journal header.
+
+   This process is even resistent to power failures, when power is back, we 
+   simply ignore the effort that has been made in the last time, and do it
+   from the start...(:<)
 
 ## 3.3.2 Statement journal
 

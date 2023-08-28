@@ -228,6 +228,9 @@
 
    > [File locking in Linux](https://gavv.net/articles/file-locks/)
 
+   SQLite uses **POSIX record locks**, which can not be used to sync multiple 
+   threads.
+
 ## 2.2.5 Working with multiple databases
 ## 2.2.6 Working with transactions
 ## 2.2.7 Working with a catalog
