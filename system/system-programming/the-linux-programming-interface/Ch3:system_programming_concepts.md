@@ -38,6 +38,8 @@
    ```
 
    > 隐藏在`malloc/free`下面的系统调用是`brk`，或者是`mmap`.
+   >
+   > For `mmap(2)`, it is [anonymous mmap](https://en.wikipedia.org/wiki/Mmap#File-backed_and_anonymous).
 
 3. Linux上的standard c library不止`glibc`。比如，有用于嵌入式设备的消耗更少内存的
    `uClibc` 和 `diet libc`，还有`musl`, `bionic`(libc for andorid)貌似也可以给Linux用.
