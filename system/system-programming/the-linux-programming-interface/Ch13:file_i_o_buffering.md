@@ -53,7 +53,7 @@
    ``` 
 
    The above `write(2)` will return immediately after the `"hello"` is transferred
-   to the kernel `buffer cache`. (No disk output performed when `write(2)` returns
+   to the kernel `buffer cache`. (No disk output performed when `write(2)` returns/
    **NOT SYNCHRONOUS**)
 
    But if we use `O_SYNC` flag, then `write(2)` will return only when the data 
