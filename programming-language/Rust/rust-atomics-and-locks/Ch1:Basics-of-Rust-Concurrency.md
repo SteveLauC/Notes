@@ -590,17 +590,24 @@ top of UnsafeCell.
 
    |Type         |  Reason                  |
    |-------------|--------------------------|
-   |Rc           |The counter is NOT atomic |
-   |Cell         |No synchronization applied|
-   |RefCell      |No synchronization applied|
-   | Raw Ptr     |                          | 
+   |Rc           |you can clone with `&Rc`, but the inner counter is NOT sync |
+   |Cell         |No synchronization applied, every thread can update its value with no sync|
+   |RefCell      |The inner reader/writer counter has no synchronization applied|
+   |UnsafeCell   |same as Cell?             |
+   |Raw Ptr      |                          | 
+
+   > Basically, most types that are not sync are the ones that have "interior 
+   > mutability" in a non-thread-safe way.
 
 3. Typical types that are NOT `Send`
 
-   |Type         |  Reason                  |
-   |-------------|--------------------------|
-   |Rc           |Because `Rc` is NOT `Sync`|
-   |Raw Ptr      |                          |  
+   |Type              |  Reason                  |
+   |------------------|--------------------------|
+   |Rc                |Because `Rc` is NOT `Sync`|
+   |Raw Ptr           |                          |  
+   |MutexGuard        |                          |  
+   |RwLockReadGuard   |                          |  
+   |RwLockWriteGuard  |                          |  
 
    > Explanation of the reason why `Rc` is NOT `Send`:
    >
@@ -608,7 +615,33 @@ top of UnsafeCell.
    > don't clone it, in this perspective, it should be `Send`. But clone is 
    > allowed, if multiple threads have an Rc to the same allocation, they might
    > try to modify the reference counter at the same time, which can give
-   > unpredictable results.
+   > unpredictable results, here is a code snippet to demo it:
+   >
+   > ```rs
+   > use std::{rc::Rc, thread::spawn};
+   >
+   > fn another_thread(need_an_rc: Rc<i32>) {
+   >     // spawned thread clone its Rc, increase the counter
+   >     Rc::clone(&need_an_rc);
+   > }
+   >
+   > fn main() {
+   >     let rc = Rc::new(1);
+   >
+   >     let handle = spawn({
+   >        let clone = Rc::clone(&rc);
+   >        move || {
+   >            another_thread(clone);
+   >        }
+   >     });
+   >
+   >     // main thread clone its Rc, increase the counter
+   >
+   >     let clone = Rc::clone(&rc);
+   > 
+   >     handle.join().unwrap();
+   > }
+   > ```
 
 4. Types that are `Send` but not `Sync`
 
