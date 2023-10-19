@@ -4,6 +4,9 @@
 > * What salient features SQLite supports
 > * How SQLite stores tables in database files
 > * How to write, compile, and execute SQLite applications
+>
+>   > SQLite is an embedded database system, you can use it in your C program
+>
 > * Some most frequently used SQLite APIs
 > * The modular SQLite architecture
 > * SQLite limitations
@@ -63,7 +66,13 @@
    1. Complete `ALTER TABLE` support
    2. Complete trigger support
    3. Writing to VIEWs
+
+      > In MySQL, VIEWs are updatable.
+
    4. `GRANT` and `REVOKE`
+
+      SQLite directly operates on disk file, which means as long as you have the 
+      corresponding file permission, you are granted.
 
 ## 2.1.4 Database Storage
 
@@ -76,11 +85,31 @@
    1. multiple readers to a database file
    2. One exclusive writer to a database file
 
+   > Read and write can be done at the same time if you are using the new WAL
+   > journal
+
 ## 2.1.6 SQLite Usage
 # 2.2 Sample SQLite Applications
 ## 2.2.1 A Simple Application
 
 1. demo code in Rust
+
+   > the `sqlite-lib` package has to be installed to make the Rust binding work
+   >
+   > ```sh
+   > $ dnf list installed | grep -i sqlite
+   > sqlite-libs.x86_64                                        3.40.1-2.fc38                       @anaconda
+   > ```
+
+   ```sh
+   $ litecli MyDB
+   $ litecli MyDB
+   Version: 1.9.0
+   Mail: https://groups.google.com/forum/#!forum/litecli-users
+   GitHub: https://github.com/dbcli/litecli
+   MyDB> create table students (SID int, name string);
+   MyDB> insert into students values (0, "steve");
+   ```
 
    ```rust
    fn main() {
@@ -96,6 +125,11 @@
        }
    }
    ``` 
+
+   ```sh
+   $ carog r -q
+   SID = Integer(0)
+   ```
 
 ## 2.2.2 SQLite APIs
 
@@ -228,14 +262,16 @@
 
    > [File locking in Linux](https://gavv.net/articles/file-locks/)
 
-   SQLite uses **POSIX record locks**, which can not be used to sync multiple 
-   threads.
+   SQLite uses **POSIX record locks**, which is associated with the `[i-node, pid]`
+   pair and thus can not be used to sync multiple threads.
 
 ## 2.2.5 Working with multiple databases
 ## 2.2.6 Working with transactions
 ## 2.2.7 Working with a catalog
 
 1. The catalog table used by SQLite are named in `sqlite_*`, e.g., `sqlite_master`.
+
+   > Most databases would store their catalog in tables
 
    Users are not allowedd to drop or modify it, or create index on it.
 
@@ -262,6 +298,9 @@
    object name reserved for internal use: sqlite_xxxx
    ```
 
+   > `sqlite_master` has an alternative name `sqlite_schema`, and `sqlite_temp_master`
+   > can also be called `sqlite_temp_schema`
+
 ## 2.2.8 Using the sqlite3 executable
 
 # 2.3 Transaction Support
@@ -270,9 +309,13 @@
    created for every SQL statement (without manual `BEGIN`), and every transaction
    will be automatically committed.
 
-   Autocommit can be detrimental to performance, as for each write-transaction, SQLite
-   requires to open, access and close the journal file. If it is used in multi-threaded
-   context, then there is also the lock overhead.
+   Autocommit can be detrimental to performance, as for each write-transaction, 
+   SQLite requires to create, open, access, close and remove the journal file. 
+   If it is used in multi-threaded context, then there is also the lock overhead.
+
+   > By default, the journal file for a write-transaction would be deleted when
+   > it commits, but you can control whether to remove it with the `journal_mode`
+   > macro
 
    > For more information on the journal file, see the contens about rollback 
    > journal in Ch3.
@@ -437,8 +480,15 @@
 
 1. In RDBMSs, catalogs themselves are tables (often called system tables).
 
-   For example, the schema descriptions (SQL create statements) are stored as
-   rows in catalogs.
+   For example, the schema descriptions (the original SQL statements) are 
+   stored as rows in catalogs.
+
+   > Tweet: https://twitter.com/pkhuong/status/1708090228764737914?s=20
+   >
+   > It's a clever solution to sqlite's long-term version compatibility goals. 
+   > The schema is *only* stored as text, and reparsed at runtime. All versions
+   > of sqlite will have schema parsing logic, might as well use that for 
+   > persistence.
 
    By default, `sqlite_master` is the ONLY catalog that is enabled in SQLite.
 
@@ -490,6 +540,9 @@
    table|student|student|2|CREATE TABLE student (id int primary key)
    index|sqlite_autoindex_student_1|student|3|
    ```
+
+   > An index has been created for the reason that we have specified `id` as our
+   > primary key.
 
 2. There is another catalog `sqlite_temp_master` that is used to store the metadata
    of all the temporary objects.
@@ -546,9 +599,9 @@
    student|1
    ```
    
-   Note that the sequence catalog will be created ONLY when you attempt to insert
-   a row to a table that has a autoincrement column.
-
+   Note that the sequence catalog will be created ONLY when you create a table
+   with a `autoincrement` column, no matter whether a row has been inserted 
+   or not.
 
 3. Users are not allowed to modify the catalog table or create indexes on them.
 

@@ -4,7 +4,9 @@
 > * The formats of the database and various journal files
 > * The concept of page in the SQLite context and the purpose of various pages
 > * How a database is made platform independent
->   > All the data is stored in big endian?
+>   > All the data is stored in big endian? 
+>   >
+>   > Yes, the database file and WAL file are all in big endian
 >
 > Basically, we have:
 > 1. The format of the database file
@@ -258,6 +260,8 @@
      > This string can be changed via macro: `SQLITE_FILE_HEADER`
 
    * Page size in bytes (u16)
+
+     > stored in big endian
 
    * File format: write version and read version
 
