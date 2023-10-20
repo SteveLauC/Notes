@@ -1,0 +1,122 @@
+> This chapter is mainly about:
+>
+> * How SQLite organizes tables into separate B+Trees and indexes into 
+>   separate B-Tree
+>
+> * How trees are constructed in database files, and tuples are inserted and 
+>   deleted, respectively, into and from the trees
+>
+> * B-Tree and B+Tree structures and algorithms to manipulate them
+> * structure of internal, leaf and overflow pages
+
+> * 6.1 Preview
+> * 6.2 The Tree Interfeace Functions
+> * 6.3 B+Tree Structure
+>   * 6.3.1 Operations on B+Tree
+>     * 6.3.1.1 Search
+>     * 6.3.1.2 Search next
+>     * 6.3.1.3 Insert
+>     * 6.3.1.4 Delete
+>   * 6.3.2 B+Tree in SQLite
+> * 6.4 Page Structure
+>   * 6.4.1 The Page Structure
+>     * 6.4.1.1 Structure of page header
+>     * 6.4.1.2 Structure of storage area
+>     * 6.4.1.3 Structure of a cell
+>   * 6.4.2 Overflow page structure
+> * 6.5 The Tree Module Functionalities
+>   * 6.5.1 Control data structures
+>     * 6.5.1.1 Btree structure
+>     * 6.5.1.2 BtShared structure
+>     * 6.5.1.3 MemPage structure
+>     * 6.5.1.4 BtCursor structure
+>     * 6.5.1.5 Integrated control structures
+>   * 6.5.2 Space management
+>     * 6.5.2.1 Management of free pages
+>     * 6.5.2.2 Management of page space
+
+# 6.1 Preview
+# 6.2 The Tree Interfeace Functions
+# 6.3 B+Tree Structure
+## 6.3.1 Operations on B+Tree
+### 6.3.1.1 Search
+### 6.3.1.2 Search next
+### 6.3.1.3 Insert
+### 6.3.1.4 Delete
+## 6.3.2 B+Tree in SQLite
+
+1. A tree is allocated by allocating its root page, a root page won't be relocated.
+
+   Each tree is identified by its root page number, this number is stored in the
+   `sqlite_master` (`sqlite_schema`) table, table `sqlite_master`'s root page will
+   always be page 1 (the first page)
+
+2. For a table B+Tree, internal nodes are just for navigation, the actual data is
+   stored in leaf nodes.
+
+   For an entry (A row), the key and data form the *payload*.
+
+   > From the official document: https://www.sqlite.org/fileformat.html 
+   > The payload of a leaf table node does not contain the key, is ONLY about
+   > the arbitray lengh part.
+
+3. A typical B+Tree in SQLite
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-10-20%2017-48-57.png)
+
+# 6.4 Page Structure
+
+> A SQLite database file consists of multiple pages, each page can be one of the 
+> following types:
+>
+> 1. free
+> 2. tree
+> 3. pointer-map
+> 4. lock-byte
+>
+> For more infomation about page types, see 3.2.3
+>
+> In this section, we introduce the structures of:
+>
+> 1. internal
+> 2. leaf
+> 3. overflow
+>
+> tree pages.
+
+1. Any page in a database file can be any types, except for the first page.
+   The first page will always a B+Tree table page
+
+   > It is actually the root page of the `sqlite_master` (`sqlite_schema`) table
+
+## 6.4.1 The Page Structure
+
+1. What is cell
+
+   The logical content of each internal/leaf page is partitioned into what are
+   called *cells*.
+
+   * For a B+Tree internal node
+     
+     A cell is the key (ROWID) and its preceeding pointer
+      
+   * For a B+Tree leaf node
+     
+     A cell is the payload (row data)
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-10-20%2020-15-28.png)
+
+### 6.4.1.1 Structure of page header
+### 6.4.1.2 Structure of storage area
+### 6.4.1.3 Structure of a cell
+## 6.4.2 Overflow page structure
+# 6.5 The Tree Module Functionalities
+## 6.5.1 Control data structures
+### 6.5.1.1 Btree structure
+### 6.5.1.2 BtShared structure
+### 6.5.1.3 MemPage structure
+### 6.5.1.4 BtCursor structure
+### 6.5.1.5 Integrated control structures
+## 6.5.2 Space management
+### 6.5.2.1 Management of free pages
+### 6.5.2.2 Management of page space

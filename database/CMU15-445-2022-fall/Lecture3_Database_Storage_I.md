@@ -133,6 +133,18 @@
    > 1. tuple oriented (slotted-pages belongs to this)
    > 2. log-structured
 
+   > SQLite uses this format, see 
+   > [Storage of the SQL database schema](https://www.sqlite.org/fileformat.html#storage_of_the_sql_database_schema)
+   >
+   > A b-tree page is divided into regions in the following order:
+   >
+   > * The 100-byte database file header (found on page 1 only)
+   > * The 8 or 12 byte b-tree page header
+   > * The cell pointer array
+   > * Unallocated space
+   > * The cell content area
+   > * The reserved region.
+
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2013-46-17.png)
 
    * slot array(indirection layer): mapping layer from the particular slot to

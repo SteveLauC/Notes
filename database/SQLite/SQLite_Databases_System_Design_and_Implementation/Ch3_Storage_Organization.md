@@ -10,6 +10,9 @@
 >
 > Basically, we have:
 > 1. The format of the database file
+>
+>    > The detailed format of page is in Ch6
+>
 > 2. The format of the journal file
 > 3. The format of the WAL file (not in this chapter)
 
@@ -30,6 +33,19 @@
 > Questions I have
 >
 > 1. Seems like SQLite does not store the type of a page in the page itself, why?
+>    
+>    For B-tree (b-tree/b+tree) pages, the type is stored in the B-tree header.
+>
+>    > The one-byte flag at offset 0 indicating the b-tree page type.
+>    >
+>    > * A value of 2 (0x02) means the page is an interior index b-tree page.
+>    > * A value of 5 (0x05) means the page is an interior table b-tree page.
+>    > * A value of 10 (0x0a) means the page is a leaf index b-tree page.
+>    > * A value of 13 (0x0d) means the page is a leaf table b-tree page.
+>    >
+>    >  Any other value for the b-tree page type is an error.
+>
+>    For more details about the format of B-tree page, see Ch6.
 
 
 # 3.1 Database Naming Conventions
@@ -221,7 +237,16 @@
    1. A 100 bytes **file** header
    2. A B+Tree internal page storing the page number of the root pages of 
       `sqlite_master` and `sqlite_temp_master`
+
+      > I think the note here is wrong, the page 1 will be the root page of 
+      > `sqlite_master`, it can be a internal table page or leaf table page
+      > depending on the number of entries stored in it.
+
    3. Reserved space
+
+      The size of the reserved region is determined by the one-byte unsigned 
+      integer found at an offset of 20 into the database file header. The size 
+      of the reserved region is usually zero.
 
 2. The first page, and tables `sqlite_master` and `sqlite_temp_master` are the 
    metadata that SQLite uses.
