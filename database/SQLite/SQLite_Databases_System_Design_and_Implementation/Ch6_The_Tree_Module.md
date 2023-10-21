@@ -104,10 +104,72 @@
      
      A cell is the payload (row data)
 
+     > I think the row data will include the ROWID of that row
+
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-10-20%2020-15-28.png)
 
+2. Cells are units of space allocation and deallocation on tree pages
+
+3. Every page consists the following components
+
+   > except for the first page, it has a 100 bytes database file header.
+
+   1. A page header
+   2. Cell pointer array (one layer of indirection)
+   3. Unallocated space
+   4. Cell content area
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-10-21%2019-41-01.png)
+
+   > [slotted page structure](https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2022-fall/Lecture3_Database_Storage_I.md)
+
+   cells are placed in order logically, not physically, the cell pointer array
+   is sorted but the cell content are is not.
+
 ### 6.4.1.1 Structure of page header
+
+> metadata for that page
+
+| Offset | Size | Description |
+|--------|------|-------------|
+|0       |1     | The one-byte flag at offset 0 indicating the b-tree page type. A value of 2 (0x02) means the page is an interior index b-tree page. A value of 5 (0x05) means the page is an interior table b-tree page. A value of 10 (0x0a) means the page is a leaf index b-tree page. A value of 13 (0x0d) means the page is a leaf table b-tree page. Any other value for the b-tree page type is an error. |
+| 1      |2     | The two-byte integer at offset 1 gives the start of the first freeblock on the page, or is zero if there are no freeblocks. |
+|3       |2     |The two-byte integer at offset 3 gives the number of cells on the page. |
+|5       |2     |The two-byte integer at offset 5 designates the start of the cell content area. A zero value for this integer is interpreted as 65536 (which can not fit into u16) |
+|7       |1     |The one-byte integer at offset 7 gives the number of fragmented free bytes within the cell content area |
+|8       |4     |The four byte-page number at offset 8 is the right-most pointer. This value appears in the header of interior b-tree pages only and is omitted from all other pages |
+
+
 ### 6.4.1.2 Structure of storage area
+
+1. Cell pointer array comes directly after the page header, each pointer takes
+   2 bytes number indicating the offset of corresponding content within this
+   page.
+
+2. The cell content area are **NOT** necessarily **continuous**, and these unused
+   space is called *freeblock*, a freeblock is at least 4 bytes, the offsets are 
+   stored in a singly linked list in this page, in a ascending order of their
+   addresses, the first node of this list is stored in the page header(offet 1, 
+   size 2)
+
+   A freeblock is at least 4 bytes because these bytes are used to store metadata:
+
+   1. first 2 bytes: offset of the next free block
+     
+      > 0 indicates there is no next freeblock
+       
+   2. second 2 bytes: size of this free block
+    
+      > including this 4 bytes metadata
+
+   Unused space less than 4 bytes won't be stored in this freeblock list.
+
+   The total size of these freeblocks is stored in the page header (offset 7 size 1), 
+   since it only uses 1 byte, the maximum size is 255.
+
+
+
+   
 ### 6.4.1.3 Structure of a cell
 ## 6.4.2 Overflow page structure
 # 6.5 The Tree Module Functionalities
