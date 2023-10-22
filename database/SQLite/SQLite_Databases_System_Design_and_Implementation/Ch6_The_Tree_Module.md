@@ -147,10 +147,10 @@
    page.
 
 2. The cell content area are **NOT** necessarily **continuous**, and these unused
-   space is called *freeblock*, a freeblock is at least 4 bytes, the offsets are 
-   stored in a singly linked list in this page, in a ascending order of their
-   addresses, the first node of this list is stored in the page header(offet 1, 
-   size 2)
+   space is called *freeblock*, a freeblock is at least 4 bytes, the offsets of 
+   these blocks are stored in a singly linked list in this page, in a ascending 
+   order of their addresses, the first node of this list is stored in the page 
+   header(offet 1, size 2)
 
    A freeblock is at least 4 bytes because these bytes are used to store metadata:
 
@@ -167,11 +167,120 @@
    The total size of these freeblocks is stored in the page header (offset 7 size 1), 
    since it only uses 1 byte, the maximum size is 255.
 
-
-
    
 ### 6.4.1.3 Structure of a cell
+
+1. Structure of a cell
+
+
+   > When you think that structures of a cell between leaf node and internal 
+   > node are so different, and are curious how they do the conversion, well
+   > they don't, in B+Tree, a leaf node will always be a leaf node, same applies
+   > to internal node.
+   >
+   > Not sure about the B-Tree though.
+
+
+   | Size | Description |
+   |------|-------------|
+   |4     |The preceeding child node ptr (omitted on leaf nodes)|
+   |var(1-9)|Number of bytes of data (payload) (Omitted on index-tree page or internal table-tree pgae)|
+   |var(1-9)|Number of bytes of key (Or the key itself if this is a table-tree page)|
+   |*     |Payload      |
+   |4     |Page number of the first overflow page (omitted if no overflow or in a internal table-tree page) |
+
+   * a cell within a internal table-tree page:
+
+      > Contains ONLY:
+      > 1. key (ROWID)
+      > 2. preceeding ptr
+
+      > it does not have overflow pages
+
+      | Size | Description |
+      |------|-------------|
+      |4     |The preceeding child node ptr |
+      |var(1-9)|key (ROWID)|
+
+   * a cell within a leaf table-tree page:
+
+      > Contains ONLY:
+      > 1. key (ROWID)
+      > 2. payload length (Row data length)
+      > 3. payload (Row data)
+      > 4. first overflow page if exists
+
+      | Size | Description |
+      |------|-------------|
+      |var(1-9)|Number of bytes of data (payload) |
+      |var(1-9)|key (ROWID)|
+      |*     |Payload      |
+      |4     |Page number of the first overflow page (omitted if no overflow) |
+
+
+   * a cell within a internal index-tree page:
+
+     | Size | Description |
+     |------|-------------|
+     |4     |The preceeding child node ptr |
+     |var(1-9)|Number of bytes of key |
+     |*     |Payload (key, for an index b-tree, the key is always arbitrary in length and hence the payload is the key) |
+     |4     |Page number of the first overflow page (omitted if no overflow) |
+
+   * a cell within a leaf index-tree page:
+
+     > For index-tree pages, internal pages and leaf pages are not that different,
+     > with the ONLY difference that leaf nodes don't have pointers.
+
+     | Size | Description |
+     |------|-------------|
+     |var(1-9)|Number of bytes of key |
+     |*     |Payload (key, for an index b-tree, the key is always arbitrary in length and hence the payload is the key) |
+     |4     |Page number of the first overflow page (omitted if no overflow) |
+
+2. diagram
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-10-22%2009-30-24.png)
+
+3. Variable-length interger (Varint)
+
+   SQLite uses variant-length integers (varint) to represent integer types, 
+   a varint is 1-9 bytes long, which can encode integers up to 64-bit long.
+
+   This encoding is called huffman code, it is preferred by SQLite because it
+   will only take 2 byes in most cases.
+
+   A variable-length integer or "varint" is a static Huffman encoding of 64-bit 
+   twos-complement integers that uses less space for small positive values. A 
+   varint is between 1 and 9 bytes in length. The varint consists of either 
+   zero or more bytes which have the high-order bit set followed by a single 
+   byte with the high-order bit clear, or nine bytes, whichever is shorter. The 
+   lower seven bits of each of the first eight bytes and all 8 bits of the ninth 
+   byte are used to reconstruct the 64-bit twos-complement integer. Varints are 
+   big-endian: bits taken from the earlier byte of the varint are more significant 
+   than bits taken from the later bytes.
+
+   > still have no idea how can I decode a varint, need to read SQLite's source 
+   > code
+
+4. How does payload fractions work
+
+   > Page 165
+
 ## 6.4.2 Overflow page structure
+
+The frist 4 bytes are used to store the pointer of the next overflow page
+
+The remaining part is for content, and every overflow page except the last
+one is completely filled with data of length equal to usable space minus
+4 bytes
+
+> QUES: How is this possible, what if a payload is only 1 byte long, then it
+>       will only take 5 bytes
+
+but an overflow page never stores content from two payloads.
+
+
 # 6.5 The Tree Module Functionalities
 ## 6.5.1 Control data structures
 ### 6.5.1.1 Btree structure

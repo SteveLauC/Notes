@@ -307,14 +307,21 @@
      By default, the reserved space size is 0, it will be non-zero if the
      encryption feature is enabled for this database.
 
-   * Max/Min Embedded Payload:
+   * Max/Min Embedded (internal page) Payload fraction:
+
+     > I think this is for index-tree pages as internal table-tree pages have
+     > no payload.
 
      Embedded Payload is the space that is consumed by a **reocrd**(seems to be 
      wrong here?) in a tree page, max embedded payload is the upper bound, min 
      embedded payload is the lower bound.
 
-     The max embedded payload is 64 bytes, so the fraction is 25. The min embedded
-     payload is 32 bytes, so the fraction is 12.5.
+     The max embedded payload fraction is 64 bytes, the min embedded payload 
+     fraction is 32
+
+     | Max embedded Payload fraction | Min |
+     |-------------------------------|-----|
+     |64                             |32   |
 
      > If the acutal payload is bigger than the Max embedded payload, then SQLite
      > move the extra bytes to a (or multiple) overflow pages.
@@ -323,19 +330,24 @@
      > into the overflow page as long as the embedded payload does not drop under 
      > the min embedded payload.
 
-   * Max/Min Leaf Payload:
+   * Max/Min Leaf (leaf page) Payload fraction:
 
      Leaf Payload is similar to Embeded Payload, but only applies to B+Tree leaf
      pages.
 
-     | Max Leaf Payload(fraction) | Min |
-     |----------------------------|-----|
-     |255(100)                    |32(12.5)|
+     | Max Leaf Payload fraction | Min |
+     |---------------------------|-----|
+     |255                        |32   |
 
 
      > Why does SQLite store the fraction here? It makes more sense to directly
      > store the limination in bytes so that you don't need to bother with floating
      > points.
+     >
+     > Steve from future: well, the actual fractions are not floating numbers.
+
+     > Originally, SQLite wants to make these fraction argument tunable, but it
+     > is not currently supported and has no plan to implement this in the future.
 
    * File Change Counter
 
