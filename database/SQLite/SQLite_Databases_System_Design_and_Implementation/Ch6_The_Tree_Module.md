@@ -23,6 +23,10 @@
 >     * 6.4.1.1 Structure of page header
 >     * 6.4.1.2 Structure of storage area
 >     * 6.4.1.3 Structure of a cell
+>
+>       > how fields are stored in a payload is not coverd in this chapter, it 
+>       > is in 7.4
+>
 >   * 6.4.2 Overflow page structure
 > * 6.5 The Tree Module Functionalities
 >   * 6.5.1 Control data structures

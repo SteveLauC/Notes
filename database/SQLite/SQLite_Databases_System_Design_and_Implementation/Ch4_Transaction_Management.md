@@ -1,17 +1,51 @@
 > This chapter is mainly about:
 >
 > * How SQLite implements ACID properities
-> * The SQLite way of managing various locks and their mappings to native file
+>   
+>   * A (Atomicity): each statement in a transaction (to read, write, update or 
+>     delete data) is treated as a single unit. Either the entire statement is 
+>     executed, or none of it is executed. This property prevents data loss and 
+>     corruption from occurring if, for example, if your streaming data source 
+>     fails mid-stream.
+>
+>   * C (Consistency): ensures that transactions only make changes to tables in 
+>     predefined, predictable ways. Transactional consistency ensures that corruption 
+>     or errors in your data do not create unintended consequences for the 
+>     integrity of your table.
+>
+>     > QUES: I don't think I really understand what does this C mean
+>
+>   * I (Isolation): when multiple users are reading and writing from the same 
+>     table all at once, isolation of their transactions ensures that the concurrent
+>     transactions don't interfere with or affect one another. Each request can occur 
+>     as though they were occurring one by one, even though they're actually occurring 
+>     simultaneously.
+>
+>   * D (Durability): ensures that changes to your data made by successfully executed
+>     transactions will be saved, even in the event of system failure.
+>
+> * The SQLite way of managing various locks and their mappings to native file 
 >   locks and lock transactions
+>
 > * How SQLite avoids deadlocks
 > * How SQLite implements journal protocols
 >
->   > BTW, what are journaling protocols
+>   > QUES: what are journaling protocols, it does not seem to be a general 
+>   > database term
 >
-> * How SQLite managers savepoints in user transactions
+> * How SQLite manages savepoints in user transactions
 >
->   > A SAVEPOINT is a point in a transaction in which you can roll the transaction
+>   > A `SAVEPOINT` is a point in a transaction in which you can roll the transaction
 >   > back to a certain point **without rolling back the entire transaction**. 
+
+> Questions I have:
+>
+> 1. Relationship between transactions and the underlying lock states
+>
+>    "4.2.2 Lock acquisition protocol" talks about this.
+>
+> 2. The root cause of a transaction conflict is the conflict of the underlying 
+>    lock, right?
 
 > * 4.1 Transaction Types
 >   * 4.1.1 System transaction (*autocommit* mode)
@@ -19,9 +53,26 @@
 >   * 4.1.3 Savepoint
 >   * 4.1.4 Statement subtransaction
 > * 4.2 Lock Management
+>
 >   > There are some notes on transaction isolation in this section.
+>
 >   * 4.2.1 Lock types and their compatibilities
 >   * 4.2.2 Lock acquisition protocol
+>   * 4.2.3 Explicit locking
+>   * 4.2.4 Deadlock and starvation
+>   * 4.2.5 Linux lock primitives
+>   * 4.2.6 SQLite lock implementation
+>     * 4.2.6.1 Translation from SQLite locks to native file locks
+>     * 4.2.6.2 Exgineering issues with native locks
+>     * 4.2.6.3 Linux system issues
+>     * 4.2.6.4 Multithreaded applications
+>   * 4.2.7 Lock APIs
+>     * 4.2.7.1 The `sqlite30sLock` API
+>     * 4.2.7.2 The `sqlite30sUnlock` API
+> * 4.3 Journal Management
+>   * 4.3.1 Logging protocol
+>   * 4.3.2 Commit protocol
+> * 4.4 Subtransaction Management
 
 # 4.1 Transaction Types
 ## 4.1.1 System transaction
@@ -38,6 +89,8 @@
    > for maximizing concurrency as multiple read-transactions can occur at
    > the same time.
 
+   > Under the manual mode, SQLite would also do something similar.
+
 3. Simultaneous Read and Write transactions
 
    Under the rollback journal mode, since a write-transaction would directly write
@@ -51,7 +104,7 @@
 
    > But you can ONLY have one write-transaction at the same time
    >
-   > This is limited by the number of WAL files?
+   > QUES: Is this limited by the number of WAL files?
 
 ## 4.1.2 User transaction
 
@@ -69,10 +122,12 @@
    ```SQL
    BEGIN <transaction>
 
-   COMMIT; (or rollback)
+   COMMIT; (or ROLLBACK)
    ```
 
    > I would call this *manual mode* rather than a user transaction
+   >
+   > Future steve: well, it kinda makes sense to me now...
 
 3. When a user transaction aborts, the write-transaction is rolled back and **some
    of read-transactions that read tables updated by the write-transaction** are 
@@ -89,9 +144,9 @@
 2. Savepoint is supported in SQLite, an application can execute a `savepoint`
    command inside or **outside** a user transaction.
 
-   > Currently I don't understand how a savepoint outside a transaction works,
-   > per the [document](https://www.sqlite.org/lang_savepoint.html), it seems
-   > to work like a `BEGIN DEFERRED TRANSACTION`(Ok, what is this then?).
+   > QUES: Currently I don't understand how a savepoint outside a transaction 
+   > works, per the [document](https://www.sqlite.org/lang_savepoint.html), it 
+   > seems to work like a `BEGIN DEFERRED TRANSACTION`(Ok, what is this then?).
 
 3. We are pretty clear that SQLite does not support nested transactions, but
    the document says that you can emulate this using savepoints. 
@@ -116,7 +171,7 @@
    Isolation determines how transaction integrity is **visible to other users 
    and systems**
 
-2. Transaction isolation phenomena:
+2. Transaction isolation phenomena/problems:
 
    * Dirty Read
 
@@ -125,18 +180,20 @@
 
    * Non-repeatable read
      
-     A read-transaction reads a row twice and it gets different results.
+     A read-transaction reads **a row** twice and it gets **different results**.
 
      > This is specifically related to the `UPDATE` statement.
 
    * Phantom Read
 
-     A transaction re-executes a query returning a set of rows that satisfy 
+     A transaction **re-executes** a query returning a set of rows that satisfy 
      a search condition and finds that the set of rows satisfying the condition
-     has changed due to another recently-committed transaction.
+     has changed when compared to the last run due to another recently committed
+     transaction.
 
      > This is specifically related to the `INSERT` or `DELETE` statement, i.e.,
-     > the number of rows has been changed.
+     > the number of rows has been changed, there are new rows or some row that
+     > are deleted.
 
    > Here is a question from SO: 
    > [What is the difference between Non-Repeatable Read and Phantom Read?](https://stackoverflow.com/q/11043712/14092446)
@@ -145,9 +202,9 @@
 
    > This is defined by the SQL standard.
 
-   > Apart from the last one, all the three levels are defined according to
-   > the isolation phenomenon. As under the serializable levels, none of these
-   > phenonenon will happen.
+   > Apart from the first one, all the three levels are defined according to
+   > a isolation phenomenon. And under the serializable level, none of these
+   > phenomena will happen.
 
    * Read uncommitted
      
@@ -165,6 +222,8 @@
      locks on all rows it references and writes locks on referenced rows for 
      update and delete actions. Since other transactions cannot read, update 
      or delete these rows, consequently it avoids non-repeatable read.
+
+     > QUES: 
 
    * Serializable
 
@@ -184,7 +243,7 @@
    > From the [documentation](https://www.postgresql.org/docs/current/transaction-iso.html)
    > of PostgreSQL.
 
-5. In SQLite, Serializable is implemented using locks on the **database level**.
+5. In SQLite, Serializable is implemented using locks at the **database level**.
 
    > And it uses two-phase locking (2PL) protocol.
    >
@@ -304,6 +363,9 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-27%2017-43-02.png)
 
+   > You can see that the you can go back to the nolock state from every state
+   > except itself, this is probably because scheduling.
+
 5. Source code functions:
 
    1. [`sqlite3OsLock()`](https://github.com/sqlite/sqlite/blob/60aca33a8b8f8d8364ecaa6565128fc4c1f298fd/src/os.c#L107)
@@ -319,3 +381,49 @@
 
       1. Release a lock
       2. Downgrade a lock
+
+## 4.2.3 Explicit locking
+
+1. By default, locks in SQLite are implicit, which is totally managed by the 
+   Pager module, however, as an user, there are two ways to explicitly tell
+   SQLite to lock the underlying database files
+
+
+   1. `BEGIN EXCLUSICE TRANSACTION`
+      
+      Tell SQLite start a write transaction immediately, which would try to acquire
+      an **exclusive** lock on all the open database files (main and other database files)
+
+      > It can fail with `database is locked` if a exclusive lock cannot be acquired.
+
+   2. `BEGIN IMMEDIATE TRANSACTION`
+
+      Tell SQLite start a write transaction immediately, which would try to acquire
+      a **reserved** lock on all the open database files (main and other database files)
+   
+   > QUES: to acquire an **exclusive** lock, a connection has to go through the 
+   > lock stages: `nolock -> shared -> reserved -> pending -> exclusive`, right?
+
+   > From the official SQLite [doc](https://www.sqlite.org/lang_transaction.html),
+   > the above 2 commands are same under the WAL journal mode. Under the legacy
+   > rollback journal mode, `BEGIN IMMEDIATE TRANSACTION` allows other connections
+   > to read the database file.
+
+2. `BEGIN DEFERRED TRANSACTION`
+
+
+
+## 4.2.4 Deadlock and starvation
+## 4.2.5 Linux lock primitives
+## 4.2.6 SQLite lock implementation
+### 4.2.6.1 Translation from SQLite locks to native file locks
+### 4.2.6.2 Exgineering issues with native locks
+### 4.2.6.3 Linux system issues
+### 4.2.6.4 Multithreaded applications
+## 4.2.7 Lock APIs
+### 4.2.7.1 The `sqlite30sLock` API
+### 4.2.7.2 The `sqlite30sUnlock` API
+# 4.3 Journal Management
+## 4.3.1 Logging protocol
+## 4.3.2 Commit protocol
+# 4.4 Subtransaction Management

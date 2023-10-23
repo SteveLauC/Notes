@@ -4,24 +4,24 @@
 > * The formats of the database and various journal files
 > * The concept of page in the SQLite context and the purpose of various pages
 > * How a database is made platform independent
->   > All the data is stored in big endian? 
+>   > QUES: All the data is stored in big endian? 
 >   >
 >   > Yes, the database file and WAL file are all in big endian
 >
 > Basically, we have:
 > 1. The format of the database file
 >
->    > The detailed format of page is in Ch6
+>    > The detailed format of *page* is in Ch6
 >
-> 2. The format of the journal file
-> 3. The format of the WAL file (not in this chapter)
+> 2. The format of the legacy journal file
+> 3. The format of the new WAL file (not in this chapter)
 
 > * 3.1 Database Naming Conventions
 > * 3.2 Database File Structure
 >   * 3.2.1 Page abstraction
 >   * 3.2.2 Page size
 >   * 3.2.3 Page types
->   * 3.2.4 Database metadata
+>   * 3.2.4 Database metadata (DB file header)
 >   * 3.2.5 Structure of freelist
 > * 3.3 Journal File Structure
 >   * 3.3.1 Rollback Journal 
@@ -34,7 +34,7 @@
 >
 > 1. Seems like SQLite does not store the type of a page in the page itself, why?
 >    
->    For B-tree (b-tree/b+tree) pages, the type is stored in the B-tree header.
+>    For tree (b-tree/b+tree) pages, the type is stored in the tree header:
 >
 >    > The one-byte flag at offset 0 indicating the b-tree page type.
 >    >
@@ -46,6 +46,8 @@
 >    >  Any other value for the b-tree page type is an error.
 >
 >    For more details about the format of B-tree page, see Ch6.
+>    
+>    Future steve: it doesn't, see this [question](https://stackoverflow.com/q/68432226/14092446)
 
 
 # 3.1 Database Naming Conventions
@@ -98,12 +100,37 @@
    not visible to other connections. Even if we have two connections connecting
    to the same database file, we get two differnt temporary databases.
 
+   > QUES: what is the temporary database for?
+
 5. You can `attach` a database file to its unique name by the following command:
 
    > This is how you open another database that is not named `main` in SQLite.
 
    ```shell
-   SQLite> attach path_to_file <db>
+   SQLite> attach path_to_file as <db>
+   ```
+
+   ```sh
+   MyDB> .databases;
+   +-----+------+------------------------------------------------------+
+   | seq | name | file                                                 |
+   +-----+------+------------------------------------------------------+
+   | 0   | main | /home/steve/Documents/workspace/playground/rust/MyDB |
+   +-----+------+------------------------------------------------------+
+   Time: 0.003s
+
+   MyDB> attach new_my_db as newMyDB
+   Query OK, 0 rows affected
+   Time: 0.000s
+
+   MyDB> .databases;
+   +-----+---------+-----------------------------------------------------------+
+   | seq | name    | file                                                      |
+   +-----+---------+-----------------------------------------------------------+
+   | 0   | main    | /home/steve/Documents/workspace/playground/rust/MyDB      |
+   | 2   | newMyDB | /home/steve/Documents/workspace/playground/rust/new_my_db |
+   +-----+---------+-----------------------------------------------------------+
+   Time: 0.002s
    ```
 
    You can detach it via:
@@ -113,6 +140,13 @@
    ```
 
    > `detach` cannot be used for the `main` and `temp` databases
+   >
+   > ```sh
+   > MyDB> detach main;
+   > cannot detach database main
+   > ```
+   >
+   > You can change the "main" database by the `.open` command.
 
 # 3.2 Database File Structure
 
@@ -145,6 +179,8 @@
 
    Also, you can query how many pages the current database takes via:
 
+   > `.dbinfo` will also give you this info
+
    ```
    steve_db> pragma page_count;
    +------------+
@@ -164,11 +200,19 @@
    2. in range [512(2^9), 65536(2^16)]
 
    The lower bound is for performance reason, the upper bound exists because 
-   SQLite stores page size in a `u16`.
+   SQLite stores page size in a `u16`, though 65536 cannot fit into a `u16`,
+   if the page size is 65536, then it will be stored as 1.
 
-3. Maximux database file size
+   > It is reasonable to store 65536 as 1 since 1 is actually not a valid page
+   > size
 
-   A database file can have at most 2^31 - 1 pages(i32), this pretty big, so
+   > While I kinda think that the upper bound is also for performance reasons
+   > now as it is totally feaisble to store bigger integers as numbers that
+   > are valid page sizes, for example, store 10000000 as 2.
+
+3. Maximum database file size
+
+   A database file can have at most 2^31 - 1 pages(i32), this is pretty big, so
    actually, the limitation will be imposed by the underlying file system.
 
 4. Change the page size
@@ -199,6 +243,17 @@
    :memory:>
    ```
 
+   > It is kinda bad that you can set page size to an invalid value and you won't
+   > see any warning or error message:
+   >
+   > ```sh
+   > sqlite> pragma page_size;
+   > 65536
+   > sqlite> pragma page_size=1;
+   > sqlite> pragma page_size;
+   > 65536
+   > ```
+
 ## 3.2.3 Page types
 
 1. SQLite has the following 4 page types
@@ -220,7 +275,8 @@
 
    4. lock-byte
 
-      > No idea what type of page this is, some bytes that are used as locks?
+      > QUES: No idea what type of page this is, some bytes that are used as 
+      > locks?
       >
       > The `forbidden page num` field in a master journal file contains the 
       > number of the page that contains the lock offset bytes, see the end
@@ -230,23 +286,28 @@
 
 1. Any page in SQLite can be of any type, except for the Page 1
 
+   > It will always be a root table node (`sqlite_master`/`sqlite_schema`).
+
    Page 1 will always contain the following stuff:
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-18%2011-09-36.png)
 
    1. A 100 bytes **file** header
-   2. A B+Tree internal page storing the page number of the root pages of 
-      `sqlite_master` and `sqlite_temp_master`
 
-      > I think the note here is wrong, the page 1 will be the root page of 
-      > `sqlite_master`, it can be a internal table page or leaf table page
-      > depending on the number of entries stored in it.
+   2. Root page of the `sqlite_master/sqlite_schema` table
+
+      it can be an internal table page or leaf table page depending on the 
+      number of entries stored in it.
 
    3. Reserved space
 
       The size of the reserved region is determined by the one-byte unsigned 
       integer found at an offset of 20 into the database file header. The size 
       of the reserved region is usually zero.
+
+      > It seems that the main usage of this reserved space is for extensions,
+      > for example, you may find that these is not per-page checksum in SQLite,
+      > which needs an [extension](https://www.sqlite.org/cksumvfs.html) to work.
 
 2. The first page, and tables `sqlite_master` and `sqlite_temp_master` are the 
    metadata that SQLite uses.
@@ -290,7 +351,10 @@
 
    * File format: write version and read version
 
-     > Shouldn't this be only applied to a journaling file?
+     > QUES: Shouldn't this be only stored to a journaling file?
+     >
+     > Possible Answer by future steve: I guess SQLite will choose the journal
+     > file format according to the value stored in this field.
 
      These version number can either be 1, which is the old legacy rollback 
      journaling, or it is 2 for the new WAL journaling.
@@ -421,7 +485,7 @@
 
    1. Rollback journal
 
-      Rollback journal is used to implement atomic transaction(`commit` and 
+      Rollback journal is used to implement atomic transaction (`commit` and 
       `rollback`)
 
    2. Statement journal
@@ -441,7 +505,8 @@
       **single transaction** makes changes to **multiple databases** that have 
       been added to a single database connection using the `ATTACH` statement.
 
-   > SQLite has introduced the WAL journaling scheme in 3.7.0.
+   > SQLite has introduced the WAL journaling scheme in 3.7.0, which enables 
+   > simultaneous read and write!
    >
    > The structure of the WAL journal file will be talked about in Section 10.17.
 
@@ -506,13 +571,13 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-23%2011-15-23.png)
 
-   > Question: how many log segments a rollback journal should have? 
+   > QUES: how many log segments a rollback journal should have? 
 
 ### 3.3.1.1 Segment header structure
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-08-23%2011-49-24.png)
 
-1. A rollback journal file is considered to be valid if it exists and have a valid
+1. A rollback journal file is considered to be valid if it exists and has a valid
    header.
 
    > Header is used to check if the rollback journal file is valid.
@@ -539,9 +604,24 @@
 
      Used to compute the 'checksums' for individual log reocrd
 
+     > Amazing, the database file itself does not have a per-page checksum, but
+     > the rollback journal file does.
+
    * Initial database page count(4B)
 
      How many pages were there in the original database file before this write-transaction.
+
+     > A write transaction can:
+     >
+     > 1. modify the existing database pages
+     > 2. allocating new pages
+     >
+     > For change of type 1, we store the original page in the log so that we can
+     > change it back, for 2, we simply `truncate(2)` the database file.
+
+     > QUES: why would SQLite store multiple segments within a single rollback
+     > journal file, this field is available in every segment, IMHO, one segment
+     > would be totally sufficient.
 
    * Sector Size
      
@@ -554,6 +634,9 @@
 
      SQLite page size
 
+     > QUES: we already have this in the database file, why would we store a copy 
+     > here
+
    * Unused spcae
 
 3. What are asynchronous transactions?
@@ -565,9 +648,15 @@
 
 4. Normally, a rollback journal file contains a single log segment.
 
+   > QUES: in what cases, multiple segments will be used?
+   >
+   > Possible Answer: you can set the `journal_mode` to `persist` so that a journal
+   > fil won't be deleted after the write-transaction, and from my observation,
+   > under this case, it may contain multiple segments.
+
 5. In multi-segment journal file, the number of records field will never be -1.
 
-   > No idea why
+   > QUES: No idea why
 
 ### 3.3.1.2 Log record structure
 
