@@ -411,6 +411,24 @@
 
 2. `BEGIN DEFERRED TRANSACTION`
 
+   This technically does not belong to the section `Explicit locking`, but since
+   we have coverd 2 transaction modes here, let's do this as well.
+
+   When you type:
+
+   ```sh
+   sqlite> BEGIN TRANSACTION
+   ```
+
+   You are using `BEGIN DEFERRED TRANSACTION`, this transaction starts without 
+   creating any transaction, the actual transactions will be created when needed.
+
+   If the first statement after BEGIN DEFERRED is a SELECT, then a read transaction
+   is started. Subsequent write statements will upgrade the transaction to a write
+   transaction if possible, or return SQLITE_BUSY. 
+
+   If the first statement after BEGIN DEFERRED is a write statement, then a write 
+   transaction is started.
 
 
 ## 4.2.4 Deadlock and starvation
@@ -421,6 +439,9 @@
 ### 4.2.6.3 Linux system issues
 ### 4.2.6.4 Multithreaded applications
 ## 4.2.7 Lock APIs
+
+> already covered in 4.2.2
+
 ### 4.2.7.1 The `sqlite30sLock` API
 ### 4.2.7.2 The `sqlite30sUnlock` API
 # 4.3 Journal Management
