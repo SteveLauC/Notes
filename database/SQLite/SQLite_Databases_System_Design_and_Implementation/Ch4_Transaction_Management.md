@@ -384,10 +384,9 @@
 
 ## 4.2.3 Explicit locking
 
-1. By default, locks in SQLite are implicit, which is totally managed by the 
+1. By default, locks in SQLite are implicit, they is totally managed by the 
    Pager module, however, as an user, there are two ways to explicitly tell
    SQLite to lock the underlying database files
-
 
    1. `BEGIN EXCLUSICE TRANSACTION`
       
@@ -432,19 +431,133 @@
 
 
 ## 4.2.4 Deadlock and starvation
+
+1. Deadlock can happen
+
+   Assume 2 transactions are holding two shared locks on a database file, they both
+   require the reserved lock, transaction 1 gets it, since there is ONLY one 
+   reserved lock allowed on a file, transaction 2 waits. Then transaction 1 wants
+   an exclusive lock, it waits for transction 2 to release the shared lock, but
+   transaction 1 is actually also waiting for transaction 2, then deadlock.
+
+2. How to prevent deadlock
+
+   1. prevention
+      
+      SQLite always requires a lock in the non-blocking mode, when a transaction
+      requires a lock, it will either;
+
+      1. get the lock
+      2. get an error message indicating that the lock is not available, so that
+         it won't be blocked, and this transaction will retry a finite number of
+         times
+
+         > The retry number can be adjusted at runtime, the default value is 0.
+
+         If all retires fail, SQLite returns the `SQLITE_BUSY` error code.
+
+         ```sh
+         # Session 1
+         $ sqlite3 MyDB
+         SQLite version 3.40.1 2022-12-28 14:03:47
+         Enter ".help" for usage hints.
+         sqlite> begin exclusive transaction;
+
+         # Session 2
+         $ sqlite3 MyDB
+         SQLite version 3.40.1 2022-12-28 14:03:47
+         Enter ".help" for usage hints.
+         sqlite> begin exclusive transaction;
+         Runtime error: database is locked (5)
+         sqlite>
+         ```
+
+
+   2. detection and break
+
+      > SQLite does not use this
+
+3. startvation
+
+   Deadlock isn't possible, but starvation is, when a transaction continuously
+   failed to acquire a lock.
+
+
 ## 4.2.5 Linux lock primitives
+
+1. For the Linux file system locks, check out [this post](https://gavv.net/articles/file-locks/)
+
+2. Locks on a file are not a content of the file, tey are merely in-memory data
+   objects maintained by the kernel and thus won't survive system failures. If
+   a process crashes or exits, the kernel cleans up all locks hold by the 
+   applications.
+
 ## 4.2.6 SQLite lock implementation
+
+> QUES: Well, I don't understand this section, the offical doc says that SQLite
+> does NOT use the lock-byte page at all, and for a SQLite file smaller than 1G,
+> it has 0 lock-byte page.
+>
+> This section says that the SQLite locks are implemented using the lock-byte 
+> page, if a SQLite lock-byte page does not exist, how can this work??????
+
+
+> QUES: From the official [doc](https://www.sqlite.org/fileformat.html),
+> SQLite does not use lock-byte page, it is ONLY used by some specific 
+> VFS implementations, I am confused
+
+> Also, you may want to update the note in Ch3/Page types when you have the answer
+> to the above question.
+
+> TODO: revisit this section in the future.
+
+1. SQLite won't lock the entire file but only specific regions needed.
+
+2. SQLite implements its own lock types based on the file system locks provided
+   by the underlying OS.
+
+   ```
+   Linux fs locks (read/write) -> SQLite locks (shared/reserved/pending/exclusive)
+   ```
+
+   | SQLite lock | Linux fs lock |
+   |-------------|---------------|
+   |shared       | read lock     | 
+   |reserved     |
+
+
+
+
+
 ### 4.2.6.1 Translation from SQLite locks to native file locks
 ### 4.2.6.2 Exgineering issues with native locks
 ### 4.2.6.3 Linux system issues
 ### 4.2.6.4 Multithreaded applications
 ## 4.2.7 Lock APIs
-
-> already covered in 4.2.2
-
 ### 4.2.7.1 The `sqlite30sLock` API
 ### 4.2.7.2 The `sqlite30sUnlock` API
+
 # 4.3 Journal Management
+
+1. The functionalities of a journal
+
+   1. roll back a transaction
+   2. survive a system crash
+
+2. Different journal modes
+
+   1. delete (delete the journal afte the write-transaction)
+   2. truncate (set the size to 0)
+   3. persist (do nothing to it)
+   4. memory (the journal is stored in memory)
+      
+      > This is the default option for memory databases
+      >
+      > ```sh
+      > sqlite :memory:
+      > ```
+
+
 ## 4.3.1 Logging protocol
 ## 4.3.2 Commit protocol
 # 4.4 Subtransaction Management

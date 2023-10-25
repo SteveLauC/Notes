@@ -278,9 +278,25 @@
       > QUES: No idea what type of page this is, some bytes that are used as 
       > locks?
       >
+      > ANSWER: lock-byte page is where SQLite implements its locks types based
+      > on the lock types provided by the underlying OS.
+      >
       > The `forbidden page num` field in a master journal file contains the 
       > number of the page that contains the lock offset bytes, see the end
       > of this note for more info.
+
+      If a SQLite file has a lock-byte page, then there will be **exactly one**,
+      which is located at offset `1073741824 - 1073742335`(1G - 1G+511) (inclusive),
+      A SQLite file smaller than this won't have a lock-byte page, a file larger 
+      than this will have ONLY one this page.
+
+      > QUES: From the official [doc](https://www.sqlite.org/fileformat.html),
+      > SQLite does not use lock-byte page, it is ONLY used by some specific 
+      > VFS implementations, I am confused
+
+      > 4.2.6 SQLite lock implementation have more detail on this thing, but it
+      > seems to be different from the official doc, so I just skip it.
+
 
 ## 3.2.4 Database metadata
 
