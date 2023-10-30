@@ -702,7 +702,13 @@
 
    > The checksum is computed using the random number in the segment header.
 
-3. How does recovery works with rollback journal
+3. Once a page is copied into the rollback journal, the page will never be in a
+   new log reocrd even if the page is altered multiple times by the current 
+   transaction, which means that if there are multiple changes to a page within
+   a write-transaction, you cannot roll back a specific change, you can ONLY 
+   roll back all these changes as a whole.
+
+4. How does recovery works with rollback journal
 
    Simple, it just walks throught the rollback journal, and write the pages 
    stored in it back to the database file, then truncate the database file
@@ -786,3 +792,15 @@
 
    The forbidden page number is the number of the page that contains the lock
    offset bytes.
+
+6. A super journal always resides in the same directory as the main database
+   files, and has the same as it with the `-mj` appended to it followed by
+   8 randomly chosen 4-bit hex numbers
+
+   > the main database file is the one that is not opened by the `ATTACH` command.
+
+   Different from other journal files, it will be created when the transaction
+   commits, and is deleted when the commit is done.
+   
+   > QUES: I don't understand this.
+

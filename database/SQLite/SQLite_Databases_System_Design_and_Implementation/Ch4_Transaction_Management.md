@@ -147,6 +147,10 @@
    > QUES: Currently I don't understand how a savepoint outside a transaction 
    > works, per the [document](https://www.sqlite.org/lang_savepoint.html), it 
    > seems to work like a `BEGIN DEFERRED TRANSACTION`(Ok, what is this then?).
+   >
+   > Not an answer to the question:
+   > `BEGIN DEFERRED TRANSACTION` won't create any transaction until the actual
+   > SQL statements are passed, see the `Explicit locking` section for more.
 
 3. We are pretty clear that SQLite does not support nested transactions, but
    the document says that you can emulate this using savepoints. 
@@ -546,10 +550,14 @@
 
 2. Different journal modes
 
-   1. delete (delete the journal afte the write-transaction)
-   2. truncate (set the size to 0)
-   3. persist (do nothing to it)
+   1. delete (delete the journal afte the write-transaction, the default one)
+   2. truncate (set the size to 0 afater the write-transaction)
+   3. persist (do nothing to it after the transaction)
    4. memory (the journal is stored in memory)
+
+      > What will happen to the in-memory journal after the write-transaction
+
+   5. off (no journaling)
       
       > This is the default option for memory databases
       >
@@ -557,7 +565,50 @@
       > sqlite :memory:
       > ```
 
+3. SQLite keeps track of which pages are journaled by the current transaction
+   using a bitmap in the memory.
+
+   > Seems that SQLite does not use roaring bitmap though
+
 
 ## 4.3.1 Logging protocol
+
+1. SQLite writes the log before modifing the database file
+
+2. SQLite ensures that the log is persisted to the disk before actually modifying
+   the database file.
+
 ## 4.3.2 Commit protocol
+
+> QUES: When a commit failed because a power failure, what should the DBMS do
+> after the power recovery, re-commit or rollback?
+>
+> In SQLite, it seems that it will roll back the system
+
+1. The default commit logic in SQLite is:
+
+   1. Persist the database file 
+   2. Persist the rollback journal
+
+   Step 2 is necessary because we need this to survive the power failure in
+   the commit.
+
+   Step 1 does not makes sense to me, the book says this is needed because
+   SQLite does not have a redo logic under the legacy/rollback journal, but 
+   we rollback it rather than "redoing" it.
+
+2. Asynchoronous transactions and lazy commit
+
+   By default, transactions in SQLite are synchronous, it strictly follows the 
+   logging and commit protocol mentioned above.
+
+   Though not recommanded, SQLite also permits applications to run transactions
+   in the lazy commit mode, under this mode, no journal and database flushing are
+   done at the commit time, and thus it will be very fast.
+
+   > No flush, no data durability.
+
+   One can enable asynchronous transactions by seting the synchronous pragma 
+   variable to 0.
+
 # 4.4 Subtransaction Management
