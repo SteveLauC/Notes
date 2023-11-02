@@ -2,7 +2,7 @@
 >
 > * what a page cache is, why it is needed, and who uses it
 >  
->   The tree module uses it
+>   > The tree module uses it
 > 
 > * generic cache management techniques
 > * the normal transaction processing and recovery processing steps that are 
@@ -45,8 +45,8 @@
 # 5.1 The Pager Module
 
 1. SQLite is a disk-oriented databse system that stores data on the disk, but
-   it cannot manipulate the data on the disk effectively, it has to load the
-   data to the memory, and do things there.
+   it cannot manipulate the data on the disk efficiently, it has to load the
+   data to the memory, and do changes there.
 
    That memory is called database cache or data buffer, in SQLite's term, it is
    called the *page cache*.
@@ -90,10 +90,18 @@
    > dangling pointer
    >
    > By manually recording the pages that are in use? Pin them?
+   >
+   > Future Steve: Yes, SQLite will pin that page.
 
 3. Before modifying a page, the tree module will inform the pager so that the pager
    module can save sufficient information (in a journal file) for possible future 
    use, and can acquire appropriate locks on the database file.
+
+   > In the last chaper, we talked about tha before SQLite modifies its pages,
+   > it will first write the log (journal file), then ensure the log is persisted
+   > to the disk.
+   >
+   > This is consistent with that.
 
    > The pager module is the lock manager
 
@@ -230,12 +238,122 @@
       int sqlite3PagerClose(Pager *pPager, sqlite3 *db)
       ```
 
-      Destroy a `Pager` and remove it from the associated connection
+      Destroy a `Pager` and remove it from the associated connection. If the 
+      associated file is a temporary file, it will also be deleted from the
+      file system.
 
       > Well, you can close a pager when a transaction is running on it, this
       > will make the transaction abort immediately and aborts all the changes.
 
-   3. 
+   3. `sqlite3PagerGet()`
+
+      Ask a page, return a pointer to the starting address of that page.
+
+      If the requested page exists and is not in the memory, then it will be loaded
+      from the disk. If the page does not actually exist on the disk, then an empty
+      page will be created in the page cache.
+
+      ```c
+      /* Dispatch all page fetch requests to the appropriate getter method.
+      */
+      int sqlite3PagerGet(
+        Pager *pPager,      /* The pager open on the database file */
+        Pgno pgno,          /* Page number to fetch */
+        DbPage **ppPage,    /* Write a pointer to the page here */
+        int flags           /* PAGER_GET_XXX flags */
+      )
+      ```
+
+      For lock management, this function will make the Pager module obtain a
+      shared lock on the database file.
+
+   4. `sqlite3PagerWrite()`
+
+      When the caller call `sqlite3PagerGet()`, it already gets a pointer to the
+      in-memory page, which means that the caller "can" write to it.
+
+      But the caller has to call `sqlitePagerWrite()` first so that the Pager 
+      module can be aware of this. (Mark the page dirty)
+
+      This function will try to acquire a `reserved lock` on the database file 
+      and create a journal file, contents of the original page will also be
+      written to the journal file (a log record)
+
+      ```c
+      // The argument of this function is that page pointer rather than a page 
+      // number
+      int sqlite3PagerWrite(PgHdr *pPg)
+      ```
+
+   5. `sqlite3PagerLookup()`
+
+      Request a page and return a pointer to the in-memory copy.
+
+      Different from `sqlite3PagerGet()`, it will return `NULL` when the requested
+      page is not in the page cache.
+
+      ```c
+      DbPage *sqlite3PagerLookup(Pager *pPager, Pgno pgno)
+      ```
+
+   6. `sqlite3PagerRef()`
+
+      Every page in the page cahche has a header:
+
+      ```c
+      /*
+      ** Every page in the cache is controlled by an instance of the following
+      ** structure.
+      */
+      struct PgHdr {
+        sqlite3_pcache_page *pPage;    /* Pcache object page handle */
+        void *pData;                   /* Page data */
+        void *pExtra;                  /* Extra content */
+        PCache *pCache;                /* PRIVATE: Cache that owns this page */
+        PgHdr *pDirty;                 /* Transient list of dirty sorted by pgno */
+        Pager *pPager;                 /* The pager this page is part of */
+        Pgno pgno;                     /* Page number for this page */
+      #ifdef SQLITE_CHECK_PAGES
+        u32 pageHash;                  /* Hash of page content */
+      #endif
+        u16 flags;                     /* PGHDR flags defined below */
+
+        /**********************************************************************
+        ** Elements above, except pCache, are public.  All that follow are 
+        ** private to pcache.c and should not be accessed by other modules.
+        ** pCache is grouped with the public elements for efficiency.
+        */
+        i64 nRef;                      /* Number of users of this page */
+        PgHdr *pDirtyNext;             /* Next element in list of dirty pages */
+        PgHdr *pDirtyPrev;             /* Previous element in list of dirty pages */
+                                /* NB: pDirtyNext and pDirtyPrev are undefined if the
+                                ** PgHdr object is not dirty */
+      };
+      ```
+
+      You can see that the `nRef` field tracks how many users a page has, this 
+      function will increase this field by one (in other words, pin this page),
+      if this page is in the free list, then remove it from that list.
+
+      ```c
+      void sqlite3PagerRef(DbPage *pPg)
+      ```
+
+      > About the `pin` in SQLite, you may notice that it does not differentiate
+      > read and write pin, because that has already handled by the database file
+      > level lock so that you don't need to worry about it at the page level.
+
+   7. `sqlitePagerUnref()`
+
+      Decrease the `nRef` field by one, when the `nRef` becomes 0, this page
+      is unpined and free.
+
+      When all pages have been unpinned (trakced by `PgHdr.pCache.nRefSum`), 
+      the lock on the database file will be released.
+
+      ```c
+      void sqlite3PagerUnref(DbPage *pPg)
+      ```
       
 
 # 5.3 Page Cache

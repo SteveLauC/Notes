@@ -565,10 +565,12 @@
       > sqlite :memory:
       > ```
 
-3. SQLite keeps track of which pages are journaled by the current transaction
-   using a bitmap in the memory.
+3. SQLite keeps track of which pages are journaled (modified) by the current 
+   transaction using a bitmap in the memory.
 
    > Seems that SQLite does not use roaring bitmap though
+
+   > QUES: why does SQLite need to track this?
 
 
 ## 4.3.1 Logging protocol
