@@ -109,6 +109,9 @@
    finished using a page.
 
    > To release the guard?
+   >
+   > Future Steve: I guess it should release the pin first, when the pin count
+   > decreases to 0, then release the underlying file lock.
 
 ## 5.2.2 The pager interface structure
 
@@ -269,6 +272,8 @@
 
    4. `sqlite3PagerWrite()`
 
+      **Mark** a page as writable.
+
       When the caller call `sqlite3PagerGet()`, it already gets a pointer to the
       in-memory page, which means that the caller "can" write to it.
 
@@ -354,6 +359,18 @@
       ```c
       void sqlite3PagerUnref(DbPage *pPg)
       ```
+   
+   8. `sqlite3PagerBegin()`
+
+      Start an explicit write-transaction on the associated database file, and
+      it will open the rollback journal file if this is not a temporary file
+
+      > For temp files, the opening of the journal file is deferred until there
+      > is an actual need to write to the journal  file
+
+      > Implicit write-transactions are started with `sqlite3PagerWrite()`.
+
+
       
 
 # 5.3 Page Cache
