@@ -1,4 +1,31 @@
-My personal notes
+Steve's notes
 
-Some notes are for posts, I will store the post itself in case it no longer 
-exists on the web, all rights are reserved to their author.
+> All rights of the posts here are reserved to their authors.
+
+# Format
+
+```md
+> This chapter is about:
+>
+> ...
+
+> Questions I have about this chapter:
+>
+> 1. ...
+
+
+> * Section x
+>   * Section x.y
+
+# Section x
+
+1. note
+2. note
+3. xxx
+
+## Section x.y 
+
+1. note
+2. note
+3. xxx
+```

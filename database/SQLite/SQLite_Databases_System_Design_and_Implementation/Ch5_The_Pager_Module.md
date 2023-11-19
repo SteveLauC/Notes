@@ -97,6 +97,11 @@
    module can save sufficient information (in a journal file) for possible future 
    use, and can acquire appropriate locks on the database file.
 
+   > You have to call these functions to write to a page
+   >
+   > 1. sqlite3pagerGet()
+   > 2. sqlitePagerWrite()
+
    > In the last chaper, we talked about tha before SQLite modifies its pages,
    > it will first write the log (journal file), then ensure the log is persisted
    > to the disk.
@@ -277,8 +282,12 @@
       When the caller call `sqlite3PagerGet()`, it already gets a pointer to the
       in-memory page, which means that the caller "can" write to it.
 
+      > The can word is quoted here as writing to the pointer will be problematic
+      > as the process may don't have the exclusive lock on the underlying file.
+
       But the caller has to call `sqlitePagerWrite()` first so that the Pager 
-      module can be aware of this. (Mark the page dirty)
+      module can be aware of this. (Acquire the corresponding lock, Mark the page 
+      dirty)
 
       This function will try to acquire a `reserved lock` on the database file 
       and create a journal file, contents of the original page will also be
@@ -370,10 +379,109 @@
 
       > Implicit write-transactions are started with `sqlite3PagerWrite()`.
 
+      If explicit argument is given, the exclusive lock will required immediately,
+      or it will be ONLY acquired when an actual write begins.
 
-      
+      ```c
+      int sqlite3PagerBegin(Pager *pPager, int exFlag, int subjInMemory)
+      ```
+
+   9. `sqlite3PagerCommitPhaseOne()`
+
+      > The commit of a SQLite transaction is consists of 2 phases:
+      >
+      > 1. Commit changes made in the database file
+      > 2. Finalize the journal file
+
+      This function will:
+
+      1. Write the dirty pages to the disk
+      2. Update the database file change counter
+      3. Sync the database file
+
+      ```c
+      int sqlite3PagerCommitPhaseOne(
+        Pager *pPager,                  /* Pager object */
+        const char *zSuper,            /* If not NULL, the super-journal name */
+        int noSync                      /* True to omit the xSync on the db file */
+      )
+      ```
+
+   10. `sqlite3PagerCommitPhaseTwo()`
+
+      Finalize the journal file, depending on the `journal mode`:
+
+      > For more info about `journal mode`s, see Ch4.
+
+      > We don't need to commit the changes of log records as they are already
+      > `sync`ed before we modify the pages.
+
+      ```c
+      int sqlite3PagerCommitPhaseTwo(Pager *pPager)
+      ```
+
+   11. `sqlite3pagerRollback()`
+
+       Aborts the transaction:
+
+       > no-op if not a write transaction
+
+       1. Revert the changes made to the in-cache page
+       2. Revert the changes made to the database file
+
+          > QUES: Why would there be file changes, the transaction has not been 
+          > committed and will never be committed.
+
+       3. Downgrade the exclusive lock to a shared lock
+
+          > QUES: Why not just release the lock, why would it acquire another
+          > shared lock when the transaction is gone
+
+       4. Finalize the journal file, do things corresponding to the `journal
+          mode`
+
+       ```c
+       int sqlite3PagerRollback(Pager *pPager)
+       ``` 
+
+   12. `sqlite3PagerOpenSavepoint()`
+
+
+        Check that there are at least nSavepoint savepoints open. If there are
+        currently less than nSavepoints open, then open one or more savepoints
+        to make up the difference. If the number of savepoints is already
+        equal to nSavepoint, then this function is a no-op.
+
+        ```c
+        int sqlite3PagerOpenSavepoint(Pager *pPager, int nSavepoint)
+        static SQLITE_NOINLINE int pagerOpenSavepoint(Pager *pPager, int nSavepoint)
+        ```
+
+   13. `sqlite3PagerSavepoint()`
+
+       This function:
+
+       1. releases, or
+       2. rollbacks
+
+       a savepoint
+
+       ```c
+       int sqlite3PagerSavepoint(Pager *pPager, int op, int iSavepoint)
+       ```
 
 # 5.3 Page Cache
+
+1. SQLite's page cache is independent from the OS's kernel cache, and here
+   is a diagram demostrating their relationships:
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-11-18%2020-35-48.png)
+
+   2 processes accessing the same databasem, since they are different connections,
+   they don't share the pager object.
+
+   And you can see that they all use the OS kernel cache, so no direct I/O here.
+
 ## 5.3.1 Cache state
 ## 5.3.2 Cache organizatioin
 ## 5.3.3 Cache read

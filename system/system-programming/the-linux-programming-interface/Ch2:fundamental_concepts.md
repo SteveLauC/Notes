@@ -1,50 +1,161 @@
 #### Ch2: fundamental concepts
 
+> * 2.1 The Core Operating System: The Kernel
+> * 2.2 The Shell
+> * 2.3 Users and Groups
+> * 2.4 Single Directory Hierarchy, Directories, Links, and Files
+> * 2.5 File I/O Model
+> * 2.6 Programs
+> * 2.7 Processes
+> * 2.8 Memory Mappings
+> * 2.9 Static and Shared Libraries
+> * 2.10 Interprocess Communication and Synchronization
+> * 2.11 Signals
+> * 2.12 Threads
+> * 2.13 Process Groups and Shell Job Control
+> * 2.14 Sessions, Controlling Terminals, and Controlling Processes
+> * 2.15 Pseudoterminals
+> * 2.16 Date and Time
+> * 2.17 Client-Server Architecture
+> * 2.18 Realtime
+> * 2.19 The `/proc` file system
+> * 2.20 Summary
 
-1. Linux的内核可执行文件采用`/boot/vmlinuz`或与之类似的文件名.
 
-   > 在早期的UNIX中，内核可执行文件被称为`vmunix`，而在Linux中，将`unix`换为
-   `linux`并将`x`改为`z`，表示其是已经被压缩的可执行文件
+# 2.1 The Core Operating System: The Kernel
+
+
+1. The Linux kernel executable is typically located at `/boot/vmlinuz`
+
+   > Why it is called `vmlinuz`:
+   >
+   > On early UNIX implementations, the kernel was called `unix`, after implementing
+   > virtual memory, this kernel was renamed to `vmunix`. So Linux kernel should be
+   > named as `vmlinux` if we follow this mode, but since the kernel in Linux is 
+   > compressed, we replace the last chapter `x` with `z`, so `vmlinuz`.
 
     ```shell
-    $ cd /boot
-    $ ls -l
-    Permissions Size User Group Date Modified Name
-    .rw-r--r--  264k root root  17 Jun 22:39  config-5.17.5-76051705-generic
-    drwx------     - root root   1 Jan  1970  efi
-    lrwxrwxrwx    34 root root  10 May 01:08  initrd.img -> initrd.img-5.17.5-76051705-generic
-    .rw-r--r--  116M root root  23 Jun 16:27  initrd.img-5.17.5-76051705-generic
-    lrwxrwxrwx    34 root root  10 May 01:08  initrd.img.old -> initrd.img-5.17.5-76051705-generic
-    .rw-------  6.3M root root  17 Jun 22:39  System.map-5.17.5-76051705-generic
-    lrwxrwxrwx    31 root root  10 May 01:08  vmlinuz -> vmlinuz-5.17.5-76051705-generic
-    .rw-------   11M root root  17 Jun 22:39  vmlinuz-5.17.5-76051705-generic
-    lrwxrwxrwx    31 root root  10 May 01:08  vmlinuz.old -> vmlinuz-5.17.5-76051705-generic
+    $ l /boot | rg vmlinuz
+    .rwxr-xr-x@     1  14M root root   1 Jan  2022  vmlinuz-0-rescue-8b475d2697dc4af8928c86a74a6d4825
+    .rwxr-xr-x@     1  15M root root  25 Oct 08:00  vmlinuz-6.5.9-300.fc39.x86_64
+    .rwxr-xr-x@     1  15M root root   2 Nov 08:00  vmlinuz-6.5.10-300.fc39.x86_64
+    .rwxr-xr-x@     1  15M root root   8 Nov 08:00  vmlinuz-6.5.11-300.fc39.x86_64
     ```
 
-2. 在Linux上，`sh`是用`bash`仿真实现的
+2. Kernel mode and User mode
 
-3. 用户的组ID是用户第一个组的组ID
+   On x86, there are 4 modes:
+
+   1. 0 (kernel/supervisor mode)
+   2. 1
+   3. 2
+   4. 3 (user mode)
+
+   > For more information, see 
+   > [Protection ring](https://en.wikipedia.org/wiki/Protection_ring)
+
+   Linux, only uses the 0 and 3 modes, i.e., kernel mode and user mode.
+
+   Areas of virtual memory will be marked if they are in kernel mode or user 
+   mode, IIRC, with 32-bit Linux, 4 GiB of memory, the top 1 GiB is for the
+   kernel
+
+3. A process can do nothing without the assistance of kernel
+
+   We say:
+
+   * A process can access files
+   * A process can do IPC
+   * A processs can create a pipe
+   * ...
+
+   Yes, they can, but it has to be done with the help of the kernel.
+
+   * A process can request the kernel to access files
+   * A process can request the kernel to do IPC
+   * A processs can request the kernel to create a pipe
+   * ...
+
+# 2.2 The Shell
+
+
+1. What is `login shell`?
+
+   Login shell is typically the first process executed with my UID, on desktop
+   Linux, we don't have a login shell, it is replaced with the desktop environment
+   process, e.g., GNOME shell.
+   
+   Well, I found that the first process started with my ID is not the GNOME 
+   shell, but a systemd process...
+   
+   ```sh
+   $ ps steve -p | grep systemd
+   systemd(2735)-+-(sd-pam)(2741)
+   ```
+  
+   When SSHing into a machine, the shell started is a login shell, but it is also
+   not the first process started with me, it is still the `systemd` process:
+
+   > Systemd is everywhere????
+  
+   ```sh
+   $ ssh steve@x.x.x.x
+  
+   # if $0 starts with a `-`, then it is a login shell
+   $ echo $0
+   -zsh
+   
+   # PID of the current shell
+   $ echo $$
+   5760
+   
+   $ pstree steve -p 
+   sshd(5742)───zsh(5760)───pstree(6760)
+   
+   systemd(1819)─┬─(sd-pam)(1828)
+                   ├─dbus-broker-lau(5291)───dbus-broker(5292)
+                   ├─pipewire(2084)─┬─{pipewire}(2093)
+                   │                └─{pipewire}(2094)
+                   ├─pipewire-pulse(2211)─┬─{pipewire-pulse}(2215)
+                   │                      └─{pipewire-pulse}(2218)
+                   └─wireplumber(2090)─┬─{wireplumber}(2095)
+                                       ├─{wireplumber}(2098)
+                                       ├─{wireplumber}(2099)
+                                       ├─{wireplumber}(2103)
+                                       └─{wireplumber}(2105)
+   ```
+
+2. On Linux, the `sh` shell is emulated through the `bash` shell.
+
+
+
+# 2.3 Users and Groups
+
+> See also Ch8
+
+1. The GID of a user is the ID of his first group
    
    > For more information about group, see [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
     
     ```shell
     $ id
     uid=1000(steve) gid=1000(steve) groups=1000(steve),4(adm),27(sudo),121(lpadmin),999(docker)
-    # 我在很多个组里面，但我的组ID是唯一的
+
+    $ bat /etc/passwd | rg steve
+    steve:x:1000:1000:steve:/home/steve:/usr/bin/zsh
+
+    $ cat /etc/group | rg steve
+    wheel:x:10:steve
+    steve:x:1000:
     ```
 
     > 起初，一个用户只有一个组。BSD最先允许一个用户同时属于多个组，这一理念后来
     被其他的UNIX所效仿，并最终成为POSIX.1-1990标准
 
-    > `/etc/group`文件格式，组名，有加密的密码，组ID，组成员的名字(`,`分隔)
-    ```
-    steve:x:1000:
-    docker:x:999:steve
-    ```
+2. The format of `/etc/passwd`
 
-4. `/etc/passwd`文件格式
-
-   > For more information about `passwd`, see [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
+   > For more information about `passwd`, see 
+   > [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
 
     ```
     steve:x:1000:1000:Steve:/home/steve:/usr/bin/zsh
@@ -52,17 +163,54 @@
     ```
 
     * user name
-    * x 代表着一个加密的密码被存储到了`/etc/shadow`文件之中
-    * user id
-    * group id
-    * comment field: 注释字段，用来对用户补充一些额外信息，比如`flatpak`中写的是
-    `system-wide installation helper`
-    * home dir
-    * shell
+    * x if the actual password has been encrypted and stored in `/etc/shadow`
+    * UID
+    * GID
+    * comment field, used to supplement some extra comments, for example, with
+      flatpak, it is `system-wide installation helper`
+    * Home dir
+    * Default shell
 
-    > flatpak的homedir是`nonexistent`，login shell是`/usr/sbin/nologin`
+    > The home dir of flatpak is `nonexistent`，login shell is `/usr/sbin/nologin`
 
     > [understanding-etcpasswd-file-format](https://www.cyberciti.biz/faq/understanding-etcpasswd-file-format/)
+
+3. The format of `/etc/group`
+
+    ```
+    steve:x:1000:
+    docker:x:999:steve
+    ```
+
+    * Group name
+    * x if the password has been encrypted and stored in /etc/shadow
+    * Group ID
+
+      > Have never used group password
+      >
+      > See [Typical use case for a group password](https://unix.stackexchange.com/q/93123/498440)
+
+    * Users that are in this group, comma separated
+
+
+# 2.4 Single Directory Hierarchy, Directories, Links, and Files
+# 2.5 File I/O Model
+# 2.6 Programs
+# 2.7 Processes
+# 2.8 Memory Mappings
+# 2.9 Static and Shared Libraries
+# 2.10 Interprocess Communication and Synchronization
+# 2.11 Signals
+# 2.12 Threads
+# 2.13 Process Groups and Shell Job Control
+# 2.14 Sessions, Controlling Terminals, and Controlling Processes
+# 2.15 Pseudoterminals
+# 2.16 Date and Time
+# 2.17 Client-Server Architecture
+# 2.18 Realtime
+# 2.19 The `/proc` file system
+# 2.20 Summary
+
 
 5. soft link
 
@@ -76,6 +224,24 @@
    所有字符。但只建议使用字母(26*2=52，大小写)、数字(10)、下划线、点以及`-`，
    这些总共65个符号，被SUSv3称为portable filename character set。此外还应避免`-`
    作为文件名的开始，避免被shell当成命令参数
+
+   This restriction is defined by the constant: `PATH_MAX`:
+
+   ```c
+   #include <linux/limits.h>
+   #include <stdio.h>
+   #include <stdlib.h>
+
+   int main(void) {
+       printf("%d", PATH_MAX);
+
+       exit(EXIT_SUCCESS);
+   }
+   ```
+   ```sh
+   $ gcc main.c && ./a.out
+   4096
+   ```
 
 7. 文件的换行符及结束符
 

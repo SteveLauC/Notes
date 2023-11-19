@@ -84,9 +84,9 @@ group IDs(real, effective, saved)
    1. Group name
 
    2. Encrypted password: With the advent of multiple group memberships, group
-   password is rarely used. If `password shadowing` is enabled, then it is 
-   encrypted and stored in `/etc/shadow`, and any string literal (Mostly `x`, 
-   including empty string) will be left on this field.
+      password is rarely used. If `password shadowing` is enabled, then it is 
+      encrypted and stored in `/etc/shadow`, and any string literal (Mostly `x`, 
+      including empty string) will be left on this field.
 
       > If this field is `empty`, it does not mean that this group does not have
       > password. This is different from the password field of `/etc/passwd`
@@ -96,6 +96,10 @@ group IDs(real, effective, saved)
       Permissions Size User Group  Date Modified Name
       .rw-r-----   836 root shadow 14 Jun 13:24   gshadow
       ```
+
+      > Why would a group have a password?
+      >
+      > See [Typical use case for a group password](https://unix.stackexchange.com/q/93123/498440)
 
    3. Group ID: u32 (after kernel 2.4)
 
