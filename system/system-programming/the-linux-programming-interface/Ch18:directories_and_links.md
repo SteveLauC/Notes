@@ -36,6 +36,8 @@
    2. The contents of a regular file is unorganized, while a direcotry basically
       can be seen as a table, consisting of filenames and i-node numbers.
 
+      > An entry in this table is a hard link to this file.
+
       | filename                  | I-node number|
       |---------------------------|--------------|
       | file1                     | 1            |
@@ -99,6 +101,14 @@
       > Early UNIX implementations do allow hark link on directories if it is
       > created by privileged users, this is because there is no `mkdir(2)`
       > at that time.
+      >
+      > Future Steve: On a normal UNIX file system, the hard link for a directory
+      > is at least 2, one in its parent directory, one in itself (the dot `.`),
+      > so directory can have hard links, users cannot create it.
+      >
+      > And for BTRFS, 
+      > [the hard link for a dir will always be 1](https://linux-btrfs.vger.kernel.narkive.com/oAoDX89D/btrfs-st-nlink-for-directories)
+
 
       See
       [Ch14: 15 4 for more information about `bind mount`](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch14:file_systems.md)
@@ -675,6 +685,12 @@
     pub fn current_dir() -> Result<PathBuf>
     ```
 
+    > QUES: very curious how this attribute is stored in the kernel?
+    >       Waht is that `dentry` struct?
+    >      
+    >       Looking at its source code, `dentry` stores the `inode` assocaiated
+    >       with it.
+
 33. Get current working directory from the Linux `/proc` virtual file system
 
     `/proc/PID/cwd` is a symlink pointing to the actual `cwd`.
@@ -684,7 +700,7 @@
     /home/steve/Documents
     ```
 
-34. Change current working directory using `chdir(2)`
+34. Change current working directory using `chdir(2)` or `fchdir(2)`
   
     ```c
     #include <unistd.h>
@@ -695,12 +711,20 @@
 
     If `path` is a symlink, it is dereferenced.
 
+    > QUES: which is faster? I think it depends on how this attribute is stored
+    >       in the kernel.
+    >
+    >       If `dentry` uses `inode` to identify the pwd, then `fchdir()` should
+    >       be faster? Since `chdir()` has to `open()` the file.
+    >
+    >       To future steve, when you figured this out, do also update the tlpi
+    >       exercise 18.9. 
 
 ##### 18.11: Operating Relative to a Directory File Descriptor
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/photo_2022-10-22_17-39-57.jpg)
 
-35. Those xxxat(2) syscalls normally provide some extra functionalities:
+35. Those `xxxat(2)` syscalls normally provide some extra functionalities:
 
     1. If `path` argument is a relative path, then it is interpreted relative to the
        directory specified in `dirfd` rather than the currrent working directory of
@@ -843,6 +867,11 @@
 
 44. `dirname(3)` and `basename(3)`
 
+    For a pathname, the series of component filenames preceeding the final slash
+    is sometimes referred to as the `directory` part of a pathname, while the
+    name following the final slash is sometimes referred to as the file or the 
+    base part of the pathname.
+
     ```c
     #include <libgen.h>
     
@@ -872,6 +901,8 @@
     will be seen as a single one.
     
     See also `dirname(1)` and `basename(1)`
+
+    > In Rust, we have `Path::parent()` and `Path::file_name()`.
 
 45. duplicate a string in C
   

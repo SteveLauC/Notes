@@ -4,6 +4,7 @@
 > modify them
 
 > $ [man 7 credentials](https://man7.org/linux/man-pages/man7/credentials.7.html)
+>
 > Seems this page lists all the IDs a process can have.
 
 1. Each process has a set of associated numeric user identifiers (UIDs) and 

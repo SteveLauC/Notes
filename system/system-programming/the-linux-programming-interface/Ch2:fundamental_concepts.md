@@ -128,29 +128,30 @@
 2. On Linux, the `sh` shell is emulated through the `bash` shell.
 
 
-
 # 2.3 Users and Groups
 
 > See also Ch8
 
 1. The GID of a user is the ID of his first group
    
-   > For more information about group, see [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
+   > For more information about group, see 
+   > [Ch8](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch8.md)
     
-    ```shell
-    $ id
-    uid=1000(steve) gid=1000(steve) groups=1000(steve),4(adm),27(sudo),121(lpadmin),999(docker)
+   ```shell
+   $ id
+   uid=1000(steve) gid=1000(steve) groups=1000(steve),4(adm),27(sudo),121(lpadmin),999(docker)
 
-    $ bat /etc/passwd | rg steve
-    steve:x:1000:1000:steve:/home/steve:/usr/bin/zsh
+   $ bat /etc/passwd | rg steve
+   steve:x:1000:1000:steve:/home/steve:/usr/bin/zsh
 
-    $ cat /etc/group | rg steve
-    wheel:x:10:steve
-    steve:x:1000:
-    ```
+   $ cat /etc/group | rg steve
+   wheel:x:10:steve
+   steve:x:1000:
+   ```
 
-    > 起初，一个用户只有一个组。BSD最先允许一个用户同时属于多个组，这一理念后来
-    被其他的UNIX所效仿，并最终成为POSIX.1-1990标准
+   > At first, a user can ONLY belong to one group. BSD allowed that a user to 
+   > be in multiple groups, this idea was adoped by other UNIX implementations
+   > as well, and was finally standardized in the POSIX.1-1990 standard.
 
 2. The format of `/etc/passwd`
 
@@ -190,40 +191,52 @@
       >
       > See [Typical use case for a group password](https://unix.stackexchange.com/q/93123/498440)
 
-    * Users that are in this group, comma separated
+    * Users that are in this group, comma-separated
 
+4. The user with UID 0 is the superuser, and usually this user is called `root`.
 
 # 2.4 Single Directory Hierarchy, Directories, Links, and Files
-# 2.5 File I/O Model
-# 2.6 Programs
-# 2.7 Processes
-# 2.8 Memory Mappings
-# 2.9 Static and Shared Libraries
-# 2.10 Interprocess Communication and Synchronization
-# 2.11 Signals
-# 2.12 Threads
-# 2.13 Process Groups and Shell Job Control
-# 2.14 Sessions, Controlling Terminals, and Controlling Processes
-# 2.15 Pseudoterminals
-# 2.16 Date and Time
-# 2.17 Client-Server Architecture
-# 2.18 Realtime
-# 2.19 The `/proc` file system
-# 2.20 Summary
 
+> See Ch18
 
-5. soft link
+1. Directory is a special kind of file whose contents are a table:
 
-   在多数情况下，对soft link的调用会被自动替换为其指向的文件，这一过程会递归进
-   行，直到所有的soft link均被替换。但为了应对循环引用，内核对替换的次数做了限
-   制
+   | filename | inode |
+   |----------|-------|
+   | .        | 1     |
+   | ..       | 2     |
+   | foo      | 3     |
+   | dir      | 4     |
+
+2. An entry within a directory table is called a link, or hard link, and thus
+   for the same file, you can have multiple links, in the same or different
+   directories.
+
+   > When the number of hard link gets decreased to 0, the file will be deleted.
+
+   The hard link for a directory is at least 2, for the reason that it is recorded
+   in its parent directory and itself (the dot `.`). Users are not allowed to create
+   hard links for directory in case of breaking the file system.
+
+   On BTRFS, the hard link of a directory will always be 1.
+
+3. Soft link/symlink
+
+   Most syscall will dereference symlink.
+
+   And dereference is a recursive process, Linux (since kernel 4.2) allows 
+   40 recursions at most.
    
-6. 文件名
+4. Filename
 
-   在大多数Linux的文件系统中，文件名最多长`255`个字符。可以包含除了`/`和`\0`的
-   所有字符。但只建议使用字母(26*2=52，大小写)、数字(10)、下划线、点以及`-`，
-   这些总共65个符号，被SUSv3称为portable filename character set。此外还应避免`-`
-   作为文件名的开始，避免被shell当成命令参数
+   On most Linux file systems, filenames can be up to 2555 characters long. 
+   Filenames may contain any characters except `/` and null characters (\0).
+   However, it is advisable to employ only latters and digits, and `.`, `_`, 
+   and `-` This 65-character set, is referred to in SUSv3 as the portable
+   filename character set.
+
+   And we should avoid filenames starting with a hyphen, cause it maybe treated
+   as a command option.
 
    This restriction is defined by the constant: `PATH_MAX`:
 
@@ -239,17 +252,40 @@
    }
    ```
    ```sh
+   # On BTRFS
+
    $ gcc main.c && ./a.out
    4096
    ```
 
-7. 文件的换行符及结束符
+5. Pathname
+ 
+   For a pathname, the series of component filenames preceeding the final slash
+   is sometimes referred to as the `directory` part of a pathname, while the
+   name following the final slash is sometimes referred to as the file or the 
+   base part of the pathname.
 
-   * 换行符是`\n(ascii: 10)`
-   * UNIX没有文件结束符的概念，读取文件时如无数据返回，则认定达到EOF
-   > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
+   See Ch18 for the C APIs:
 
-8. 进程的RUID，EUID以及saved-set-UID(以及RGIP, EGID, saved-set-GID)
+   ```c
+   dirname()
+   basename()
+   ```
+
+6. For directories, `x` permission allows you to "enter" the directory, and access
+   the stuff in it.
+
+   > Here, by "stuff", I mean the files within this directory.
+
+   The `r` and `w` permisssions enable read and write permissions on the directory
+   (the map list) itself, not its files. In most cases, without the `x` permission,
+   you can do nothing with this directory.
+
+# 2.5 File I/O Model
+# 2.6 Programs
+# 2.7 Processes
+
+1. 进程的RUID，EUID以及saved-set-UID(以及RGIP, EGID, saved-set-GID)
    
    > For more info about process credentials, see
    > [Ch9](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9.md)
@@ -269,7 +305,7 @@
    For info about `saved-set-UID`, see Ch9: 5.
 
 
-9. init进程
+2. init进程
 
     内核在启动时，会创建一个名为`init`的特殊进程，为所有进程的父进程
     其程序文件`/sbin/init`，其PID通常是1
@@ -280,11 +316,11 @@
     lrwxrwxrwx     20 root root   19 Apr 04:12  init -> /lib/systemd/systemd
     ```
 
-10. 子进程会默认继承父进程的环境变量
+3. 子进程会默认继承父进程的环境变量
 
     当使用`exec()`对子进程进行替换时，可以使用参数选择换掉或者不换掉环境变量
 
-11. 资源限制
+4. 资源限制
 
     每个进程都会消耗资源，可以使用`setrlimit`函数来为进程可消耗资源设置上限。
     限制包括2项，soft limit以及hard limit，soft limit是用来设置进程消耗资源
@@ -295,6 +331,27 @@
     由`fork`创建的子进程，会继承其父进程对资源消耗的限制
 
     > shell资源消耗的限制可以使用`ulimit`命令进行调整
+
+# 2.8 Memory Mappings
+# 2.9 Static and Shared Libraries
+# 2.10 Interprocess Communication and Synchronization
+# 2.11 Signals
+# 2.12 Threads
+# 2.13 Process Groups and Shell Job Control
+# 2.14 Sessions, Controlling Terminals, and Controlling Processes
+# 2.15 Pseudoterminals
+# 2.16 Date and Time
+# 2.17 Client-Server Architecture
+# 2.18 Realtime
+# 2.19 The `/proc` file system
+# 2.20 Summary
+
+
+7. 文件的换行符及结束符
+
+   * 换行符是`\n(ascii: 10)`
+   * UNIX没有文件结束符的概念，读取文件时如无数据返回，则认定达到EOF
+   > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
 
 12. object library
 
@@ -313,13 +370,14 @@
 
     2. shared library
 
-    shared libraryd就是为了解决static library的问题才出现的。首先说一下static library
-    为什么static，因为其是在编译时进行拷贝(从static library拷贝到最终的可执行文件，想
-    一下rust的编译期的静态检查)。而shared library则是在运行时(runtime)才将所需要用到的
-    函数加载进内存，而且倘若多个程序都链接了同一个shared library，那么只有一份library
-    会被加载进入内存，供多个程序使用(节省内存大小)。在链接得到的最终binary里有的也只是
-    所需被链接的函数的一个record而不是函数本身(节省磁盘)。由于是在运行时才加载入内存，
-    更新的问题也就自动解决了
+       shared libraryd就是为了解决static library的问题才出现的。首先说一下
+       static library 为什么static，因为其是在编译时进行拷贝(从static library
+       拷贝到最终的可执行文件，想一下rust的编译期的静态检查)。而shared library
+       则是在运行时(runtime)才将所需要用到的函数加载进内存，而且倘若多个程序都
+       链接了同一个shared library，那么只有一份 library 会被加载进入内存，供多
+       个程序使用(节省内存大小)。在链接得到的最终binary里有的也只是所需被链接
+       的函数的一个record而不是函数本身(节省磁盘)。由于是在运行时才加载入内存，
+       更新的问题也就自动解决了
 
 13. UNIX有众多的IPC方式，其中有一些的功能是重叠的。这是由于他们来源于不同的UNIX。
     比如，FIFO(named pipe)和UNIX domain socket是在相同主机不相关进程间进行通讯的

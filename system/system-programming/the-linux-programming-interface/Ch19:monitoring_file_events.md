@@ -438,3 +438,6 @@
 
     9. If a file system is mounted at your watched directory, then NO event will
        be sent. When it is unmounted, events will be generated.
+
+    10. inotify is inode-based, if you monitor multiple files to the same inode,
+        then events may be send to any of them...
