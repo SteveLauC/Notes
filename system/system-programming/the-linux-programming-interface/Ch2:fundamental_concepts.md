@@ -282,7 +282,44 @@
    you can do nothing with this directory.
 
 # 2.5 File I/O Model
+
+
+1. UNIX processes interact with the outside world through file descriptors
+
+   When you send text to the process from your keyboard, it receives it from
+   the stdin, fd 0
+
+   * terminal
+   * file
+   * devices
+   * sockets
+   * pipe
+
+   > Well, you do have things other than fds, e.g., shard memory.
+
+   What a beautiful abstraction!
+
+2. A process can have limited number of file descriptors, we can get this limit
+   at runtime with:
+
+   ```rs
+   use nix::sys::resource::{getrlimit, Resource};
+
+   fn main() {
+       let n_open_file = Resource::RLIMIT_NOFILE;
+       let (cur, max) = getrlimit(n_open_file).unwrap();
+
+       println!("{} {}", cur, max);
+   }
+   ```
+
+   ```sh
+   $ cargo r -q
+   1024 524288
+   ```
+
 # 2.6 Programs
+
 # 2.7 Processes
 
 1. 进程的RUID，EUID以及saved-set-UID(以及RGIP, EGID, saved-set-GID)

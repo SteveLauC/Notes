@@ -196,7 +196,7 @@
    255
    ```
 
-8. retrieve limit at runtime using `sysconf(3)`
+8. retrieve limit at runtime using `sysconf(3)` or `getrlimit(2)`
    
    ```c
    #include <unistd.h>
@@ -247,6 +247,25 @@
    And the standard requires that the value retrieved from `sysconf` will be constant
    in the lifetime of this process. But under Linux, there are some exceptions. For
    some special limits, one can use `setrlimit(2)` to change it.
+
+   ```rs
+   use nix::sys::resource::{getrlimit, Resource, setrlimit};
+
+   fn main() {
+       let n_open_file = Resource::RLIMIT_NOFILE;
+       let (cur, max) = getrlimit(n_open_file).unwrap();
+       println!("before: {} {}", cur, max);
+
+       setrlimit(n_open_file, max, max).unwrap();
+       let (cur, max) = getrlimit(n_open_file).unwrap();
+       println!("after: {} {}", cur, max);
+   }
+   ```
+   ```sh
+   $ cargo r -q
+   before: 1024 524288
+   after: 524288 524288
+   ```
 
 9. obtain file-related limits at runtime using `pathconf(3)` and `fpathconf(3)`
 

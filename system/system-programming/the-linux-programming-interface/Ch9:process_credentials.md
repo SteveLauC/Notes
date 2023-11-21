@@ -55,6 +55,8 @@
 
    A new process inherit EUID and EGID from its parent process.
 
+   > QUES: Is this true?
+
    Normally, EUID and EGID have the same values as RUID and RGID. But this can
    be changed through:
 
@@ -169,6 +171,10 @@
    When an executable is executed, here is what happens:
    1. RUID (RGID) gets the value from the parent process. EUID (EGID) gets
       value from RUID (RGID).
+
+      > QUES: why we are saying that EUID comes from a process's EUID, isn't it
+      >       inherited from its parent process?
+
    2. If the set-UID (set-GID) is set, then EUID (EGID) will have the value
       of the UID (GID) of that executable file.
    3. The value of saved set-UID (saved set-GID) copies from EUID (EGID). This
