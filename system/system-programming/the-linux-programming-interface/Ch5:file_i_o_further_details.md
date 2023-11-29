@@ -295,14 +295,63 @@
 14. Non-blocking I/O
 	
     when `O_NONBLOCK` is used inside `open`, it has 2 functionalities:
-    1. if the file can not be opened immediately, the `open` will return without
-    block.
-    2. if the file is successfully opened, then the subsequent I/O operations
-    performed on this file are also non-blocking.
 
-    > O_NONBLOCK is ignored on regular files as the kernel buffer cache ensures
-    that I/O on regular file does not block.(One exception: when file is being 
-    )
+    1. if the file can not be opened immediately, the `open` will return without
+       block.
+
+    2. if the file is successfully opened, then the subsequent I/O operations
+       performed on this file are also non-blocking.
+
+    > `O_NONBLOCK` is ignored on regular files as the kernel buffer cache ensures
+    > that I/O on regular file does not block.(One exception: when file is locked
+    > by a mandatory lock, read/write on it would block, when `O_NONBLOCK` is set,
+    > it will fail with `EAGAIN` immediately, UPDATE: the mandatory lock on Linux
+    > is no longer supported in kernel 5.15 or above)
+    >
+    > Due to the reason that regular files are always readable, syscalls like
+    >
+    > 1. select
+    > 2. poll
+    > 3. epoll
+    >
+    > cannot be used on it.
+
+    What does non-blocking mean on different types of file descriptors
+
+    * For sockets, readability means there is some unread data in the receive 
+      buffer. That is well-known and probably the most common use case for 
+      non-blocking I/O. Conversely, writeability implies the send buffer is not
+      full from the standpoint of the underlying protocol of the socket (e.g. 
+      TCP/IP). Ultimately, protocol-specific congestion control determines the 
+      exact mechanisms and policies for the send buffer.
+
+    * For pipes, readability means some unread data remains in the pipe buffer,
+      or one task is blocking in a write to the other end of the pipe. Reciprocally,
+      writeability means the pipe buffer has available room, or one task is blocking
+      in a read operation on the pipe.
+
+    * FIFOs are really exactly like pipes, except that they have a name in the 
+      file system hierarchy.
+
+    * Terminals and pseudo-terminals also work much like pipes, with regards to 
+      I/O, except for the fact that they support duplex operations like sockets.
+
+    * For devices (other than terminals), polling is implementation-defined. You
+      need to check the device driver documentation.
+
+    * For directories, reading is only defined through blocking (synchronous) 
+      function calls, notably `readdir()` or `readdir_r()`. As such polling is 
+      not defined by the specifications and it would be of no use even if it 
+      were. Also writing to directories is not allowed at all.
+
+    * Regular files are always readable and they are also always writeable. This
+      is clearly stated in the relevant POSIX specifications. I cannot stress 
+      this enough. Putting a regular file in non-blocking has ABSOLUTELY no 
+      effects other than changing one bit in the file flags.
+
+      > Even though regular files are theoretically non-blockgin, but they can be
+      > practically "blocking", so we have Linux AIO (do it in another thread), 
+      > and `io_uring`.
 
 15. I/O on large files
 

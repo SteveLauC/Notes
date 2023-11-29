@@ -12,3 +12,8 @@
 12. Signal mask
 13. Memory mappings
 14. Attached shared memory segments
+15. Session ID
+16. Process Group ID
+17. Controlling terminal
+18. Signal dispositions, user-installed hanlders will be reset to default 
+    ones after calling `exec()`, ignored ones won't be changed.

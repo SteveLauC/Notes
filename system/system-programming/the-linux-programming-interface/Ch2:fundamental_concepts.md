@@ -235,6 +235,8 @@
    and `-` This 65-character set, is referred to in SUSv3 as the portable
    filename character set.
 
+   > SUS is Single UNIX Specification
+
    And we should avoid filenames starting with a hyphen, cause it maybe treated
    as a command option.
 
