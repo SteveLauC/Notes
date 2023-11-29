@@ -322,6 +322,81 @@
 
 # 2.6 Programs
 
+1. In C, we can access the command line arguments with the `argc` and `argv`
+   arguments of the `main` function
+
+   ```c
+   int main(int argc, char *argv[])
+   ```
+
+   In Rust, we use `std::env::args()`.
+
+2. How Rust implements `std::env::args()` on Linux/Glibc
+ 
+
+   Glibc exposes all the `argc/argv/envp` arguments to the functions registered
+   in the `.init_array` section:
+
+   ```c
+   void __libc_csu_init (int argc, char **argv, char **envp) {
+     _init ();
+
+     const size_t size = __init_array_end - __init_array_start;
+     for (size_t i = 0; i < size; i++) {
+         (*__init_array_start [i]) (argc, argv, envp);
+     }
+   }
+   ```
+
+   so in Rust std, we define two global variables to store the `argc` and 
+   `argv`, then register a function to that section, where we will update 
+   the global variables.
+
+   ```rs
+   use nix::libc::c_int;
+
+   static mut ARGC: c_int = 0;
+
+   // By registering, we are not actually register the function itself, we store
+   // the function pointer at that section.
+   #[link_section = ".init_array"]
+   static ARGV_INIT_ARRAY: extern "C" fn(
+       c_int,
+       *const *const u8,
+       *const *const u8,
+   ) = {
+       extern "C" fn init_wrapper(
+           argc: c_int,
+           _argv: *const *const u8,
+           _envp: *const *const u8,
+       ) {
+           unsafe {
+               ARGC = argc;
+           }
+       }
+       init_wrapper
+   };
+
+   fn main() {
+       unsafe {
+           println!("{}", ARGC);
+       }
+   }
+   ```
+
+   > Functions registered in the `.init_array` section will be invoked sequentially
+   > on process startup, in Rust, there is a crate 
+   > [`rust-ctor`](https://github.com/mmastrac/rust-ctor/tree/master), which exactly
+   > employs this, though the function registered by this crate does not have the
+   > `argc/argv/envp` arguments.
+
+3. How Rust implements `std::env::args()` on other libc
+
+   The value of `envp` is stored in global variable `__envrion`, `argv` is directly
+   before it, then `argc`.
+
+   https://stackoverflow.com/a/58956461/14092446
+
 # 2.7 Processes
 
 1. 进程的RUID，EUID以及saved-set-UID(以及RGIP, EGID, saved-set-GID)
