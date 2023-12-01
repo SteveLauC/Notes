@@ -397,32 +397,110 @@
 
    https://stackoverflow.com/a/58956461/14092446
 
+4. Why would `std::env::arg_os()` allocate (return an owned `OsString`)
+
+   Becausee it can be modified by other parts of the process, typically parts
+   that are not Rust.
+
+   > The problem start with FFI and other languages, which might modify 
+   > argc, argv, *argv, and **argv while Rust is iterating. Or you might 
+   > get a &[u8] that has been malloc()ed by C code, and free()d when you
+   > later try to read it.
+
 # 2.7 Processes
 
-1. 进程的RUID，EUID以及saved-set-UID(以及RGIP, EGID, saved-set-GID)
-   
+1. Process memory layout
+
+   A process is logically divided into the following parts, known as `segments`:
+
+   * Text: the instrctions of the program 
+   * Data: the **static** variable used by the program
+   * Heap: dynamic memory
+   * Stack: for function frames
+
+   These memory segments are initialized with their corresponding ELF sections,
+   one can use the `size` command to inspect a binary's sections.
+
+2. A process can create a child process by using the `fork(2)` syscall, which
+   would duplicate itself.
+
+   Then it can call `exec()` to run the needed program.
+
+   > QUES: how does the first process get created? (the init process)
+   >
+   > See below, the init process.
+
+3. Do we have kernel-space processes on Linux?
+
+   NO, because Linux kernel is a Monolithic kernel, it has threads but not 
+   processes. Microkernel, on the other hand, can have kernel-space processes.
+
+   [Does kernel spawn some processes (not user process) that keep running in background?](https://stackoverflow.com/q/72923707/14092446)
+
+4. Process terminaltion
+
+   A process can be terminated in two ways:
+
+   1. It asks for a terminal through the `_exit(2)` sycall or the libc 
+      function
+   2. Being killed by a signal
+
+   In either cases, the terminated process will send termination status (a 
+   nonnegative integer) to the parent process, the parent process can get 
+   it through the `wait(2)` syscall.
+
+   In the case of calling `_exit(2)`, the child process will choose this
+   integer itself, in the other case, the status will be set according to the
+   type of the signal that causes the death of the process.
+
+   Conventionally, a termination status of 0 indicates that the process 
+   succeeds, a nonzero value indicates that some error occurred.
+
+  
+5. The RUID/EUID/saved-set-UID(RGID/EGID/saved-set-GID and supplementary group IDs)
+   of a process
+
    > For more info about process credentials, see
    > [Ch9](https://github.com/SteveLauC/Notes/blob/main/system/system-programming/the-linux-programming-interface/Ch9.md)
 
-   > 判断进程有没有权限做一个件事，是看其EUID和EGID的
+   Every process will have its RUID and RGID, which are inherited from its parent
+   process (the first process gets them from the `/etc/passwd` file). EUID and
+   EGID, are set to its RUID and RGID, but can be changed if higher or lower
+   priviledge is required:
 
-   每一个进程都有一个RUID和RGID，继承自父进程 (login shell 从/etc/passwd中读登陆
-   用户的uid和gid并设置为RUID和RGID)。EUID和EGID默认等于RUID和RGID，但
-   是有时普通用户需要更高权限，此时可以更改EUID来获取更高权限。通过:
-   1. [seteuid和setegid](https://man7.org/linux/man-pages/man2/seteuid.2.html)
-   2. set-UID 和set-GID机制
+   1. [seteuid and setegid syscall](https://man7.org/linux/man-pages/man2/seteuid.2.html)
+   2. set-UID and set-GID bits
 
-   比如设置了set-UID位的可执行程序，在运行时，其EUID会被设置为可执行程序文件的
-   UID而不是父进程的UID。(see Ch9 3/4)
+   For example, a program (compiled binary) with set-UID set, will have EUID that
+   is equal to the user ID of the owner of that program.
 
+   ```sh
+   $ l $(which passwd)
+   Permissions Links Size User Group Date Modified Name
+   .rwsr-xr-x      1  68k root root  23 Mar 20:40  /usr/bin/passwd
+   ```
 
-   For info about `saved-set-UID`, see Ch9: 5.
+6. Priviledged process
 
+   Traditionally in UNIX world, a priviledged process is a process whose EUID
+   is 0. 
 
-2. init进程
+   Linux has a better priviledge control as it has capabilities, a process can 
+   perform an operation only if it has the corresponding capability. The super
+   user (UID 0), has all the capabilities enabled.
 
-    内核在启动时，会创建一个名为`init`的特殊进程，为所有进程的父进程
-    其程序文件`/sbin/init`，其PID通常是1
+7. The init process
+
+    When kernel starts，it will create a special process named `init`, all the
+    process will be created by either the `init` process or one of its 
+    descendants.
+
+    The `init` process usually has PID 1.
+
+    ```sh
+    $ pstree -p | head -1
+    systemd(1)-+-ModemManager(1022)-+-{ModemManager}(1062)
+    ```
 
     ```shell
     $ cd sbin
@@ -430,73 +508,193 @@
     lrwxrwxrwx     20 root root   19 Apr 04:12  init -> /lib/systemd/systemd
     ```
 
-3. 子进程会默认继承父进程的环境变量
+8. Daemon processes
 
-    当使用`exec()`对子进程进行替换时，可以使用参数选择换掉或者不换掉环境变量
+   A daemon process is just a normal process, except that:
 
-4. 资源限制
+   1. It is long-lived, usually started at system boot
+   2. It runs in the background with no terminal attached
 
-    每个进程都会消耗资源，可以使用`setrlimit`函数来为进程可消耗资源设置上限。
-    限制包括2项，soft limit以及hard limit，soft limit是用来设置进程消耗资源
-    的上限的，而hard limit则是设置soft limit的上限的。非特选进程(EUID!=0)的
-    soft limit可以设置为0到hard limit的任何值，但是其hard limit只能调低，不能
-    调高。
+   Name of a daemon process would usually end with `d`, like `syslogd`, `httpd`.
 
-    由`fork`创建的子进程，会继承其父进程对资源消耗的限制
+9. Resource limits
 
-    > shell资源消耗的限制可以使用`ulimit`命令进行调整
+   A process would have limited resources, these limits can be queried with the
+   `getrlimit(2)` syscall:
+
+   ```rs
+   use nix::sys::resource::{getrlimit, Resource};
+
+   fn main() {
+       let n_fd = Resource::RLIMIT_NOFILE;
+
+       let (soft, hard) = getrlimit(n_fd).unwrap();
+
+       println!("Soft: {} Hard: {}", soft, hard);
+   }
+   ```
+
+   ```sh
+   $ cargo r -q
+   Soft: 1024 Hard: 1048576
+   ```
+
+   This syscall would return 2 values, one is the `soft limit`, the current
+   limination of the corresponding resource, the other one is the `hard limit`,
+   which is the limit of the `soft limit`.
+
+   One can adjust these limits through `setrlimit(2)`, the soft limit can be 
+   set to `[0, hardlimit]`, the hard limit can ONLY be decreased.
+
+   > Modifications to a hard limit is a one way operation.
+
+   Child process will inherient these resource limits form its parent process.
+
+   > Within a shell, we can query them with the `ulimit` command.
 
 # 2.8 Memory Mappings
+
+1. The `mmap(2)` syscall can be used to create a new memory mapping in a process's
+   virutal memory, mappings fall into 2 categories:
+
+   1. File mapping
+
+      A file mapping maps a region of a file into the calling proess's virutal 
+      memory, once mapped, the file's contents can be accessed by operations on
+      the bytes in the corresponding memory region, the pages of the mapping are
+      automatically loaded from the file when accessed (required).
+   
+   2. Anonymous mapping
+
+      Anonymous mapping does not have a corresponding file, instead, the pages
+      are initialized to 0, and thus, anonymous can be used to implement 
+      `maclloc(3)`
+
+   The memory in one process's mapping may be shardd with mappings in otehr processes,
+   this can occur either because two pocesses map the same regiion of a file or
+   because a child created by `fork()` inherits a mapping from its parent.
+
+   When sharing with other processes, modification made by one process can be seen
+   by other processes and will be carried to the underlying file if the flag argument
+   contains `MAP_SHARED`.
+
+   Memory mapping can serve a variety of purposes, including:
+
+   1. Create a process's text segment from the corresponding ELF file
+   2. Allocating zero-initialized memory
+   3. Memory-mapped I/O
+   4. IPC
+
+
 # 2.9 Static and Shared Libraries
-# 2.10 Interprocess Communication and Synchronization
-# 2.11 Signals
-# 2.12 Threads
-# 2.13 Process Groups and Shell Job Control
-# 2.14 Sessions, Controlling Terminals, and Controlling Processes
-# 2.15 Pseudoterminals
-# 2.16 Date and Time
-# 2.17 Client-Server Architecture
-# 2.18 Realtime
-# 2.19 The `/proc` file system
-# 2.20 Summary
 
+1. Object library
 
-7. 文件的换行符及结束符
+   Object library is a file containing the compiled object code for a set of 
+   functions that could be called from application programs (using C's ABI).
 
-   * 换行符是`\n(ascii: 10)`
-   * UNIX没有文件结束符的概念，读取文件时如无数据返回，则认定达到EOF
-   > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
+   There are 2 kinds of object library in the UNIX world:
 
-12. object library
+   1. static library
 
-    UNIX中有2中Object library
+      > This was the ONLY type of library on early UNIX systems. 
 
-    1. static library(aka archives)
+      To use a static library, we specify the that library in the link command 
+      used to build a program.
 
-       起初是UNIX上唯一的library类型。在链接时进行调用，linker会将static library中
-       的函数拷贝到最终生成的二进制文件中去。这样链接而成的程序称其是statically linked
+      Here an example demostrating on how to make a C program a static library
+      and use it:
 
-       由于静态链接会对所需要的东西进行拷贝，所以其有以下2个缺点:
+      ```c
+      // hello.c
+
+      #include <stdio.h>
+
+      void hello(void) {
+          printf("Hello World\n");
+      }
+
+      // hello.h
+      void hello(void);
+
+      // main.c
+      #include "hello.h"
+      int main(void) {
+          hello();
+      }
+      ```
+
+      ```sh
+      $ ls
+      hello.c  hello.h  main.c
+
+      # Compile `hello.c`, use `-c` to tell gcc to build the an intermediate 
+      # object
+      $ gcc -c hello.c
+
+      $ l
+      Permissions Links Size User  Group Date Modified Name
+      .rw-r--r--      1   70 steve steve  1 Dec 16:45  hello.c
+      .rw-r--r--      1   18 steve steve  1 Dec 16:41  hello.h
+      .rw-r--r--      1 1.4k steve steve  1 Dec 16:46  hello.o
+      .rw-r--r--@     1   52 steve steve  1 Dec 16:40  main.c
+
+      # Extract `libhello.a` from `hello.o`
+      $ ar rcs libhello.a hello.o
+
+      $ l
+      Permissions Links Size User  Group Date Modified Name
+      .rw-r--r--      1   70 steve steve  1 Dec 16:45  hello.c
+      .rw-r--r--      1   18 steve steve  1 Dec 16:41  hello.h
+      .rw-r--r--      1 1.4k steve steve  1 Dec 16:46  hello.o
+      .rw-r--r--      1 1.5k steve steve  1 Dec 16:46  libhello.a
+      .rw-r--r--@     1   52 steve steve  1 Dec 16:40  main.c
+
+      # Compile main.c with the `-c` option
+      $ gcc -c main.c
+      $ ls
+      hello.c hello.h hello.o libhello.a main.c main.o
+
+      # Let's gcc build the final binary
+      # -L option: path of the library search directory
+      # Since libhello.a is in the pwd, we pass a dot here
+      $ gcc main.o -L . -lhello -o hello
+
+      $ ./hello
+      Hello World
+      ```
+
+      When linking, the linker will extract the object file from the static 
+      library to the final binary file. A program linked in such way is called
+      a statically linked program.
+
+      Given that we have copied the object file while linking, static library
+      has 2 obvious drawbacks:
        
-       1. 浪费磁盘和内存
-       2. 如果static library被修改了，为了让最终生成的链接文件的被链接部分也被修改
-       ，需要重新链接
+      1. Heavy disk and ram usage
+      2. If a linked library has been changed, we have to relink it again.
 
-    2. shared library
+   2. shared library
 
-       shared libraryd就是为了解决static library的问题才出现的。首先说一下
-       static library 为什么static，因为其是在编译时进行拷贝(从static library
-       拷贝到最终的可执行文件，想一下rust的编译期的静态检查)。而shared library
-       则是在运行时(runtime)才将所需要用到的函数加载进内存，而且倘若多个程序都
-       链接了同一个shared library，那么只有一份 library 会被加载进入内存，供多
-       个程序使用(节省内存大小)。在链接得到的最终binary里有的也只是所需被链接
-       的函数的一个record而不是函数本身(节省磁盘)。由于是在运行时才加载入内存，
-       更新的问题也就自动解决了
+      > QUES: I am not sure how to dynamically link with musl in C, from their
+      >       doc, I need to install the gcc-musl wrapper, then everything would
+      >       work out of box.
+
+2. Why is statically linking against glibc strongly discouraged?
+
+   [Why is statically linking glibc discouraged?](https://stackoverflow.com/q/57476533/14092446)
+
+# 2.10 Interprocess Communication and Synchronization
+
 
 13. UNIX有众多的IPC方式，其中有一些的功能是重叠的。这是由于他们来源于不同的UNIX。
     比如，FIFO(named pipe)和UNIX domain socket是在相同主机不相关进程间进行通讯的
     方式，FIFO来源于system V，而socket来自BSD
+
     
+# 2.11 Signals
+
+
 14. signal的pending状态
 
     一个信号，在其generate到deliver中间的时间，我们称此signal处于pending状态。
@@ -504,11 +702,14 @@
     而如果一个signal被加入了signal mask，那么此signal一旦被产生就会一直处于
     pending状态，直到其被从signal mask中移除
 
+# 2.12 Threads
+
 15. thread的内存共享
 
     同一个process中的threads是共享heap和data area的，但是每一个thread都有自己独
     立的stack
 
+# 2.13 Process Groups and Shell Job Control
 
 16. process group and shell job control
 
@@ -517,7 +718,14 @@
     或者叫作job之中。每一个process group都有一个process group id，是其中的某一
     个进程(称此进程为process group leader)的PID
 
-    > 目前还没感觉出这一特性的作用
+    > QUES: 目前还没感觉出这一特性的作用
+    >
+    > Future Steve(23/12/1): this is specifically for shell, it totally makes
+    > sense that you didn't realized what it is for. More details on
+    > [Use and meaning of session and process group in Unix?](https://stackoverflow.com/q/6548823/14092446)
+
+# 2.14 Sessions, Controlling Terminals, and Controlling Processes
+
 
 17. session
 
@@ -525,6 +733,10 @@
     此session的process的PID
 
     > TLPI section 2.14 俺没读懂
+
+# 2.15 Pseudoterminals
+
+# 2.16 Date and Time
 
 18. 进程占用的时间
 
@@ -547,7 +759,25 @@
     ```shell
     $ command time -p ls
     ```
+# 2.17 Client-Server Architecture
+# 2.18 Realtime
+
 
 19. real time operating system
 
     Linux本是一个分时系统，但其在不断的改进中，已经完全支持real time 
+
+# 2.19 The `/proc` file system
+# 2.20 Summary
+
+
+7. 文件的换行符及结束符
+
+   * 换行符是`\n(ascii: 10)`
+   * UNIX没有文件结束符的概念，读取文件时如无数据返回，则认定达到EOF
+   > 在non-blocking的IO时，如果没有数据返回，则函数返回EOF
+
+
+
+
+

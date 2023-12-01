@@ -56,6 +56,9 @@
    A new process inherit EUID and EGID from its parent process.
 
    > QUES: Is this true?
+   >
+   > Future Steve: this is not true, a process's EUID and EGID will be set its
+   > RUID and RGID, unless some modification has been done to them.
 
    Normally, EUID and EGID have the same values as RUID and RGID. But this can
    be changed through:
