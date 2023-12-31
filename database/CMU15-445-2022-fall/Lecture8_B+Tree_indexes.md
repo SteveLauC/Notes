@@ -51,6 +51,9 @@
 
       > Implementations that use this approach:
       > * SQLite
+      >   Yes, SQLite does this, see 
+      >   [The tree module](https://github.com/SteveLauC/Notes/blob/main/database/SQLite/SQLite_Databases_System_Design_and_Implementation/Ch6_The_Tree_Module.md)
+      >   
       > * MySQL 
 
 3. Advantage of using B+TREE
@@ -159,6 +162,8 @@
    * HDD: 1MB
    * SSD: 10KB
    * Memory: 512B
+    
+     You want to put a node within your CPU cache.
 
    > In some enterprise system, one can have different page sizes for different
    > components.
@@ -176,6 +181,8 @@
       Store a pointer to the key instead of the key itself, you don't want to 
       do this in a disk system as everytime you access a node, you have to
       access the address pointed by that pointer, which is a random access.
+
+      You only want this in a memory system.
 
    2. Var-len node
 
@@ -224,18 +231,33 @@
 
 1. Pointer swizzing
 
-   On disk, a node's pointers are alwasy `PageID`s, say I have two pages in the 
-   memory buffer pool, one is the parent of the other one, when accessing the 
-   child node, we follow the `PageID` stored in the parent node, access the 
-   `PageTable` (If you have no idea what the `PageTable` is, read the note of the
-   lecture 6, it is the metadata for the buffer pool), find the corresponding
-   memory frame.
+   Within a B+Tree, a node's pointers are alwasy `PageID`s, while traversing
+   a B+Tree, we get a `PageID` then ask this page from the buffer pool, the
+   buffer pool will search this in its `PageTable`.
 
-   If a page is **pined** in the memory, we can store raw addresses instead 
-   of `PageID`s, to avoid `PageTablel` accesses.
+   > If you have no idea what the `PageTable` is, read the note of the lecture 
+   > 6, it is the metadata for the buffer pool
+
+   This access to the `PageTable` can be avoided if:
+
+   1. The target page is **pinned** in memory 
+   2. We store raw pointers rather than `PageID`s in a node
+
+   Then we can access it through the pointer without accessing the `PageTable`.
+
+   > But how can we implement this?
+   >
+   > We can maintain a HashMap within the buffer pool that stores a mapping
+   > from a `PageID` to its memory address for those pinned frames(pages).
+   >
+   > Future steve:
+   > 
+   > The above thought is wrong, you are creating another `PageTable`.
 
    > The PageTable possibly is behind a lock, this optimization could avoid 
    > a access to the lock.
+   >
+   > Note: we are not skipping the lock of a page but the lock of the `PageTable`.
 
 2. Bulk Insertion (Bulk Loading)
 
