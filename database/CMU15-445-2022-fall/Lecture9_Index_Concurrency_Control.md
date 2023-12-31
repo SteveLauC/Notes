@@ -14,6 +14,18 @@
    > a single process, but they are all bound to differnt cores so that they 
    > won't touch the same query at the same time (violated)
 
+2. Concurrency control protocol
+
+   > Protocol seems to be a quite common term.
+   
+   A concurrency control protocol is the method that the DBMS uses to ensure
+   "correct" result for concurrent operations on a shared object.
+
+   A protocol's correctness criteria can vary:
+
+   * Logical correctness: Can a thread see the data that it is supposed to see?
+   * Physical correctness: Is the internal representation of the object sound?
+
 # Latches Overview
 
 1. Diff between Locks and Latches
@@ -64,10 +76,28 @@
 
         1. Support concurrent readers. 
 
+   > `RwLock` can be slower than `Mutex` as the implementation is more complicated,
+   > per the Java doc:
+   >
+   > Whether or not a read-write lock will improve performance over the use of 
+   > a mutual exclusive lock depends on:
+   >
+   > * The frequency that the data is read compared to being modified
+   > * The duration of the read and write operations
+   > * The contention for the data, i.e., the number of threads that will try to
+   >   read or write the data at the same time
+   >
+   > Some general idea:
+   >
+   > * If write is rare, use `RwLock`
+   > * If the read operations are short that it cannot beat the overhead of
+   >   maintaining the state of `RwLock`, then use `Mutex`
+   > * Always profile before making a conclusion
+
 # Hash Table Latching
 
-We use Linear Probe Hashing to demo the Hash Table Latching, because it 
-is simple and it is easy to make a simple structure concurrent.
+We use Linear Probe Hashing (fix-sized array) to demo the Hash Table Latching,
+because it is simple and it is easy to make a simple structure concurrent.
 
 And, with Linear Probe Hashing, **all threads will access the table in the 
 same direction, deadlock is impossible to happen**.

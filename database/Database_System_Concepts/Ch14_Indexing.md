@@ -404,6 +404,12 @@
 
       And incontiuous memory (tree, or linked list) is not good for caching.
 
+      And, compared to a B+Tree, searching a BST needs more random access, in 
+      both memory and disk, this will get worse when there are more elements 
+      stored in the BST.
+
+      > Putting things tother and making a tree wider to reduce random access.
+
    4. B-Tree
 
       Using B-Tree as an index file:
