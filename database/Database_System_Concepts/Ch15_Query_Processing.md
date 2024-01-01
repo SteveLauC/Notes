@@ -1,6 +1,9 @@
 > * 15.1 Overview
 > * 15.2 Measures of Query Cost
 > * 15.3 Selection Operation
+>   * 15.3.1 Selections Using File Scans and Indices
+>   * 15.3.2 Selections Involving Comparisons
+>   * 15.3.3 Implementation of Complex Selections
 > * 15.4 Sorting
 > * 15.5 Join Operation
 > * 15.6 Other Operations
@@ -111,7 +114,7 @@
 
      1. The CPU cost per tuple
      2. The CPU cost for processing each index entry
-     3. The CPU ost per operator or function
+     3. The CPU cost per operator or function
 
    * Communication cost (for parallel and distributed system)
 
@@ -157,6 +160,61 @@
 
 # 15.3 Selection Operation
 
+> This `selection` is the operation in SQL but not relational-algebra.
+
+1. In query processing, the `file scan` is the lowest-level operator to access 
+   data. File scans are search algorithms that locate and retrieve records that
+   fulfill a selection condition.
+
+
+   ```sql
+   steve=> EXPLAIN SELECT * FROM students WHERE age > 18;
+                            QUERY PLAN
+   ------------------------------------------------------------
+    Seq Scan on students  (cost=0.00..25.88 rows=423 width=36)
+      Filter: (age > 18)
+   (2 rows)
+   ```
+
+   Well, the `EXPLAIN` command will give you a estimated execution cost.
+
+2. `file scan` is the operator that reads the table, `index scan` will use the
+   index to read the table.
+
+## 15.3.1 Selections Using File Scans and Index Scans
+
+> Denotations:
+>
+> * Ts: time of a seek operation
+> * Tt: time of transferring a block
+> * Nb: the number of blocks to access
+> * Hi: height of the index
+
+> NOTE: the text book assumes that every access to an internal node of a B+Tree
+> is a random access, you know that most DBMSes don't think so, they believe that
+> internal nodes are in memory since they are frequently accessed.
+
+* Apporach 1: linear search
+
+  Slow, but **will work under ANY cases**, no matter:
+   
+  * the file type
+  * availability of index
+
+  The other approaches are not appliable in all cases.
+
+  To linear search a B+Tree that resides on disk, you have to seek to the root
+  node, then follow the pointers stored in internal nodes to arrive at the 
+  leftmost leaf node, then do the scan. It is highly possible that leaf nodes
+  are not continuous on disk, so more random accesses.
+
+  Cost: If we ignore the random accesses causes by the fact that leaf nodes are
+  not continuous on disk, the cost is `Ts + Nb * Tt`.
+
+* 
+
+## 15.3.2 Selections Involving Comparisons
+## 15.3.3 Implementation of Complex Selections
 
 # 15.4 Sorting
 # 15.5 Join Operation
