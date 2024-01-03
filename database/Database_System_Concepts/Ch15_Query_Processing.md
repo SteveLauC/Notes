@@ -34,10 +34,10 @@
    3. A relational-algebra expression **ONLY PARTIALLY** describes how to evaluate 
       a query
 
-      To fully specify how to evaluate a query, we need to annotate a relational-
+      To fully specify how to evaluate a query, we need to annotate the relational
       algebra expression with instructions on how to evaluate it.
 
-3. What are `evaluation primitive` and `query-execution plan`
+3. What are `evaluation primitive` (node) and `query-execution plan` (tree)
 
    A relational-algebra expression annotated with instructions on how to
    evaluate it is called an `evaluation primitive`.
@@ -47,7 +47,7 @@
 
    > I think I will just call it `query plan` in later notes.
 
-   For  SQL:
+   For SQL:
 
    ```sql
    SELECT salary FROM instrcutors WHERE salary < 75000;
@@ -77,7 +77,7 @@
 
    > In the next 4 sections, we learn the cost of individual operations.
 
-2. Metrics of query plan cost
+2. Metrics on query plan cost
 
    * Disk I/O (the dominating one)
 
@@ -96,7 +96,7 @@
         > 3. microsecond
         > 4. nanosecond
 
-     > Reading from memory will happen in units of `cache line` rather than
+     > Reading from memory happens in units of `cache line` rather than
      > disk block, reading a memory chunk of 4k would take less than 1 us,
      > seeking (latency) would take less hten 100 nanoseconds.
 
@@ -133,7 +133,7 @@
 4. Normally, the cost of a disk I/O is smaller than the estimated one due to the
    existence of kernel cache buffer.
 
-   To take it into account, PostgreSQL uses the following hack:
+   To take it into account, PostgreSQL uses the following assumption:
 
    1. The cost of a random access is assumed to be 1/10th of the actual cost, to
       model the situation that 90% of reads are found to be resident in cache.
@@ -160,7 +160,7 @@
 
 # 15.3 Selection Operation
 
-> This `selection` is the operation in SQL but not relational-algebra.
+> This is the `selection` in SQL but not the one in relational-algebra.
 
 1. In query processing, the `file scan` is the lowest-level operator to access 
    data. File scans are search algorithms that locate and retrieve records that
