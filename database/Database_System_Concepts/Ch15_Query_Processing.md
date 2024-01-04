@@ -282,7 +282,100 @@
 
 
 ## 15.3.2 Selections Involving Comparisons
+
+* Case 7: Clustering index, comparsion
+
+  Say that this index is a clustering B+Tree index, for query:
+
+  ```sql
+  SELECT * FROM table WHERE col > A ( >= A)
+  ```
+
+  We can traverse down the leaf node that has values >= A, then we follow the
+  pointer to the the data storage, find that first tuple that satisfies the
+  condition, since this is a clustering index, the data is also ordered, we can
+  simply sequentially scan the database file.
+
+  Cost: `Hi * (Ts + Tt) + Ts + (Nb - 1) * Tt`
+
+  For query:
+
+  ```sql
+  SELECT * FROM table WHERE col < A ( <= A)
+  ```
+  We don't need to read the index as we can directly scan the database file
+  until we find the first tuple that satisfies the cndition.
+
+  Cost: `Ts + (Nb - 1) * Tt`
+
+  > The above analysis assumes that the clustering index is dense, for a sparse
+  > clustering index, we may need to read more blocks.
+
+* Case 8: Secondary index, comparsion
+
+  > Secondary index must be dense
+
+  Secondary index stores pointers to the values satisfying the condition,
+  but following a pointer would require a seek + block tranfer, which can
+  be quite expensive.
+
+  So it should be ONLY used if:
+  1. We are aware of the number of matching tuples
+  2. The number is small
+
+  > It might be better to sort the `PageID`s that we got from this index, 
+  > which could possibly avoid some random I/O and duplicate reads.
+  >
+  > PostgreSQL does this, if the number of matching tuples if not known,
+  > the query optimizer would create a BitMap with a capacity of the number
+  > of blocks used by this table. Then it will traverse the index, if a
+  > page is stored in an index entry, the corresponding bit will be set
+  > to 1, after index traverse, PostgreSQL will read the pages that having
+  > bit set to 1.
+  >
+  > ```rs
+  > let mut map = RoaringBitMap::new();
+  > for page_id in secondary_index {
+  >     map.insert(page_id);
+  > }
+  >
+  > // access pages whose ID is stored in `map`
+  > ```
+  >
+  > This is called bitmap index scan.
+  >
+  > Using a bitmap so that we don't need to sort the list, which is cheaper.
+
+
 ## 15.3.3 Implementation of Complex Selections
+
+1. We have covered some selections with simple predicates (column op value), 
+   however, the filter can be complex.
+
+2. What are `conjunctive selection` and `disjunctive selection`?
+
+   * A `conjunctive selection` is a selection of the form:
+
+     ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-01-04%2020-27-59.png)
+
+     It is basically SQL queries like:
+
+     ```sql
+     SELECT * FROM table WHERE {column} {op} {value} AND {column} {op} {value} AND {column} {op} {value}
+     ```
+
+   * A `disjunctive selection` is a selection of the form:
+
+     ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-01-04%2020-28-25.png)
+   
+     ```sql
+     SELECT * FROM table WHERE {column} {op} {value} OR {column} {op} {value} OR {column} {op} {value}
+     ```
+ 3. Cases 
+
+    * Conjunctive selection using one index
+
+       
 
 # 15.4 Sorting
 # 15.5 Join Operation
