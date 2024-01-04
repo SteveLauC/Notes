@@ -132,11 +132,27 @@
 
    An Ordered Index stores the values of the search keys in sorted order.
 
+   > QUES: Do we have any index structures that are not ordered???
+   >
+   > Well, yes, hash index.
+
 2. What is `Clustering Index/Primary Index/Clustered Index`
 
    The entries stored in a table **may themselves be sorted in some sorted order**,
    just as books in a library are stored according to some attribute such as
    the Dewey decimal number.
+
+   > QUES: does clustering index require that the data file is sorted according
+   > to the search key? 
+   >
+   > Clustering index has the same order as the data file, this sentence means
+   > that clustering index has an order, for index, we generally have 2 kinds of
+   > it:
+   > 1. Ordered, B+Tree
+   > 2. Unordered, Hash index
+   > 
+   > If an index has an order, then it should be ordered, then clustering index
+   > is ordered, the data file has the same order so the file is also ordered.
 
    A `Clustering Index` is an index whose `Search key` also defines the 
    sequential order of the entries, i.e., reflects the *phycial* order of how
@@ -209,7 +225,10 @@
       > In a dense clustering index, if there are multiple entries with the same
       > search-key value, then the index entry for that search-key would point
       > to **the first** entry with that search-key value.
-
+      >
+      > In a dense non-clustering index, since the index is not clustering, if 
+      > there are multiple entries with the same search key value, then the index
+      > entry must store a list of pointers to all the tuples.
 
    2. Sparse index
 

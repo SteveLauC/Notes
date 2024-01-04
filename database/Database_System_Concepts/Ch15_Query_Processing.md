@@ -189,12 +189,13 @@
 > * Tt: time of transferring a block
 > * Nb: the number of blocks to access
 > * Hi: height of the index
+> * Ne: the number of entries to read (used in case 6)
 
 > NOTE: the text book assumes that every access to an internal node of a B+Tree
 > is a random access, you know that most DBMSes don't think so, they believe that
 > internal nodes are in memory since they are frequently accessed.
 
-* Apporach 1: linear search
+* Case 1: linear search
 
   Slow, but **will work under ANY cases**, no matter:
    
@@ -211,7 +212,74 @@
   Cost: If we ignore the random accesses causes by the fact that leaf nodes are
   not continuous on disk, the cost is `Ts + Nb * Tt`.
 
-* 
+* Case 2: Linear search, equality on key
+ 
+  > What does "equality on key" mean?
+  > 
+  > 1. equality means that we want to find tuples where a specific field equals
+  >    to some value.
+  > 2. `key` means that the values of this field are unique 
+
+  This is similar to linear search except that we can stop the search if the 
+  target entry is found.
+
+  Average Cost: `Ts + (Nb/2)*Tt`.
+
+* Case 3: Clustering B+Tree Index, Equality on Key
+
+  > Clustering index requires that the database file is also sorted according
+  > to the search key.
+
+  If the clustering index is dense, then the target key is guaranteed to exist
+  in the index. Then we:
+
+  1. Read the index: `Hi * (Ts+Tt)`
+  2. Following the index pointer to read the entry: `Ts + Tt`
+
+  Cost: `(Hi+1) * (Ts+Tt)`
+
+  If the clustering index is sparse, then if the target key exists in the index,
+  then the cost is also `(Hi+1) * (Ts+Tt)`. if the target key does not exist, 
+  
+  1. then we need to find the key that is less than or equal to the target 
+     key: `Hi * (Ts + Tt)`
+  2. Read the data file page: `Ts + Tt`
+  3. Then sequentially read the entries from this pgae until we find the target
+     key: `Nb * Tt`
+
+  Cost: `[(Hi + 1) * (Ts + Tt)] + Nb*Tt`
+
+* Case 4: Clustering B+Tree index, equality on non-key
+
+  > `non-key` means that the values of the target field are not unique
+
+  Since the values of the target field are not unique, we need to read all the
+  tuples. Assume reading the the data file needs to access `Nb` blocks, this 
+  case needs more cost `(Nb-1) * Tt` than the previous one.
+
+* Case 5: Secondary B+Tree index, equality on key
+
+  > Secondary index must be dense 
+
+  Cost: `(Hi+1) * (Ts + Tt)`
+
+* Case 6: Secondary B+Tree index, equality on non-key
+
+  > B+Tree index is ordered, since the secondary index does not have the same
+  > order as the data file, then the data file is guaranteed to be unordered.
+
+  Since the values of this field are not unique, the index entry stores a list
+  of pointers pointing to all the tuples with the same search key value.
+  first tuple satisfying our request.
+
+  1. Read the index: `Hi * (Ts + Tt)`, it is a list of pointers
+  2. Assume the pointers list is ordered, and these tuples store in different
+     blocks, then it will be `Ne * (Ts + Tt)` (the worst case)
+
+  Cost: `(Hi + Ne) * (Ts + Tt)`
+
+  If `Ne` is large, then the cost can be pretty high.
+
 
 ## 15.3.2 Selections Involving Comparisons
 ## 15.3.3 Implementation of Complex Selections
