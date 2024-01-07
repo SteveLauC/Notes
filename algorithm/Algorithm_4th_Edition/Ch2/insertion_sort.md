@@ -14,6 +14,10 @@ Use another pointer j to iterate over our sorted sub-array from the location
 of i-1 to 0, if s[j] is bigger than key, move s[j] back by one position using
 s[j+1] = s[j]
 
+> Curious why we are not using binary search while inserting `cur` into the
+> left sorted array, then I get this: 
+> [Insertion Sort with binary search](https://stackoverflow.com/q/18022192/14092446)
+
 ```rust
 // Old impl in `TheAlgorithms/Rust`
 

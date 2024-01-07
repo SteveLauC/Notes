@@ -54,8 +54,8 @@ fn top_down_merge_sort<T: Copy + Ord>(a: &mut [T]) {
 
     let mid: usize = a.len() / 2;
 
-    merge_sort(&mut a[..mid]);
-    merge_sort(&mut a[mid..]);
+    top_down_merge_sort(&mut a[..mid]);
+    top_down_merge_sort(&mut a[mid..]);
     merge(a, mid);
 }
 ```

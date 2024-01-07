@@ -422,15 +422,15 @@
  
    1. SQL supports specifying the order with the `ORDER BY` clause
    2. Several relational operations, such as joins, can be implemented efficiently
-      if the input relatsions are first sorted, e.g., join.
+      if the input relatsions are first sorted.
 
 2. Sort records logically
 
    To sort reocrds logically according to a field, we can build an ordered index
    on that field, then accessing the records through that index is ordered.
 
-   But since reocrds are ONLY logically ordered but not physically, it will result
-   in massive random I/Os. 
+   But since reocrds are ONLY logically ordered but not physically sorted, it 
+   could result in massive random I/Os. 
 
    > We want records to be physically ordered.
 
@@ -445,16 +445,89 @@
 
 2. External sort-merge algorithm
 
-   > Notations: 
+   > We assume that:
    >
-   > M: The number of blocks in the memory that is available for sorting
+   > * There are `M` blocks of memory that is available for sorting
+   > * There are `Nb` blocks of data to sort
+   > * `N = Nb/M`
 
-   1. 
+   1. Repeatedly, until all blocks are read:
+      1. read `M` blocks of data into memory
+      2. sort these blocks
+      3. write them to disk
+         
+         > This will create `N` files
 
+      > After step 1, we have `N` sorted chunks, then we want to merge them.
 
+   2. If `N + 1 <= M`, then read the first block of these `N` files into memory,
+      use 1 block to store the sorted result.
 
+      1. Iterate over the first record of these `N` blocks, **move** the first
+         record (should be the smallest if we sort in ascending order).
+      2. Repeat the last step until all the `N` blocks are empty.
+      3. All these `N+1` blocks are sorted, write the sorted result to disk
+
+      > With the in-memory merge sort, we will merge 2 sorted array, this is called
+      > 2-way merge.
+      >
+      > ```rs
+      > fn top_down_merge_sort<T: Copy + Ord>(a: &mut [T]) {
+      >    // already ordered
+      >    if a.len() <= 1 {
+      >        return;
+      >    }
+      >
+      >    let mid: usize = a.len() / 2;
+      >
+      >    merge_sort(&mut a[..mid]);
+      >    merge_sort(&mut a[mid..]);
+      >    // merge 2 sorted slices, 2-way merge
+      >    merge(a, mid);
+      > }
+      > ```
+      >
+      > The above step merges `N` sorted arrays, this is called N-way merge.
+
+      4. Repeat the last 3 steps until all these `N` files are empty.
+
+   3. If `N + 1 > M`, then we merge `M - 1` files first, this will be the input
+      of the next merge, then we merge anther `M - 1` files until all files are
+      processed.
+
+      At this point, the number of files have been reduced by a factor of `M-1`,
+      then we do another round on these files, until we merge all the files into
+      one file.
+
+      > The last round, the number of input files will be `< M`.
+
+3. diagram
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-01-07%2017-40-03.png)
+
+   In the above example, we assume that 3 blocks of memory is available for 
+   sorting, and one block would contain 1 record.
+
+   1. First, we repeatedly read 3 blocks, and sort them.
+   2. After sorting, we have 4 files, so we cannot merge them all in a single 
+      round, so in this pass, we repeated merge 2 files.
+   3. After the last round, we have 2 files left to merge, 2 < 3, so this is
+      the last round, then we merge them.
+
+4. Merge strategy
+
+   The text book seems to recommand that every merge in a round should be 
+   balanced, "balanced" means that all the input files should try to have the
+   same number of blocks.
 
 ## 15.4.2 Cost Analysis of External Sort-Merge
+
+Cost:
+
+1. The first stage, sorting, we read `Nb` blocks, sort them, and write them 
+   back, which would give us `2Nb` blocks transfers.
+
+2. 
 
 # 15.5 Join Operation
 
