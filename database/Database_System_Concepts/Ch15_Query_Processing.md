@@ -5,6 +5,8 @@
 >   * 15.3.2 Selections Involving Comparisons
 >   * 15.3.3 Implementation of Complex Selections
 > * 15.4 Sorting
+>   * 15.4.1 External Sort-Merge Algorithm
+>   * 15.4.2 Cost Analysis of External Sort-Merge
 > * 15.5 Join Operation
 > * 15.6 Other Operations
 > * 15.7 Evaluation of Expressions
@@ -161,6 +163,8 @@
 # 15.3 Selection Operation
 
 > This is the `selection` in SQL but not the one in relational-algebra.
+
+> This selection covers how to do selections with different conditions.
 
 1. In query processing, the `file scan` is the lowest-level operator to access 
    data. File scans are search algorithms that locate and retrieve records that
@@ -373,13 +377,89 @@
      ```
  3. Cases 
 
-    * Conjunctive selection using one index
+    * Case 9: Conjunctive selection using one index
 
-       
+      1. For all the conditions of a conjunctive selection, if any one of it 
+         whose field has an index, then we can retrieve the records satisfying
+         the condition through that index
+
+         > The records satisfying all the conditions is guaranteed to be a subset
+         > of the records retrieved from this index.
+
+      2. Then for the records, we check if it satisfies the other conditions.
+         
+      Cost: it depends on the index you choose
+    
+    * Case 10: Conjunctive selection using a composite index
+
+      If the conjunctive selection specifies an equality condition on two or more
+      attributes, and an appropriate composite index exisets on these combined
+      fields, then the index can be used.
+
+    * Case 11: Conjunctive selection by intersection of identifiers
+
+      > Identifier means the pointer stored in index.
+
+      If multiple fields of the conjunctive selection have indexes, then we can
+      retrieve all the pointers stored by these indexes, and intersect them, the
+      records stored in the pages pointed by these pointers should satisfy all
+      the conditions.
+
+      If these are conditions that whose fields do not have an index, we can iterate
+      over the records to see if the remaining conditions are met.
+
+    * Case 12: disjunctive selection by union of identifiers
+
+      If all the fields used by a disjunctive selection have an index, then we can
+      union the identifiers stored by all the indexes. 
+
+      However, if any field does not have an index, then we have to do a linear 
+      search.
 
 # 15.4 Sorting
+
+1. Sorting is important as
+ 
+   1. SQL supports specifying the order with the `ORDER BY` clause
+   2. Several relational operations, such as joins, can be implemented efficiently
+      if the input relatsions are first sorted, e.g., join.
+
+2. Sort records logically
+
+   To sort reocrds logically according to a field, we can build an ordered index
+   on that field, then accessing the records through that index is ordered.
+
+   But since reocrds are ONLY logically ordered but not physically, it will result
+   in massive random I/Os. 
+
+   > We want records to be physically ordered.
+
+3. If the data can fit entirely in the memory, then quick-sort can be used. In the
+   next section, we discuss that how to handle the case where data is too big to
+   fit into the memory.
+
+## 15.4.1 External Sort-Merge Algorithm
+
+1. Sorting relations that do not fit in memory is called `external sorting`, amoung
+   which the most common one is `external sort-merge` algorithm.
+
+2. External sort-merge algorithm
+
+   > Notations: 
+   >
+   > M: The number of blocks in the memory that is available for sorting
+
+   1. 
+
+
+
+
+## 15.4.2 Cost Analysis of External Sort-Merge
+
 # 15.5 Join Operation
+
 # 15.6 Other Operations
+
 # 15.7 Evaluation of Expressions
 
 > In this section, we examine how to coordinate the execution of multiple 
