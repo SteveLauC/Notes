@@ -520,6 +520,8 @@
    balanced, "balanced" means that all the input files should try to have the
    same number of blocks.
 
+   > QUES: I am not sure about this
+
 ## 15.4.2 Cost Analysis of External Sort-Merge
 
 Cost:
