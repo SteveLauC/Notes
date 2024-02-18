@@ -1,7 +1,7 @@
 > * 15.1 Overview
 > * 15.2 Measures of Query Cost
 > * 15.3 Selection Operation
->   * 15.3.1 Selections Using File Scans and Indices
+>   * 15.3.1 Equality/full file Selections Using File Scans and Indices
 >   * 15.3.2 Selections Involving Comparisons
 >   * 15.3.3 Implementation of Complex Selections
 > * 15.4 Sorting
@@ -33,8 +33,8 @@
 
    1. A query can be expressed with several SQL statements
    2. A SQL can be translated into multiple relational-algebra expressions
-   3. A relational-algebra expression **ONLY PARTIALLY** describes how to evaluate 
-      a query
+   3. A relational-algebra expression (logical plan) **ONLY PARTIALLY** describes
+      how to evaluate a query
 
       To fully specify how to evaluate a query, we need to annotate the relational
       algebra expression with instructions on how to evaluate it.
@@ -68,6 +68,13 @@
 5. For a query optimizer, in order to optimize a query plan, it must know the
    cost of each operation. It is hard to get a exact cost but getting a rough
    estimate of execution cost is possible.
+
+   > This is cost-based optimization.
+   >
+   > There are generally 2 kinds of optimizers:
+   >
+   > 1. Rule-based (RBO)
+   > 2. Cost-based (CBO)
 
 # 15.2 Measures of Query Cost
 
@@ -119,10 +126,12 @@
      3. The CPU cost per operator or function
 
    * Communication cost (for parallel and distributed system)
+     
+     1. Serialization and deserialization
 
 3. The costs of disk I/O also depends on the main memory size, for example, if
    a big memory that can hold all the data is avilable, then we can read the 
-   data from disk, then we no longer need to access disk again.
+   data from memory, then we no longer need to access disk again.
 
    When estimating cost, we use the amount of memory available to an operator,
    M, as a parameter.
@@ -164,7 +173,8 @@
 
 > This is the `selection` in SQL but not the one in relational-algebra.
 
-> This selection covers how to do selections with different conditions.
+> This selection covers how to do selections under different conditions and their
+> estimated cost (cost made by disk I/O).
 
 1. In query processing, the `file scan` is the lowest-level operator to access 
    data. File scans are search algorithms that locate and retrieve records that
@@ -180,12 +190,14 @@
    (2 rows)
    ```
 
-   Well, the `EXPLAIN` command will give you a estimated execution cost.
+   Well, the `EXPLAIN` command will give you an estimated execution cost.
 
 2. `file scan` is the operator that reads the table, `index scan` will use the
    index to read the table.
 
-## 15.3.1 Selections Using File Scans and Index Scans
+   > Selection predicate guides us to choose the right index to use.
+
+## 15.3.1 Equality/full file selections Using File Scans and Index Scans
 
 > Denotations:
 >
@@ -193,11 +205,12 @@
 > * Tt: time of transferring a block
 > * Nb: the number of blocks to access
 > * Hi: height of the index
-> * Ne: the number of entries to read (used in case 6)
+> * Ntuple: the number of tuples to read (used in case 6)
 
 > NOTE: the text book assumes that every access to an internal node of a B+Tree
-> is a random access, you know that most DBMSes don't think so, they believe that
-> internal nodes are in memory since they are frequently accessed.
+> is a random access, this is true if they are not present in the cache, and 
+> you know that most DBMSes don't think so, they believe that internal nodes are
+> in memory since they are frequently accessed.
 
 * Case 1: linear search
 
@@ -213,8 +226,13 @@
   leftmost leaf node, then do the scan. It is highly possible that leaf nodes
   are not continuous on disk, so more random accesses.
 
+  > If this is a B-Tree, you can simply read all the pages of this file without
+  > accessing the pointers stored in internal nodes.
+
   Cost: If we ignore the random accesses causes by the fact that leaf nodes are
-  not continuous on disk, the cost is `Ts + Nb * Tt`.
+  not continuous on disk, the cost is `Hi * (Ts + Tt) + Ts + Nb * Tt`.
+
+  > QUES: Are leaf nodes continuous on disk? I think this depends on implementation.
 
 * Case 2: Linear search, equality on key
  
@@ -227,7 +245,7 @@
   This is similar to linear search except that we can stop the search if the 
   target entry is found.
 
-  Average Cost: `Ts + (Nb/2)*Tt`.
+  Average Cost: we need to access `Nb/2` blocks under the average case `Ts + (Nb/2)*Tt`.
 
 * Case 3: Clustering B+Tree Index, Equality on Key
 
@@ -237,7 +255,7 @@
   If the clustering index is dense, then the target key is guaranteed to exist
   in the index. Then we:
 
-  1. Read the index: `Hi * (Ts+Tt)`
+  1. Read the index: `Hi * (Ts + Tt)`
   2. Following the index pointer to read the entry: `Ts + Tt`
 
   Cost: `(Hi+1) * (Ts+Tt)`
@@ -249,7 +267,7 @@
      key: `Hi * (Ts + Tt)`
   2. Read the data file page: `Ts + Tt`
   3. Then sequentially read the entries from this pgae until we find the target
-     key: `Nb * Tt`
+     key, assume we will find the target key after reading `Nb` pages: `Nb * Tt`
 
   Cost: `[(Hi + 1) * (Ts + Tt)] + Nb*Tt`
 
@@ -257,9 +275,11 @@
 
   > `non-key` means that the values of the target field are not unique
 
-  Since the values of the target field are not unique, we need to read all the
-  tuples. Assume reading the the data file needs to access `Nb` blocks, this 
-  case needs more cost `(Nb-1) * Tt` than the previous one.
+  Since the values of the target field are not unique, and this is a clustering
+  index, then the pointer stored in index points to the first tuple that has a 
+  field of that value. We need to read all the tuples. Assume reading the the 
+  data file needs to access `Nb` blocks, this case needs more cost `(Nb-1) * Tt` 
+  than the previous one in both cases.
 
 * Case 5: Secondary B+Tree index, equality on key
 
@@ -271,18 +291,21 @@
 
   > B+Tree index is ordered, since the secondary index does not have the same
   > order as the data file, then the data file is guaranteed to be unordered.
+  >
+  > Future steve: WTF? the data file can be ordered, it can be ordered by a key
+  > that is different from the one the index is built against.
 
-  Since the values of this field are not unique, the index entry stores a list
-  of pointers pointing to all the tuples with the same search key value.
-  first tuple satisfying our request.
+  Since the values of this field are not unique, and this is a secondary index,
+  then the index entry stores a list of pointers pointing to all the tuples 
+  with the same search key value.
 
   1. Read the index: `Hi * (Ts + Tt)`, it is a list of pointers
-  2. Assume the pointers list is ordered, and these tuples store in different
-     blocks, then it will be `Ne * (Ts + Tt)` (the worst case)
+  2. Assume the tuples pointed by these pointers are storesd in different pages, 
+     then it will be `Ntuple * (Ts + Tt)` (the worst case)
 
-  Cost: `(Hi + Ne) * (Ts + Tt)`
+  Cost: `(Hi + Ntuple) * (Ts + Tt)`
 
-  If `Ne` is large, then the cost can be pretty high.
+  If `Ntuple` is large, then the cost can be pretty high.
 
 
 ## 15.3.2 Selections Involving Comparisons
