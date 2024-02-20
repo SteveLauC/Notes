@@ -574,6 +574,8 @@
 
 ## 15.4.2 Cost Analysis of External Sort-Merge
 
+> NOTE: revisit ths in the future.
+
 Cost:
 
 1. The first stage, sorting, we read `Nb` blocks, sort them, and write them 
@@ -583,8 +585,44 @@ Cost:
 
 # 15.5 Join Operation
 
-# 15.6 Other Operations
+1. If we categorize joins by how they handle **unmatched** data, joins can be 
+   separated into 4 kinds:
 
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-20%2019-25-36.png)
+
+   > This above diagram is great, the result of an inner join will be a subset 
+   > of the result of the corresponding left/right/full join.
+
+   > If you forget about the differences between them, 
+   > see [What's the difference between INNER JOIN, LEFT JOIN, RIGHT JOIN and FULL JOIN?][so]
+   >
+   > so: https://stackoverflow.com/q/5706437/14092446
+
+2. In relational algebra, we have 3 kinds of joins:
+
+   1. theta (θ, the eighth letter of the Greek alphabet) join
+      
+      This is the join cencept we use in the SQL world, `θ` denotes the condition.
+
+      > If you come from the SQL world, you want to just call it join rather than
+      > giving it a weird name.
+      >
+      > So I won't say it is a real category.
+     
+   2. equi join
+
+      For a (theta) join, if the condition expression is `=`, then it is an equi
+      join.
+
+   3. natural join
+
+      natural join is a special kinds of join, the fields (on different tables) 
+      it uses should have the same name.
+
+   > All the above joins, equi join and natural join, can be 
+   > inner/left outer/right outer/full outer.
+
+# 15.6 Other Operations
 # 15.7 Evaluation of Expressions
 
 > In this section, we examine how to coordinate the execution of multiple 
