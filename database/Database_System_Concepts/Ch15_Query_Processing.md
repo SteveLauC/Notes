@@ -1,3 +1,11 @@
+> This chaper covers how to do:
+>
+> 1. Full file scan
+> 2. Selections with equality condition
+> 3. Selections with comparsion
+> 4. Selections with complex conditions (conjunction/disjunction)
+> 5. Sort
+
 > * 15.1 Overview
 > * 15.2 Measures of Query Cost
 > * 15.3 Selection Operation
@@ -301,11 +309,12 @@
 
   1. Read the index: `Hi * (Ts + Tt)`, it is a list of pointers
   2. Assume the tuples pointed by these pointers are storesd in different pages, 
-     then it will be `Ntuple * (Ts + Tt)` (the worst case)
+     then we need to access `Ntuple` pages, in the worst case the cost will be 
+     `Ntuple * (Ts + Tt)`
 
   Cost: `(Hi + Ntuple) * (Ts + Tt)`
 
-  If `Ntuple` is large, then the cost can be pretty high.
+  > If `Ntuple` is large, then the cost can be pretty high.
 
 
 ## 15.3.2 Selections Involving Comparisons
@@ -323,17 +332,19 @@
   condition, since this is a clustering index, the data is also ordered, we can
   simply sequentially scan the database file.
 
-  Cost: `Hi * (Ts + Tt) + Ts + (Nb - 1) * Tt`
+  Cost: `Hi * (Ts + Tt) + Ts + Nb * Tt`
 
   For query:
 
   ```sql
   SELECT * FROM table WHERE col < A ( <= A)
   ```
-  We don't need to read the index as we can directly scan the database file
-  until we find the first tuple that satisfies the cndition.
+  
+  Since there is a clustering index on field `col`, then the database file itself
+  is ordered by `col` so that We don't need to read the index as we can directly 
+  scan the database file until we find the first tuple that satisfies the cndition.
 
-  Cost: `Ts + (Nb - 1) * Tt`
+  Cost: `Ts + Nb * Tt`
 
   > The above analysis assumes that the clustering index is dense, for a sparse
   > clustering index, we may need to read more blocks.
@@ -376,7 +387,7 @@
 
 ## 15.3.3 Implementation of Complex Selections
 
-1. We have covered some selections with simple predicates (column op value), 
+1. We have covered some selections with simple predicates (`column op value`), 
    however, the filter can be complex.
 
 2. What are `conjunctive selection` and `disjunctive selection`?
@@ -416,7 +427,7 @@
     * Case 10: Conjunctive selection using a composite index
 
       If the conjunctive selection specifies an equality condition on two or more
-      attributes, and an appropriate composite index exisets on these combined
+      attributes, and an **appropriate** composite index exisets on these combined
       fields, then the index can be used.
 
     * Case 11: Conjunctive selection by intersection of identifiers
@@ -436,8 +447,8 @@
       If all the fields used by a disjunctive selection have an index, then we can
       union the identifiers stored by all the indexes. 
 
-      However, if any field does not have an index, then we have to do a linear 
-      search.
+      However, if tere is any field that does not have an index, then we have to
+      do a linear search.
 
 # 15.4 Sorting
 
@@ -447,10 +458,14 @@
    2. Several relational operations, such as joins, can be implemented efficiently
       if the input relatsions are first sorted.
 
+      > This is the reason why we cover sort beforing diving into joins.
+
 2. Sort records logically
 
    To sort reocrds logically according to a field, we can build an ordered index
    on that field, then accessing the records through that index is ordered.
+
+   > This will be a non-clustering index.
 
    But since reocrds are ONLY logically ordered but not physically sorted, it 
    could result in massive random I/Os. 
@@ -458,8 +473,8 @@
    > We want records to be physically ordered.
 
 3. If the data can fit entirely in the memory, then quick-sort can be used. In the
-   next section, we discuss that how to handle the case where data is too big to
-   fit into the memory.
+   next section, we discuss how to handle the case where data is too big to fit 
+   into the memory.
 
 ## 15.4.1 External Sort-Merge Algorithm
 
@@ -467,6 +482,13 @@
    which the most common one is `external sort-merge` algorithm.
 
 2. External sort-merge algorithm
+
+   Generally, external merge sort happens in 2 phases:
+
+   1. Sort
+   2. Merge
+
+   Let's dive into the details.
 
    > We assume that:
    >
@@ -477,17 +499,16 @@
    1. Repeatedly, until all blocks are read:
       1. read `M` blocks of data into memory
       2. sort these blocks
-      3. write them to disk
+      3. write them to a disk file
          
-         > This will create `N` files
-
-      > After step 1, we have `N` sorted chunks, then we want to merge them.
+      After this step, we will have `N` sorted chunks, then we want to merge them.
 
    2. If `N + 1 <= M`, then read the first block of these `N` files into memory,
-      use 1 block to store the sorted result.
+      use 1 block to store the sorted result, let name this block as the destination
+      block.
 
-      1. Iterate over the first record of these `N` blocks, **move** the first
-         record (should be the smallest if we sort in ascending order).
+      1. Iterate over the first tuple of these `N` blocks, **move** the smallest
+         tuple to the destination block.
       2. Repeat the last step until all the `N` blocks are empty.
       3. All these `N+1` blocks are sorted, write the sorted result to disk
 
@@ -518,6 +539,12 @@
       of the next merge, then we merge anther `M - 1` files until all files are
       processed.
 
+      > TODO: figure out the approach that has the best performance.
+      >
+      > The approach described above is one strategy we can use, different
+      > strategies have performance impacts, need to figure out the best way
+      > to do it.
+
       At this point, the number of files have been reduced by a factor of `M-1`,
       then we do another round on these files, until we merge all the files into
       one file.
@@ -528,8 +555,8 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-01-07%2017-40-03.png)
 
-   In the above example, we assume that 3 blocks of memory is available for 
-   sorting, and one block would contain 1 record.
+   In the example depicted by the above diagram, we assume that 3 blocks of memory
+   are available for sorting, and one block would contain 1 record.
 
    1. First, we repeatedly read 3 blocks, and sort them.
    2. After sorting, we have 4 files, so we cannot merge them all in a single 
