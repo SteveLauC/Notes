@@ -16,9 +16,37 @@
 >   * 15.4.1 External Sort-Merge Algorithm
 >   * 15.4.2 Cost Analysis of External Sort-Merge
 > * 15.5 Join Operation
+>   * 15.5.1 Netsted-Loop Join 
+>   * 15.5.2 Block Netsted-Loop Join 
+>   * 15.5.3 Indexed Nested-Loop Join
+>   * 15.5.4 Merge Join
+>     * 15.5.4.1 Merge Join Algorithm
+>     * 15.5.4.2 Cost Analysis
+>     * 15.5.4.3 Hyprid Merge Join
+>   * 15.5.5 Hash Join
+>     * 15.5.5.1 Basics
+>     * 15.5.5.2 Recursive Partitioning
+>     * 15.5.5.3 Handling of Overflows
+>     * 15.5.5.4 Cost of Hash Join
+>     * 15.5.5.5 Hybrid Hash Join
+>   * 15.5.6 Complex Joins
+>   * 15.5.7 Joins over Spatial Data
 > * 15.6 Other Operations
+>   * 15.6.1 Duplicate Elimination
+>   * 15.6.2 Projection
+>   * 15.6.3 Set operations
+>   * 15.6.4 Outer Join
+>   * 15.6.5 Aggregation
 > * 15.7 Evaluation of Expressions
+>   * 15.7.1 Materialization
+>   * 15.7.2 Pipelining
+>     * 15.7.2.1 Implementation of Pipelining
+>     * 15.7.2.2 Evaluation Algorithms for Pipelining
+>   * 15.7.3 Pipelines for Continuous-Stream Data
 > * 15.8 Query Processing in Memory
+>   * 15.8.1 Cache-Conscious Algorithms
+>   * 15.8.2 Query Compilation
+>   * 15.8.3 Column-Oriented Storage
 > * 15.9 Summary
 
 # 15.1 Overview
@@ -622,12 +650,45 @@ Cost:
    > All the above joins, equi join and natural join, can be 
    > inner/left outer/right outer/full outer.
 
+## 15.5.1 Netsted-Loop Join 
+## 15.5.2 Block Netsted-Loop Join 
+## 15.5.3 Indexed Nested-Loop Join
+## 15.5.4 Merge Join
+### 15.5.4.1 Merge Join Algorithm
+### 15.5.4.2 Cost Analysis
+### 15.5.4.3 Hyprid Merge Join
+## 15.5.5 Hash Join
+### 15.5.5.1 Basics
+### 15.5.5.2 Recursive Partitioning
+### 15.5.5.3 Handling of Overflows
+### 15.5.5.4 Cost of Hash Join
+### 15.5.5.5 Hybrid Hash Join
+## 15.5.6 Complex Joins
+## 15.5.7 Joins over Spatial Data
+
 # 15.6 Other Operations
+## 15.6.1 Duplicate Elimination
+## 15.6.2 Projection
+## 15.6.3 Set operations
+## 15.6.4 Outer Join
+## 15.6.5 Aggregation
+
 # 15.7 Evaluation of Expressions
+## 15.7.1 Materialization
+## 15.7.2 Pipelining
+### 15.7.2.1 Implementation of Pipelining
+### 15.7.2.2 Evaluation Algorithms for Pipelining
+## 15.7.3 Pipelines for Continuous-Stream Data
 
 > In this section, we examine how to coordinate the execution of multiple 
 > operations in a query evaluation plan, in particular, how to use pipelined
 > operations to avoid writing intermediate results to disk.
 
 # 15.8 Query Processing in Memory
+
+## 15.8.1 Cache-Conscious Algorithms
+## 15.8.2 Query Compilation
+## 15.8.3 Column-Oriented Storage
 # 15.9 Summary
+
+
