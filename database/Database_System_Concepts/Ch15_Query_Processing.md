@@ -626,6 +626,13 @@ Cost:
    >
    > so: https://stackoverflow.com/q/5706437/14092446
 
+   > TODO
+   >
+   > 1. left semi
+   > 2. right semi
+   > 3. left anti
+   > 4. right anti
+
 2. In relational algebra, we have 3 kinds of joins:
 
    1. theta (θ, the eighth letter of the Greek alphabet) join
@@ -651,7 +658,98 @@ Cost:
    > inner/left outer/right outer/full outer.
 
 ## 15.5.1 Netsted-Loop Join 
+
+1. Remeber that for selection operations, linear file scan will work under whatever
+   circumstances.
+
+   Like the linear file scan, this Nested-Loop Join alrogithm will work regardless
+   of what the join condition is. And it does not require an index, as if there is
+   no index, we can do linear file-scan. (it can be speeded up if there is an index
+   appliable to the join condition).
+
+2. Algorithm procedure
+
+   > Algorithms will be expressed in Rust pseduo-code
+   >
+   > ```rs
+   > /// Return true if `cond` is satisfied by `lhs` and `rhs`
+   > fn condition(lhs: Tuple, rhs: Tuple, condi: Expr) -> bool;
+   >
+   > /// Join tuples `lhs` and `rhs`.
+   > fn join(lgs: Tuple, rhs: Tuple) -> Tuple;
+   > ```
+
+   ```rs
+   let mut result: Vec<Tuple> = Vec::new();
+
+   for outer_tuple in outer {
+       for inner_tuple in realtion inner {
+           let satisfied: bool = condition(outer_tuple, inner_tuple, cond);
+           if satisfied {
+               result.push(join(outer_tupel, inner_tuple))             
+           } 
+       }
+   }
+   ```
+
+   You can see that it is basicaly a nested-loop, the pseudo-code assumes there are
+   2 relations to be operated on, increase the # of layers if more relations are
+   added.
+
+3. If we denote the # of tuples in a relation with `n_tupel(relation)`, and the
+   # of blocks with `n_block(relation)`
+
+   With this algorithm, the inner relation will be accessed `n_tuple(outer)` times,
+   and 1 time of access to the outer relation. 
+
+   If the memory is sufficient to hold all the pages of these 2 relations, then we
+   can load and access them in memory, which means the # of block transfer will be
+   `n_block(outer) + n_block(inner)`. This is the best case.
+
+   If there is ONLY one block for each relation, then everytime we access a page,
+   we have to load it from disk, leading one block transfer, then the # of block
+   accesses will be the # of block transfer, `n_tuple(outer) * n_block(inner) + 
+   n_block(outer)`. This is the worst case.
+
+   You may find that the inner relation will be accessed multiple times, it will
+   be benefical if we make the smaller relation the inner one. And if the inner
+   relation can fit in the memory, then the algorithm will also need only 
+   `n_block(outer) + n_block(inner)` block transfers, same as the case where both
+   relations can fit in the memory.
+
+   > For relations that will be accessed for multiple times, you want to pin them
+   > in memory as much as you can to avoid redundant/duplicate disk reads.
+
 ## 15.5.2 Block Netsted-Loop Join 
+
+1. The # of block accesses of nested-loop join is:
+
+   `n_tuple(outer) * n_block(inner) + n_block(outer)`
+
+   With only one block of memory for each relation, the # of block transfers for
+   the inner relation will be `n_tuple(outer) * n_block(inner)`, this can be
+   improved if we **process the outer relation on a per-block basis**.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-24%2020-06-03.png)
+
+   > In the above diagram, the arrow indicates the process of the accessing.
+
+   With nested-loop join, we will remove the first block of the inner relation 
+   and load the second block, this wasted the first block because it is still
+   needed in the future.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-24%2020-09-55.png)
+
+   With block nested-loop join, we don't kick the first block out, we do the 
+   process of the `t2 of outer` and the tuples in the first block of inner.
+   After doing this, processing of the first block of outer is complete, then
+   we can drop the first block of inner and proceed to the second one.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-24%2020-10-56.png)
+
+   This will decrease our # of block transfers to 
+   `n_block(outer) * n_block(inner) + n_block(outer)`.
+
 ## 15.5.3 Indexed Nested-Loop Join
 ## 15.5.4 Merge Join
 ### 15.5.4.1 Merge Join Algorithm
