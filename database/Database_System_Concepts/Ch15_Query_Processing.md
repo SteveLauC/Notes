@@ -782,6 +782,12 @@ Cost:
    of `n_tuple(outer)/n_block(outer)` (in the worst case), leading to 
    `n_block(outer) * n_block(inner) + n_block(outer)` block transfers.
 
+   > It is more efficient to use the smaller relation as the outer relation to
+   > decrease the last number.
+   >
+   > n_block(outer) * n_block(inner) + n_block(outer)`
+   > n_block(inner) * n_block(outer) + n_block(inner)`
+
    And the # of seeks will be decreased to `n_block(outer) + n_block(outer)`.
 
    > This will only improve the performance under the worst case, for the best
@@ -823,6 +829,65 @@ Cost:
 
 
 ## 15.5.3 Indexed Nested-Loop Join
+
+1. In a nested-loop join, if an index is available on the inner loop's join
+   attribute (column), index lookups can replace file scans.
+
+   For each tuple in the outer relation, the index is used to retrieve tuples
+   from the inner relation where the join condition is satisfied, this is 
+   called indexed nested-loop join, it can work with existing indexes, **as well
+   as with TEMPORARY INDEXES created for the sole purposes of evaluating the
+   join**.
+
+   > I kinda think we can have indexed block nested-loop join.
+   > 
+   > Future steve: no, we cannot do this. For the inner relation, block nested-loop
+   > works by doing a file scan, with indexed nested-loop join, we no longer
+   > do it, using index makes it another story.
+
+2. The index should support point-query because retrieve tuples from the inner
+   relatiion satisfying the join conditions with a given tuple from the outer
+   relation is essentially a selection on the outer relation.
+
+   For example
+
+   ```sql
+   SELECT * FROM students INNER JOIN takes WHERE students.id = takes.id;
+   ```
+
+   Suppose we have a student tuple where `id` is 0, then we want to retrieve
+   tuples from the inner relation that also have a `id` of value 0, i.e.,
+
+   ```sql
+   SELECT * FROM takes WHERE id = 0;
+   ```
+
+3. Cost analysis
+
+   An index loopup on the inner relation has to be performed for every tuple 
+   of the outer relation, let's denote the cost of an index loopup with `c`,
+   then the cost will be `n_tuple(outer) * c`.
+
+   > `c` varies from cases to cases, see section 15.3 for details.
+
+   In the worst case, where there is ONLY 1 block for the outer relation
+
+   > This will affect the number of seeks on the outer relation, though
+   > the number of block transfers is not affected.
+
+   > I think that the number of memory blocks for index lookup won't affect
+   > its cost.
+
+   `n_block(outer)` seeks and block transfers are needed for the outer relation,
+   so the total cost would be `n_block(outer) * (Ts + Tt) + n_tuple(outer) * c`.
+
+   It is generally more efficient to use the relation with fewer tuples as
+   the outer relation as `n_tuple(relation)` normally is a huge number.
+
+   The # of block transfers of indexed nested-loop join will be much less than
+   the one in block nested-loop join, but using index would cause more seeks.
+
+
 ## 15.5.4 Merge Join
 ### 15.5.4.1 Merge Join Algorithm
 ### 15.5.4.2 Cost Analysis
