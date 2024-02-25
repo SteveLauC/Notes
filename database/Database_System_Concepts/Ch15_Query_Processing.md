@@ -696,8 +696,8 @@ Cost:
    2 relations to be operated on, increase the # of layers if more relations are
    added.
 
-3. If we denote the # of tuples in a relation with `n_tupel(relation)`, and the
-   # of blocks with `n_block(relation)`
+3. If we denote the # of tuples in a relation with `n_tuple(relation)`, and the
+   \# of blocks with `n_block(relation)`
 
    With this algorithm, the inner relation will be accessed `n_tuple(outer)` times,
    and 1 time of access to the outer relation. 
@@ -706,10 +706,10 @@ Cost:
    can load and access them in memory, which means the # of block transfer will be
    `n_block(outer) + n_block(inner)`. This is the best case.
 
-   If there is ONLY one block for each relation, then everytime we access a page,
-   we have to load it from disk, leading one block transfer, then the # of block
-   accesses will be the # of block transfer, `n_tuple(outer) * n_block(inner) + 
-   n_block(outer)`. This is the worst case.
+   If there is ONLY one block for each relation, then every time we access a page,
+   we have to load it from disk and evict the previous one, leading one block 
+   transfer, then the # of block accesses will be the # of block transfer, i.e.,
+   `n_tuple(outer) * n_block(inner) + n_block(outer)`, this is the worst case.
 
    You may find that the inner relation will be accessed multiple times, it will
    be benefical if we make the smaller relation the inner one. And if the inner
@@ -720,13 +720,19 @@ Cost:
    > For relations that will be accessed for multiple times, you want to pin them
    > in memory as much as you can to avoid redundant/duplicate disk reads.
 
+   For seeks, if both relations can fit in the memory, then it requires 2 seeks.
+   In the worst case, every access of the inner relation requires a seek, i.e., 
+   `n_tuple(outer)` seeks, if we are on a HDD where one read/write can  be handled
+   at a time, then every block access of `outer` requires a seek, so the # of seeks 
+   will be `n_tuple(outer) + n_block(outer)`.
+
 ## 15.5.2 Block Netsted-Loop Join 
 
 1. The # of block accesses of nested-loop join is:
 
    `n_tuple(outer) * n_block(inner) + n_block(outer)`
 
-   With only one block of memory for each relation, the # of block transfers for
+   WITH ONLY ONE BLOCK OF MEMORY FOR EACH RELATION, the # of block transfers for
    the inner relation will be `n_tuple(outer) * n_block(inner)`, this can be
    improved if we **process the outer relation on a per-block basis**.
 
@@ -743,12 +749,78 @@ Cost:
    With block nested-loop join, we don't kick the first block out, we do the 
    process of the `t2 of outer` and the tuples in the first block of inner.
    After doing this, processing of the first block of outer is complete, then
-   we can drop the first block of inner and proceed to the second one.
+   we can drop the first block of inner and proceed to the second one..
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-24%2020-10-56.png)
 
    This will decrease our # of block transfers to 
    `n_block(outer) * n_block(inner) + n_block(outer)`.
+
+2. Algorithm procedure
+
+   ```rs
+   let mut result: Vec<Tuple> = Vec::new();
+
+   for outer_block in outer {
+       for inner_block in inner {
+           for outer_tuple in outer_block {
+               for inner_tuple_in inner_block {
+                   let satisfied: bool = condition(outer_tuple, inner_tuple, cond);
+                   if satisfied {
+                       result.push(join(outer_tupel, inner_tuple))             
+                   } 
+               }
+           }
+       }
+   }
+   ```
+
+3. With block nested-loop join, every block in the inner relation will be paired 
+   with a block rather of a tuple of the outer relation.
+
+   This will decrease the # of block transfers of the inner relation by the factor
+   of `n_tuple(outer)/n_block(outer)` (in the worst case), leading to 
+   `n_block(outer) * n_block(inner) + n_block(outer)` block transfers.
+
+   And the # of seeks will be decreased to `n_block(outer) + n_block(outer)`.
+
+   > This will only improve the performance under the worst case, for the best
+   > case, everything remains the same as the nested-loop join.
+
+4. Other optimizations that can be made to nested-loop join and block 
+   nested-loop join:
+
+   1. If the join attribute (column) in an equi-join in the inner relation is
+      ordered, then the loop for the inner relation can terminate as soon as
+      the last match is found.
+
+   2. The block nested-loop join improves the performance of nested-loop join
+      by processing at the basis of block. Then we can also improve the perf
+      by using a bigger "block".
+
+      Say we have `M` blocks available for the join operation, then we can read
+      `M-2` blocks of the outer relation at a time so that the # of block transfers
+      can be decreased to `ceiling(n_block(outer)/(M-2)) * n_block(inner) + n_block(outer)`.
+      The # of seeks will be `ceiling(n_block(outer)/(M-2)) * 2` (in the worst 
+      case)
+   
+   3. If an index of the attribute (column) of the inner relation is available,
+      then the # of block transfers can be possibly decreased.
+
+      ```rs
+      for outer_block in outer {
+          for inner_block in inner {
+              for outer_tuple in outer_block {
+                  for inner_tuple in find_tuple_through_index(column, column_value, outer) {
+                      // do the join
+                  }
+              }
+          }
+      }
+      ```
+
+      > Section 15.5.3 covers this.
+
 
 ## 15.5.3 Indexed Nested-Loop Join
 ## 15.5.4 Merge Join
