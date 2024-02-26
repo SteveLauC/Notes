@@ -657,6 +657,8 @@ Cost:
    > All the above joins, equi join and natural join, can be 
    > inner/left outer/right outer/full outer.
 
+   4. non-equi join
+
 ## 15.5.1 Netsted-Loop Join 
 
 1. Remeber that for selection operations, linear file scan will work under whatever
@@ -756,6 +758,9 @@ Cost:
    This will decrease our # of block transfers to 
    `n_block(outer) * n_block(inner) + n_block(outer)`.
 
+2. Like nested-loop join, it can support any joins regardless of their join 
+   conditions.
+
 2. Algorithm procedure
 
    ```rs
@@ -845,9 +850,10 @@ Cost:
    > works by doing a file scan, with indexed nested-loop join, we no longer
    > do it, using index makes it another story.
 
-2. The index should support point-query because retrieve tuples from the inner
-   relatiion satisfying the join conditions with a given tuple from the outer
-   relation is essentially a selection on the outer relation.
+2. The index should support point-query (at least on 1 column if the condition 
+   is a conjunction) because retrieve tuples from the inner relatiion satisfying
+   the join conditions with a given tuple from the outer relation is essentially
+   a selection on the outer relation.
 
    For example
 
@@ -887,8 +893,30 @@ Cost:
    The # of block transfers of indexed nested-loop join will be much less than
    the one in block nested-loop join, but using index would cause more seeks.
 
-
 ## 15.5.4 Merge Join
+
+1. The merge-join algorithm (which is also called sort-merge-join) can be used to
+   compute
+
+   1. equi-join
+   2. natural join
+
+   > Nested-loop join and block nested-loop join support any joins regardless of
+   > their join condition. Indexed nested-loop join can be used if an index can
+   > be used on the join condition.
+   >
+   > QUES: I kinda think that some kinds of non-equi join can also be supported,
+   > e.g.:
+   >
+   > ```sql
+   > SELECT * FROM students JOIN takes ON students.score < takes.core;
+   > ```
+
+   The process of merge join is similar to the **merge stage** of the external sort-merge.
+
+2. 
+
+
 ### 15.5.4.1 Merge Join Algorithm
 ### 15.5.4.2 Cost Analysis
 ### 15.5.4.3 Hyprid Merge Join
