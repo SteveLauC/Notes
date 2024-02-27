@@ -912,10 +912,89 @@ Cost:
    > SELECT * FROM students JOIN takes ON students.score < takes.core;
    > ```
 
-   The process of merge join is similar to the **merge stage** of the external sort-merge.
+   The process of merge join is similar to the **merge stage** of external 
+   sort-merge.
 
-2. 
+2. Merge Join Process
 
+   > NOTE: the following procedure assumes that the relatiosn are sorted in
+   > ascending order.
+
+   ```rs
+   let mut result: Vec<Tuple> = Vec::new();
+
+   let mut outer_tuple: Option<Tuple> = Some(/* the first tuple of the outer relation */)
+   let mut inner_tuple: Option<Tuple> = Some(/* the first tuple of the inner relation */)
+
+   'end: loop {
+        if outer_tuple.is_none() || inner_tuple.is_none() {
+            break 'end;
+        }
+
+        // collecting tuples whose `join column` fields have the same value as the first
+        // inner tuple
+        let mut tuples_of_inner_with_same_value = Vec::new(); 
+        let columns_value = inner_tuple.columns_value(/* join columns */)
+        tuples_of_inner_with_same_value.push(inner_tuple.clone());
+        inner_tuple.move_to_next();
+        'a: while let Some(inner) = inner_tuple {
+            if innner.columns_value(/*join column*/) == columns_value {
+                tuoles_of_inner_with_same_value.push(inner_tuple);
+
+                inner_tuple.move_to_next();
+            } else {
+                break 'a;
+            }
+        }
+
+        // find the first outer tuple whose `join column` values are gteq to `columns_value`
+        'b: while let Some(outer) = outer_tuple {
+            if outer.columns_value(/*join columns*/) >= columns_value {
+                break 'b;
+            }
+
+            outer_tuple.move_to_next();
+        }
+
+        // do the join operation
+        //
+        // This process can exit in 2 ways:
+        // 1. outer_tuple is None, there is no tuples in the outer relation, 
+        //    end the merge join
+        //     
+        // 2. outer.columns_value(/*join coluns*/) > columns_value
+        // 
+        'c: while let Some(outer) = outer_tuple {
+            if outer.columns_value(/*join columns*/) == columns_value {
+                for inner in tuples_of_inner_tuple_with_same_value {
+                    result.push(join(outer, inner));    
+                }
+
+                outer_tuple.move_to_next();
+            } else {
+                break 'c';
+            }
+        }
+   }
+   ```
+
+3. The algorithm described in the last note requires that 
+   `tuples_of_inner_with_same_value` can fit in the memory, this can be met in
+   most cases.
+
+   If it can not be met, then we can do a block nested-loop join for it.
+
+   > QUES: how
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-44-37.png)
+
+   For example, we cannot load all the 2 blocks of the inner relation to the 
+   memory, then we can do it as follows:
+
+   ![1](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-46-46.png)
+   ![2](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-47-24.png)
+   ![3](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-47-56.png)
+   ![4](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-48-31.png)
 
 ### 15.5.4.1 Merge Join Algorithm
 ### 15.5.4.2 Cost Analysis
