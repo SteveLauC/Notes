@@ -915,7 +915,9 @@ Cost:
    The process of merge join is similar to the **merge stage** of external 
    sort-merge.
 
-2. Merge Join Process
+### 15.5.4.1 Merge Join Algorithm
+
+1. Merge Join Process
 
    > NOTE: the following procedure assumes that the relatiosn are sorted in
    > ascending order.
@@ -978,7 +980,7 @@ Cost:
    }
    ```
 
-3. The algorithm described in the last note requires that 
+2. The algorithm described in the last note requires that 
    `tuples_of_inner_with_same_value` can fit in the memory, this can be met in
    most cases.
 
@@ -996,7 +998,6 @@ Cost:
    ![3](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-47-56.png)
    ![4](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-48-31.png)
 
-### 15.5.4.1 Merge Join Algorithm
 ### 15.5.4.2 Cost Analysis
 ### 15.5.4.3 Hyprid Merge Join
 ## 15.5.5 Hash Join
