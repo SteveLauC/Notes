@@ -144,6 +144,9 @@
    > * Unallocated space
    > * The cell content area
    > * The reserved region.
+   >
+   > PostgreSQL also uses this, but it does not employ a B-Tree, it simply uses the
+   > heap organization: [doc](https://www.postgresql.org/docs/current/storage-page-layout.html)
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2013-46-17.png)
 
