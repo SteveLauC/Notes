@@ -724,9 +724,9 @@ Cost:
 
    For seeks, if both relations can fit in the memory, then it requires 2 seeks.
    In the worst case, every access of the inner relation requires a seek, i.e., 
-   `n_tuple(outer)` seeks, if we are on a HDD where one read/write can  be handled
-   at a time, then every block access of `outer` requires a seek, so the # of seeks 
-   will be `n_tuple(outer) + n_block(outer)`.
+   `n_tuple(outer)` seeks, if we are on a HDD where only one read/write can be 
+   handled at a time, then every block access of `outer` requires a seek, so 
+   the # of seeks will be `n_tuple(outer) + n_block(outer)`.
 
 ## 15.5.2 Block Netsted-Loop Join 
 
@@ -999,9 +999,82 @@ Cost:
    ![4](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-02-27%2008-48-31.png)
 
 ### 15.5.4.2 Cost Analysis
+
+1. The good thing that merge join has is the tuples are sorted so that every tuple
+   will **ONLY be read once**.
+
+   With nested loop join, every tuple will be inner table will be read 
+   `n_tuple(outer)` times.
+
+   > Kinda reminds me of the bulk loading of B+Tree
+
+2. The # of block transfer is `n_block(outer) + n_block(inner)` since all the 
+   tuples will be only read once, so all the blocks will be only read once as
+   well.
+
+3. The # of seek depends on the available buffer size
+
+   Assume that for each realtion, `Bm` memory pages are available, then the textbook
+   says that it will be `ceil(n_block(outer)/Bm) + ceil(n_block(inner)/Bm)`
+
+   > QUES: Honestly, I don't know why.
+   >
+   > I think it depends on the # of the blocks that `tuples_of_inner_with_same_value`
+   > takes and how we work around the loading strategy if it cannnot fit in memory.
+
+
 ### 15.5.4.3 Hyprid Merge Join
+
+1. Merge join requires that both relations are sorted, if there is only one 
+   relation that is ordered, then the other relation is not but bas a secondary
+   B+Tree index, we can still do a merge join with them.
+
+   > Secondary index has to be dense.
+
+   With merge join, for the innner table, we load the tuples that have the same
+   value on the join columns, with hyprid merge join, assume it is the inner table
+   that has the secondary B+Tree index, then we load all the pointers to the tuples
+   that have the same value on the join column.
+
+   Accessing tuples through secondary index can be costly, we then sort them 
+   according to their addresses, then we load the tuples following these pointers,
+   and do the merge join.
+
+2. In the above case, there is only 1 realtion that is not sorted and has a 
+   secondary index.
+
+   What if both relations are not ordered and have a secondary B+Tree index on
+   the join columns.
+
+   For the outer relation, we can still traverse the B+Tree index and find the
+   first index entry that the tuple it points to is greater than or equal to 
+   `columns_value`, then if the value equqls to `columns_value`, then we keep
+   traversing the B+Tree and collect the index entries, sort them by their 
+   addresses, then load them from the disk and do the join operation.
+
 ## 15.5.5 Hash Join
+
+1. Same with merge join, the hash join can be ONLY used for:
+
+   1. equi-join
+   2. natural-join
+
+   Why: See above.
+
 ### 15.5.5.1 Basics
+
+1. The basic idea of hash join is that:
+
+   1. For the tuples of outer relation, we hash them (against their join columns)
+      to split them into different partitions (assume n partitions)
+   2. For the tuples of the inner relation, do the same thing.
+   3. Then if an tuple from the outer relation and an tuple from the inner relation
+      have the same value on their join columns, then they should be put in the
+      same partition.
+
+      > This is why hash join can ONLY be used for equi-join and natural join.
+
+   > The hash algorithm that works best is: h(x) = x
 ### 15.5.5.2 Recursive Partitioning
 ### 15.5.5.3 Handling of Overflows
 ### 15.5.5.4 Cost of Hash Join
