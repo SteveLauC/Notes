@@ -1054,12 +1054,12 @@ Cost:
 
 ## 15.5.5 Hash Join
 
-1. Same with merge join, the hash join can be ONLY used for:
+1. Same as merge join, the hash join can be ONLY used for:
 
    1. equi-join
    2. natural-join
 
-   Why: See above.
+   Why: See below.
 
 ### 15.5.5.1 Basics
 
@@ -1075,6 +1075,31 @@ Cost:
       > This is why hash join can ONLY be used for equi-join and natural join.
 
    > The hash algorithm that works best is: h(x) = x
+
+2. Detailed algorithm
+
+   1. For the tuples of outer relation, we hash them (against their join columns)
+      to split them into different partitions (assume n partitions), and write 
+      them to partitions disk files.
+
+   2. For the tuples of the inner relation, do the same thing.
+
+   > They may have different number of partitions, we need to use the bigger one
+   > as `n_partition`. 
+
+   3. For the partitions of the innner relation, build an in-memory hash index
+      for it, then load the corresponding partition of the outer relation, and
+      do an indexed nested-loop join.
+
+      The hash algorithm used by this hash index needs to be different from the one
+      we used for partition, though it should still be applied to the join columns.
+
+   4. During the indexed nested-loop join, we still need to check if these 2 tuples
+      have the same value on the join columns since:
+
+      `hash(x) == hash(y) even when x != y`
+
+
 ### 15.5.5.2 Recursive Partitioning
 ### 15.5.5.3 Handling of Overflows
 ### 15.5.5.4 Cost of Hash Join
