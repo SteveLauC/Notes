@@ -1099,6 +1099,24 @@ Cost:
 
       `hash(x) == hash(y) even when x != y`
 
+3. The textbook says that:
+
+   > THe value `nh` must be chosen to be large enough  such that, for each i, the
+   > tuples in the partition `si` of the build relation, along with the hash index
+   > on the partition, fit in memory. 
+
+   I think:
+
+   1. One cannot choose the value of `nh` but only the hash algorithm
+   2. The hash index has to fit in memory, this is right, but is it necessary to
+      ask the corresponding partition to fit in memory? 
+
+      > QUES: this might be related to how an in-memory hash index is built, do you
+      > need to load all the data into memory at once?
+
+4. It is recommended to use the smaller relation as the inner/build relation.
+
+
 
 ### 15.5.5.2 Recursive Partitioning
 ### 15.5.5.3 Handling of Overflows
