@@ -1063,20 +1063,64 @@ Cost:
 
 ### 15.5.5.1 Basics
 
-1. The basic idea of hash join is that:
+> NOTE: The following notes are slightly different from the textbook, they mainly 
+> come from this MySQL [post](https://dev.mysql.com/blog-archive/hash-join-in-mysql-8)
+>
+> The textbook introduces split (by hash) first
 
-   1. For the tuples of outer relation, we hash them (against their join columns)
-      to split them into different partitions (assume n partitions)
-   2. For the tuples of the inner relation, do the same thing.
-   3. Then if an tuple from the outer relation and an tuple from the inner relation
-      have the same value on their join columns, then they should be put in the
-      same partition.
+1. The typical hash join divides into 2 phases
 
-      > This is why hash join can ONLY be used for equi-join and natural join.
+   1. Build
+     
+      For the smaller relation, build an in-memory hash index for it
 
-   > The hash algorithm that works best is: h(x) = x
+      > This relation is called the build relation, or the build input.
 
-2. Detailed algorithm
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/build-phase-1.jpg)
+
+   2. Probe
+
+      > The other relation is called the probe relation.
+
+      Iterate over the tuples from the probe relation, take the values of the join 
+      columns, access the build tuples from the build relation through the hash index,
+      check if this tuple has the same value as the probe tuple, if so, join them
+      and return it to the client.
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/probe-phase-1.jpg)
+
+      > QUES: Isn't this a simple indexed nested-loop join
+
+2. To build an in-memory hash index for the build relation, it is required that
+   the build relation should fit in memory.
+
+   > We should choose the smaller relation as the build relation.
+
+   > We won't load the whole relation to memory in order to build an index for
+   > it, but the index should exist in memory, and its size should at least be
+   > the size of the build relation.
+
+3. What if the build relation cannot fit in memory? Split!
+
+   If the build relation is too big to fit in memory, then split both relations
+   to multiple partitions using a hash algorithm, and do build-and-probe for
+   every partition pair.
+
+   We should be able to control the # of partitions, and in order to ensure that
+   every partition can fit in memory, we may want more partitions.
+
+   > Splitting the relations:
+   >
+   > 1. Reduces the size of data that needs to fit in memory
+   > 2. If two tuples have the same values on the join columns, then they should
+   >    be put in the same partition pair.
+   >
+   >    This is why hash join can only hanlde equi-join and natural join. 
+
+   NOTE: The hash algorithms used in split and hash index building should be 
+   different but applied to the join columns.
+
+4. Detailed algorithm
 
    1. For the tuples of outer relation, we hash them (against their join columns)
       to split them into different partitions (assume n partitions), and write 
@@ -1099,7 +1143,7 @@ Cost:
 
       `hash(x) == hash(y) even when x != y`
 
-3. The textbook says that:
+5. The textbook says that:
 
    > THe value `nh` must be chosen to be large enough  such that, for each i, the
    > tuples in the partition `si` of the build relation, along with the hash index
@@ -1114,7 +1158,7 @@ Cost:
       > QUES: this might be related to how an in-memory hash index is built, do you
       > need to load all the data into memory at once?
 
-4. It is recommended to use the smaller relation as the inner/build relation.
+6. It is recommended to use the smaller relation as the inner/build relation.
 
 
 
