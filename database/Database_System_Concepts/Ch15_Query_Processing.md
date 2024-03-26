@@ -1061,6 +1061,9 @@ Cost:
 
    Why: See below.
 
+2. The hash join algorith introduced in the textbook is GRACE hash join, it is 
+   named after the database machine from Japan.
+
 ### 15.5.5.1 Basics
 
 > NOTE: The following notes are slightly different from the textbook, they mainly 
@@ -1069,6 +1072,9 @@ Cost:
 > The textbook introduces split (by hash) first
 
 1. The typical hash join divides into 2 phases
+  
+   > This is called `Classic Hash Join` according to 
+   > [Wikipedia](https://en.wikipedia.org/wiki/Hash_join).
 
    1. Build
      
@@ -1102,9 +1108,17 @@ Cost:
 
 3. What if the build relation cannot fit in memory? Split!
 
+   > This is called `Grace Hash Join`
+
    If the build relation is too big to fit in memory, then split both relations
    to multiple partitions using a hash algorithm, and do build-and-probe for
    every partition pair.
+
+   > So a grace hash join has 3 phases
+   > 
+   > 1. Partition
+   > 2. Build
+   > 3. Probe
 
    We should be able to control the # of partitions, and in order to ensure that
    every partition can fit in memory, we may want more partitions.
@@ -1118,7 +1132,7 @@ Cost:
    >    This is why hash join can only hanlde equi-join and natural join. 
 
    NOTE: The hash algorithms used in split and hash index building should be 
-   different but applied to the join columns.
+   different but both applied to the join columns.
 
 4. Detailed algorithm
 
@@ -1143,7 +1157,20 @@ Cost:
 
       `hash(x) == hash(y) even when x != y`
 
-5. The textbook says that:
+5. To ensure that the max partition can fit in memory, we would like to have more
+   partitions if possible.
+
+   > More partitions, the size of the partition will be likely smaller.
+
+   > QUES: how can we control the number of partitions
+   >
+   > Think how we build a hashmap with linear probe hashing, we choose the number
+   > of buckets, then `hash(key)` to get a value, say it is `n`, then we calculate
+   > the index of bucket to which this `key` will go with `n % # of bucket`.
+   > 
+   > The # of bucket is basically the number of partitions. 
+
+The textbook says that:
 
    > THe value `nh` must be chosen to be large enough  such that, for each i, the
    > tuples in the partition `si` of the build relation, along with the hash index
@@ -1158,13 +1185,66 @@ Cost:
       > QUES: this might be related to how an in-memory hash index is built, do you
       > need to load all the data into memory at once?
 
-6. It is recommended to use the smaller relation as the inner/build relation.
-
-
-
 ### 15.5.5.2 Recursive Partitioning
+
+1. Quote the book
+
+   > If the value of `nh` (the # of partitions) is greater than or equal to the 
+   > number of blocks of memory, the relation cannot be partitioned in one pass,
+   > **since there will not be enough buffer blocks**.
+
+   The textbook assumes that we want to buffer while splitting relations, which
+   is good since the # of random I/O will be reduced, but splitting can be done
+   using ONLY 1 block if one don't care about the random I/O.
+
+2. How recursive partitiioning work
+
+   Let's say we want to split the relatiion into 8 partitions, but ONLY 3 memory
+   blocks are available:
+
+   1. The first pass, we split our relation into 3 partitions
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202024-03-26%20at%2020.43.49.png)
+
+   2. Then 
+
+   > No idea how this works
+
+
 ### 15.5.5.3 Handling of Overflows
+
+> Revisit this in the future when I understand how recursive partitioning works.
+
 ### 15.5.5.4 Cost of Hash Join
+
+1. When recursive partitioning is not needed:
+ 
+
+   1. The # of block transfers
+
+      1. Partition: `2 * (n_block(outer) + n_block(inner))`
+      2. Build: `n_block(inner/build relation)`
+      3. Probe: `n_block(outer)`
+
+      > NOTE: for the partition phase, say a relation has `n` blocks, then splitting
+      > it to multiple partitions would typically require writing more blocks when
+      > persisting partitions to disk
+      >
+      > This is because the smallest unit of disk I/O is a block, and each partition
+      > can have a partial tailing block, thus require more writes. 
+      >
+      > In the worst case, i.e., every partition has a partial block, `4 * the number of partitions`
+      > will be required (half for read, half for write).
+
+      So, `3 * (n_block(outer + n_block(inner)))` block transfers 
+
+      > Plus `4 * n_partitions` if you take partital blocks into account, in 
+      > worst case, in reality, `4 * n_partitions` will be quite small when
+      > compared to `n_block(outer) + n_block(inner)`.
+     
+   2. The # of seeks
+
+
 ### 15.5.5.5 Hybrid Hash Join
 ## 15.5.6 Complex Joins
 ## 15.5.7 Joins over Spatial Data
