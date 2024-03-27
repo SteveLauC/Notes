@@ -1244,9 +1244,30 @@ The textbook says that:
      
    2. The # of seeks
 
+      1. Partition
+   
+         The textbook says:
+
+         > Asssuming `bb` blocks are allocated for the input buffer and each 
+         > output buffer, partitioning requires a total of 
+         > `2 * (ceil(n_block(outer)/bb) + ceil(n_block(inner)/bb))`
+
+         I don't understand why, I think it depends on
+
+         1. The # of partitions
+         2. Buffer or not while partitioning
+         3. The # of blocks available
+         
+      2. Build: `n_partition` (only needed by the build relation)
+      3. Phase: `n_partition` (only needed by the probe relation)
+
+2. With recursive partitioning, revisit this in the future.
 
 ### 15.5.5.5 Hybrid Hash Join
 ## 15.5.6 Complex Joins
+
+
+
 ## 15.5.7 Joins over Spatial Data
 
 # 15.6 Other Operations
