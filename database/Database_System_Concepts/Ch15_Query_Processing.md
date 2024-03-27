@@ -1266,14 +1266,102 @@ The textbook says that:
 ### 15.5.5.5 Hybrid Hash Join
 ## 15.5.6 Complex Joins
 
+1. Nested loop-join and block nested loop-join can be used regardless of the 
+   join conditions, so they can be used.
 
+2. Conjunctions
+
+   For results of:
+
+   ```
+   condition_a & condition_b & condition_c
+   ```
+
+   The result of join over the above condition is guaranteed to be a subset of 
+   the result of join over `condition_a`.
+
+   So while returning results of join over `condition_a` to the client, we can
+   check and see if this result tuple satisfies `condition_b` and `condition_c` 
+
+3. Disjunctions
+
+   Join result of 
+
+   ```
+   condition_a & condition_b & condition_c
+   ```
+
+   is
+
+   ```
+   union(join_over(condition_a), join_over(condition_b), join_over(condition_c))
+   ```
 
 ## 15.5.7 Joins over Spatial Data
 
+1. Currently, the algorithm learned has no assumptions over the type of the join
+   columns, however, it does assume that some arithmetic operations are supported:
+
+   1. equi
+   2. less then
+   3. greater than
+
+   Not all data types support the above operation, e.g., embedding and spatial
+   data.
+
+2. Can we use the join algorithms to do join on them:
+
+   * nested-loop join
+
+     Supported
+
+   * block nested-loop join
+
+     Supported
+
+   * indexed nested-loop join
+
+     For the join operation we are gonna do, if there is a type idnex having
+     the operation supported, the indexed nested-loop join can be used.
+
+   * merge join
+     
+     Probably not, if the underlying data type does not support comparsion.
+
+   * classic hash join
+   * grace hash join
+   * hyprid hash join
+
+     I think yes.
+
 # 15.6 Other Operations
-## 15.6.1 Duplicate Elimination
+## 15.6.1 Duplicate Elimination (`DISTINCT`)
+
+1. `DISTINCT` can be implemneted using either
+
+    1. sort
+
+       After sorting, the duplicatee tuples will be adjacent to each other.
+
+       With external merge sort, duplicate entries can be removed when writing
+       to disk.
+
+    2. hash
+
+       After hashing a tuple, we ONLY put it in the target bucket if a tuple
+       with the same value does not exist in that bucket.
+
 ## 15.6.2 Projection
 ## 15.6.3 Set operations
+
+1. Union
+
+2. Intersection
+
+   > Isn't this a simple merge join? 
+
+3. Set-difference
+
 ## 15.6.4 Outer Join
 ## 15.6.5 Aggregation
 
