@@ -1354,13 +1354,17 @@ The textbook says that:
 ## 15.6.2 Projection
 ## 15.6.3 Set operations
 
-1. Union
+1. Supported set operations
 
-2. Intersection
+   1. Union (Union Distinct)
+   2. Union All
+   3. Intersection
+      > Isn't this a simple merge join? 
+   4. Set-difference
 
-   > Isn't this a simple merge join? 
+2. Implement them by sorting
 
-3. Set-difference
+3. Implement them by hashing
 
 ## 15.6.4 Outer Join
 ## 15.6.5 Aggregation
