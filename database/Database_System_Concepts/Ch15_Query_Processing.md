@@ -1536,6 +1536,60 @@ The textbook says that:
 
 3. Implement them by hashing
 
+   1. Union
+      1. UNION DISTINCT
+         ```rs
+         pub fn union_all(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
+             // build an in-memory hash index
+             let mut hash_set = HashSet::new();
+             hash_set.extend(lhs.iter());
+             hash_set.extend(rhs.iter());
+            
+             hash_set.into_iter().collect()
+         }
+         ```
+      2. UNION ALL
+
+         Again, why not just concatenate and print them.
+   
+   2. Intersection
+
+      ```rs
+      pub fn intersect(lhs: &[i32],rhs: &[i32]) -> Vec<i32> {
+          // build an in-memory hash index
+          let mut hash_set = HashSet::new();
+          hash_set.extend(lhs.into_iter().copied());
+          let mut ret = Vec::new();
+            
+          for item in rhs.into_iter() {
+              if hash_set.contains(&item) {
+                  ret.push(*item);
+              }
+          }
+            
+          ret
+      }
+      ```
+
+   3. Difference
+
+      ```rs
+      pub fn difference(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
+          // build an in-memory hash index
+          let mut hash_set = HashSet::new();
+          hash_set.extend(rhs.into_iter().copied());
+          let mut ret = Vec::new();
+          
+          for item in lhs.into_iter() {
+              if !hash_set.contains(&item) {
+                  ret.push(*item);
+              }
+          }
+          
+          ret
+      }
+      ```
+
 ## 15.6.4 Outer Join
 ## 15.6.5 Aggregation
 
