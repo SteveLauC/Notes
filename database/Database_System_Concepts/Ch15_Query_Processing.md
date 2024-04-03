@@ -1356,13 +1356,183 @@ The textbook says that:
 
 1. Supported set operations
 
-   1. Union (Union Distinct)
-   2. Union All
+   1. Union
+
+      1. UNION DISTINCT 
+        
+         > `DISTINCT` can be omitted, the behavior won't change.
+
+      2. UNION ALL
+
    3. Intersection
       > Isn't this a simple merge join? 
    4. Set-difference
 
 2. Implement them by sorting
+
+   NOTE: all the implementations below require ONLY 1 scan of each array/relation.
+
+   ```rs
+   /// Assume `sorted_array` is an ordered array, append `item` to it if an 
+   /// item with the same value hasn't been present.
+   fn dedup_push(sorted_array: &mut Vec<i32>, item: i32) {
+       if let Some(last) = sorted_array.last() {
+           if item != *last {
+               sorted_array.push(item);
+           }
+       } else {
+           sorted_array.push(item);
+       }
+   }
+   ```
+
+   1. Union
+
+      1. UNION DISTINCT
+         
+         ```rs
+         /// Assume `lhs` and `rhs` are 2 ordered arrays, union them.
+         ///
+         /// It is basically an implementation of the merge process during merge sort with
+         /// an extra deduplication step.
+         fn union_distinct(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
+             let mut ret = Vec::new();
+             
+             let mut lp = 0;
+             let mut rp = 0;
+             while lp < lhs.len() && rp < rhs.len() {
+                 let item;
+                 match lhs[lp].cmp(&rhs[rp]) {
+                     Ordering::Less => {
+                         item = lhs[lp];
+                         lp += 1;
+                     }
+                     Ordering::Greater => {
+                         item = rhs[rp];
+                         rp += 1;
+                     }
+                     Ordering::Equal => {
+                         item = lhs[lp];
+                         lp += 1;
+                         rp += 1;
+                     }
+                 }
+                 
+                 dedup_push(&mut ret, item);
+             }
+            
+             while lp < lhs.len() {
+                 let item = lhs[lp];
+                 dedup_push(&mut ret, item);
+                 lp += 1;
+             }
+            
+             while rp < rhs.len() {
+                 let item = rhs[rp];
+                 dedup_push(&mut ret, item);
+                 rp += 1;
+             }
+
+             ret
+         }
+         ```
+
+      2. UNION ALL
+
+         Since there is no need to duplicate, why not just concatenate them and print.
+
+   2. Intersection
+
+      ```rs
+      fn intersect(lhs: &[i32], rhs: &[i32]) -> vec<i32> {
+          let mut lp = 0;
+          let mut rp = 0;
+          let mut ret = vec::new();
+
+          while lp < lhs.len() && rp < rhs.len() {
+              match lhs[lp].cmp(&rhs[rp]) {
+                  ordering::equal => {
+                      let item = lhs[lp];
+                      dedup_push(&mut ret, item);
+                      
+                      lp += 1;
+                      rp += 1;
+                      while lhs[lp] == item {
+                          lp += 1;
+                      }
+                      while rhs[rp] == item {
+                          rp += 1;
+                      }
+                  }
+                  // we are trying to find 2 values that are equal, `lhs[lp]` is too
+                  // small, let's check the next value.
+                  ordering::less => {
+                      lp += 1;
+                  }
+                  // we are trying to find 2 values that are equal, `rhs[rp]` is too
+                  // small, let's check the next value.
+                  ordering::greater => {
+                      rp += 1;
+                  }
+              }
+          }
+          ret
+      }
+      ```
+
+   3. Difference
+
+      ```rs
+      /// `lhs` - `rhs`
+      fn difference(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
+          let mut lp = 0;
+          let mut rp = 0;
+          let mut ret = Vec::new();
+
+          'outer: loop {
+              if lp == lhs.len() {
+                  break 'outer;
+              }
+              let item = lhs[lp];
+              lp += 1;
+              'find_dup: while let Some(next) = lhs.get(lp) {
+                  if *next == item {
+                      lp += 1;
+                  } else {
+                      break 'find_dup;
+                  }
+              }
+
+              'check_exist: loop {
+                  match rhs[rp].cmp(&item) {
+                      Ordering::Equal => {
+                          let val = rhs[rp];
+                          rp += 1;
+                          'find_dup: while let Some(next) = rhs.get(rp) {
+                              if *next == val {
+                                  rp += 1;
+                              } else {
+                                  break 'find_dup;
+                              }
+                          }
+
+                          continue 'outer;
+                      }
+                      Ordering::Less => {
+                          rp += 1;
+                      }
+                      Ordering::Greater => {
+                          // item does not exist in `rhs`
+                          ret.push(item);
+                          break 'check_exist;
+                      }
+                  }
+              }
+          }
+
+          ret
+      }
+      ```
 
 3. Implement them by hashing
 
