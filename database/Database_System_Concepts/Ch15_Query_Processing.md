@@ -1365,7 +1365,15 @@ The textbook says that:
       2. UNION ALL
 
    3. Intersection
+
       > Isn't this a simple merge join? 
+      >
+      > Future steve: they are kinda similar but different
+      >
+      > merge join only care about the join columns, different tuples with the
+      > same join column are still different tuples. With set operations, they
+      > will be seen as the same tuple and deduplicated.
+
    4. Set-difference
 
 2. Implement them by sorting
@@ -1538,8 +1546,13 @@ The textbook says that:
 
    1. Union
       1. UNION DISTINCT
+
+         1. Build an in-memory hash index on `lhs`
+         2. Add the tuples in `rhs` to the hash index only if they are not alreay present
+         3. Add the tuples in the hash index to the result
+
          ```rs
-         pub fn union_all(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
+         pub fn union_distinct(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
              // build an in-memory hash index
              let mut hash_set = HashSet::new();
              hash_set.extend(lhs.iter());
@@ -1554,11 +1567,16 @@ The textbook says that:
    
    2. Intersection
 
+      1. Build an in-memory hash index for `lhs`
+      2. For each tuple in `rhs`, probe the index, if the tuple is present in
+         the index, add it to the result. 
+
       ```rs
       pub fn intersect(lhs: &[i32],rhs: &[i32]) -> Vec<i32> {
-          // build an in-memory hash index
+          // build an in-memory hash index for one relation
           let mut hash_set = HashSet::new();
           hash_set.extend(lhs.into_iter().copied());
+
           let mut ret = Vec::new();
             
           for item in rhs.into_iter() {
@@ -1573,9 +1591,13 @@ The textbook says that:
 
    3. Difference
 
+      1. Build an in-memory hash index for `rhs`
+      2. For each tuple in `lhs`, probe the hash index, if the tuple is not present
+         in the hash index, add it to result.
+
       ```rs
       pub fn difference(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
-          // build an in-memory hash index
+          // build an in-memory hash index for `rhs`
           let mut hash_set = HashSet::new();
           hash_set.extend(rhs.into_iter().copied());
           let mut ret = Vec::new();
@@ -1590,8 +1612,227 @@ The textbook says that:
       }
       ```
 
+      1. Build an in-memory hash index for `lhs`
+      2. For each tuple in `rhs`, probe the hash index, if the tuple is present
+         in the hash index, delete it from the index.
+      3. Add the remaining tuples in the hash index to the result
+
+      ```rs
+      pub fn difference(lhs: &[i32], rhs: &[i32]) -> Vec<i32> {
+          let mut hash_set: HashSet<i32> = lhs.iter().copied().collect();
+          for item in rhs {
+              if hash_set.contains(item) {
+                  hash_set.remove(item);
+              }
+          }
+          
+          hash_set.into_iter().collect()
+      }
+      ```
+
 ## 15.6.4 Outer Join
+
+1. All the join algorithms/implementations we talked about are for inner joins, 
+   i.e., they won't handle unmatched data.
+
+2. There are generally 2 ways of how can we do outer join
+
+   1. Do inner join, then add the unmatched data to the result
+
+      Take `Left outer join` as an example:
+         
+         After computing the result of innner join, scan the outer relation again,
+         find the tuples whose join column values do not exist in the inner join
+         result, then add them to the result, the fields that come from the inner
+         relation are filled with value NULL.
+
+    2. Modify the join algorithms we have learned to add native support for outer
+       join.
+
+       1. Nested-loop join
+          
+          Nested-loop join can be easily modified to do left outer join, for the
+          tuple in the outer relation that does not match any tuples in the inner
+          relation, add it to the result.
+
+          For right outer join and full outer join, it is hard to implement 
+          with nested-loop join.
+
+       2. Block nested-loop join
+       3. Indexed nested-loop join
+       4. Merge join
+          
+          1. I think the merge join algorithm described in the textbook can be
+             easily extended to support right outer join:
+
+             After collecting the tuples whose join column have the same value
+             from the inner relation, let's call this value `n`, we will try to
+             find the first tuple from the outer relation whose value on join 
+             column are greater than or equal to `n`.
+
+             If the value of the join column of first tuple we will access in 
+             the outer relation is greater than `n`, then there is no matched 
+             tuple for those inner tuples, add them to the result.
+
+           2. However, the textbook says:
+
+              > Merge join can be extended to compute the full outer join as 
+              > follows: When the merge of the 2 relations is being done, 
+              > tuples in either relation that do not match any tuple in the
+              > other relatioin can be padded with nulls and written to the
+              > output.
+
+              I think, this is not the algorithm presented in section 15.5.4.1,
+              it is more like the intersction operation described in 15.6.3.
+              (correct me if I am wrong, future steve).
+
+              > Future steve is coming!
+              >
+              > The above thought is indeed incorrect! The algorithm described
+              > in 15.5.4.1 can be modifyed to support:
+              > 
+              > 1. left outer join
+              > 2. right outer join
+              > 3. full outer join
+
+              One can change the part "find the first outer tuple whose `join 
+              column` values are gteq to `columns_value`" to iterate over the
+              outer relation, then compare the value of the join column and
+              `columns_value`, then:
+
+              ```rs
+              match val.cmp(&columns_value) {
+                  Ordering::Eq => {
+                      /* join */
+                  }  
+                  Ordering::Less => {
+                      // there is no mathced tuple for `val`, if this is a left/full
+                      // outer join, add it to the result.
+                  }
+                  Ordering::Greater => {
+                      // there is no mathced tuple for the inner tuples whose 
+                      // value of the join column is `columns_value`, if this 
+                      // is a right/full outer join, add them to the result.
+                  }
+              }
+              ```
+
+       5. Hash join
+
+          It is quite straightforward to implement left outer join with hash
+          join:
+
+          1. Build an in-memory hash index for the inner relation
+          2. For each tuple in the outer relation, probe it with that hash index,
+             if it is present in the hash index, do the join with the tuples in
+             the index, otherwise, pad it with nulls and add it to the result.
+
+          Then what about right and full outer join? One common strategy used
+          in DBMS is that store a sign bit for the every tuple in the hash index,
+          recording whether it has been matched or not. After the inner join,
+          scan the hash index, pad the tuples whose sign is not set with nulls
+          and add them to the result.
+
 ## 15.6.5 Aggregation
+
+Aggregation functions can be implemented on the fly, let's try something easy
+frist:
+
+```sql
+SELECT MAX(score) FROM students;
+```
+
+```rs
+macro_rules! tuple {
+    ($name:expr, $score:expr, $gender:expr) => {
+        Tuple {
+            name: ($name).into(),
+            score: $score,
+            gender: ($gender).into()
+        }
+    };
+}
+
+#[derive(Debug)]
+struct Tuple {
+    name: String,
+    score: usize,
+    gender: String,
+}
+
+fn students() -> Vec<Tuple> {
+    vec![
+        tuple!("steve", 1, "male"),
+        tuple!("fen", 2, "female"),
+        tuple!("huhu", 4, "female"),
+        tuple!("gaga", 0, "male"),
+    ]
+}
+
+fn max_score(tuples: &[Tuple]) -> Option<usize> {
+    let mut result = None;
+    for tuple in tuples {
+        if let Some(curr_max) = result {
+            if tuple.score > curr_max {
+                result = Some(tuple.score);
+            }
+        } else {
+            result = Some(tuple.score);
+        }
+    }
+    
+    result
+}
+```
+
+Without `GROUP BY`, it is basically equivalent, for a given array, find the largest
+number in it.
+
+Add the `GROUP BY` clause:
+
+```sql
+SELECT name, MAX(age) FROM students GROUP BY name;
+```
+
+```rs
+fn max_score_group_by_gender(tuples: &[Tuple]) -> impl Iterator<Item = (&str, usize)> {
+    let mut max_score_per_group: HashMap<&str, usize> = HashMap::new();
+    // Alternatively, a `BTreeMap` can also be used.
+    
+    for tuple in tuples {
+        match max_score_per_group.entry(&tuple.gender) {
+            Entry::Occupied(mut exist) => {
+                let curr_max = exist.get();
+                
+                if tuple.score > *curr_max {
+                    *exist.get_mut() = tuple.score;
+                }
+            }
+            Entry::Vacant(new) => {
+                new.insert(tuple.score);
+            }
+        }
+    }
+    
+    max_score_per_group.into_iter()
+}
+
+fn main() {
+    for (gender, max_score) in max_score_group_by_gender(&students()) {
+        println!("{} {}", gender, max_score);
+    }
+}
+```
+
+```sh
+$ cargo r -q
+female 4
+male 1
+```
+
+With `GROUP BY` added, we need to distribute tuples into different groups by their
+`GROUP BY` fields, which can be done by a `HashMap` or `BTreeMap`.
+
 
 # 15.7 Evaluation of Expressions
 ## 15.7.1 Materialization
