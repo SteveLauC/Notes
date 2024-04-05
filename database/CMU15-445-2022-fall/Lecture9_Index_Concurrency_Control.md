@@ -181,6 +181,8 @@ These are two modes you can use when implementing Hash Table Latching:
       thread t1 can acually merge node `H` to node `I`, then thread t2 will 
       get a dangling pointer, it deref that pointer, bombing, segfault.
 
+      > The above case happens if a thread that tries to update the tree only
+      > holds the write to the target leaf node.
 
 2. We resolve the above two problems (especially the last one) by Latch 
    Crabbing/Coupling
