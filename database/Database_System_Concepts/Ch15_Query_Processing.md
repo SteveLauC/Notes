@@ -832,6 +832,8 @@ Cost:
 
       > Section 15.5.3 covers this.
 
+5. Block nested-loop join can be dominating if the join result is almost as large
+   as the Cartesian product of 2 relations.
 
 ## 15.5.3 Indexed Nested-Loop Join
 
@@ -1835,20 +1837,203 @@ With `GROUP BY` added, we need to distribute tuples into different groups by the
 
 
 # 15.7 Evaluation of Expressions
-## 15.7.1 Materialization
-## 15.7.2 Pipelining
-### 15.7.2.1 Implementation of Pipelining
-### 15.7.2.2 Evaluation Algorithms for Pipelining
-## 15.7.3 Pipelines for Continuous-Stream Data
 
 > In this section, we examine how to coordinate the execution of multiple 
 > operations in a query evaluation plan, in particular, how to use pipelined
 > operations to avoid writing intermediate results to disk.
 
+> Don't confuse the `Expressions` here with those SQL `Expr`s, the `Expressions`
+> here is a Relational Algebra Expression containing multiple operations.
+
+1. How can we hanlde an expression with multiple operations
+
+   1. Materialization
+
+      One obvious way is to do one operation at a time (finish it at once), in 
+      an appropriate order, the result of an operation will be stored in a 
+      temporary relation for subsequent use.
+
+      The temporary result, unless it is small, must be written to disk.
+
+      > Considering that the intermediate result has to be written to the disk,
+      > this way is **not suitable for OLAP systems** (ok for OLTP), where the
+      > intermedicate results are relatively big.
+     
+   2. Pipelining (Iterator model/volcano model)
+
+      Materialization does one operation at a time, pipelining does several 
+      operations simultaneously, the results of one operation will be passed
+      to the next operation so that it does not need to be stored temporarily.
+
+      > QUES: For those **blocking** operations, they won't produce any output unless
+      > all the input data is handled, then I guess the iterator model will behave
+      > same as materialization.
+      >
+      > Future steve: u r right
+
+## 15.7.1 Materialization
+
+```
+SELECT name 
+FROM department NATURAL JOIN instructor
+WHERE department.building = 'Watson';
+```
+
+The above SQL will be represented in:
+
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202024-04-05%20at%2008.34.20.png)
+
+From the lowest level to the top level, every node will be executed sequentially.
+
+Cost analysis:
+
+The cost generally contains 2 parts:
+
+1. The cost of all operations
+2. THe cost of writing the intermediate results to the disk
+
+## 15.7.2 Pipelining
+
+1. We improve query-evaluation efficiency by reducing the number of temporary 
+   files that are produced. We achieve this reduction by combining several
+   relational operations into a **pipeline** of operations.
+
+2. Benefits 
+
+   1. It eliminates the cost of reading and writing temporary relations 
+   2. It can start generating result quickly
+
+### 15.7.2.1 Implementation of Pipelining
+
+1. The implementation of pipelined evaluation can be divided into 2 categories:
+
+   1. Pull-based
+   2. Push-based
+
+2. Pull-based pipeline model
+
+   We know how this works.
+
+3. Push-based pipeline model
+
+   For push-based model, each operation will have one thread executing to compute
+   the result, once complete, the result will be passed to the thread of the next
+   operation.
+
+4. Comparison between pull-based model and push-based model
+
+   > a good post: [Query Engines: Push vs. Pull](https://justinjaffray.com/query-engines-push-vs.-pull/)
+
+   1. Pull-based model is easier to implement
+   2. Pushed-based model is very useful in parallel processing system
+   3. Push-based model has lower number of function calls (no `next()`)
+   4. Push-based model is increasingly used in systems that generate machine
+      code (query compilation) for high performance query evaluation.
+
+      > QUES: why
+
+### 15.7.2.2 Evaluation Algorithms for Pipelining
+## 15.7.3 Pipelines for Continuous-Stream Data
+
+1. Pipelining can also be used in cases where data entered into the database
+   in a continuous manner.
+
+   Push-based model is the suited for this continuous query evaluation.
+
+   > QUES: I am not quite sure the reason, but it indeed feels that the data
+   > will be pushed to the system in a streaming way. 
+
 # 15.8 Query Processing in Memory
 
+> Before this section, all the query processing algorithms assume the data is 
+> stored on the disk so that we:
+>
+> 1. Care about the the # of block transfer and the # of seeks in cost analysis
+> 2. Try to minimize the disk I/O
+>
+> In this section, we talk about algorithms that help minimize memory access
+> costs by using cache-conscious processing algorithm and query compilation.
+
 ## 15.8.1 Cache-Conscious Algorithms
+
+1. Latency: the time it takes to respond to a request
+   
+   * L1 cache: 1 nanosecond
+   * L2 cache: 5 nanoseconds
+   * L3 cache: 10-15 nanoseconds
+   * Memory: 50-100 nanoseconds
+   * NVME SSD: 20-100 microseconds
+   * SATA SSD: 150-200 microseconds 
+
+2. Cache line
+
+   It is the smallest access unit that the CPU use when interacting with cache:
+
+   1. Read cache/write cache
+   2. If the requested data is not in cache, it will load the corresponding data
+      from memory, in the unit of cache line
+
+   > It is quite similar to memory page when we load files from disk.
+
+   > On AMD64 CPUs, the cache line size is typically 64 bytes. On Apple m1 chips,
+   > cache line size is 128 bytes.
+
+3. Cache/memory is kinda similar to Memory/disk, but:
+
+   With memory/disk, database systems can control what is in the cache. 
+
+   > OS page cache
+   >
+   > DBMS usually do kernel page cache bypass to make the memory/buffer
+   > context aware. Even with kernel page cache, the OS uses its own
+   > strategy but provides severals syscalls to allow application to 
+   > interfere, e.g., `madvise(2)`.
+
+   But the strategy of CPU cahce is totally controlled by the hardware 
+   so that DBMS can do nothing about it.
+
+   Though we cannot control it, we can implement the system in a cache-friendly
+   way.
+
+4. Make queries cache-friendly
+
+   1. Sort merge
+      
+      We want every run to fit in cache
+
+   2. Hash join
+      
+      During the partitioning stage, the size of the partition along with the hash
+      index should fit in cache, then in the probe stage, cache misses can be
+      minimized.
+
+   3. Tuple layout
+      
+      Columns that are open used together can be stored continuously. For example,
+      columns used in the `GROUP BY` clause.
+
 ## 15.8.2 Query Compilation
+
+1. We know that the traditional volcano model is not CPU-friendly, i.e., multiple
+   virtual function `next()` are exectued during execution
+
+   > [Apache Spark as a Compiler: Joining a Billion Rows per Second on a Laptop][post]
+   >
+   > [post]: https://www.databricks.com/blog/2016/05/23/apache-spark-as-a-compiler-joining-a-billion-rows-per-second-on-a-laptop.html
+
+   If data residents on disk, this drawback won't be too obvious, but it will 
+   immediately be the bottleneck if the data lives in memory.
+
+2. With volcano model, SQL is actually **interpreted** rather than compiled to 
+   machine code (or any bytecode, e.g., wasm).
+
+3. Many in-memory database compile query plans into machine code or intermediate
+   level byte-code.
+
+   [PostgreSQL JIT](https://www.postgresql.org/docs/11/jit-decision.html)
+
+   > TODO: add more examples to this note when you find them.
+
 ## 15.8.3 Column-Oriented Storage
 # 15.9 Summary
 
