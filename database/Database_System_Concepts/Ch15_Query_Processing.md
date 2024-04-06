@@ -516,6 +516,8 @@
    1. Sort
    2. Merge
 
+   > merge sort is a divide-and-conquer algorithm
+
    Let's dive into the details.
 
    > We assume that:
@@ -529,16 +531,17 @@
       2. sort these blocks
       3. write them to a disk file
          
-      After this step, we will have `N` sorted chunks, then we want to merge them.
+      After this step, we will have `N` sorted chunks, every sorted chunk is 
+      called a `run`, then we want to merge them.
 
-   2. If `N + 1 <= M`, then read the first block of these `N` files into memory,
+   2. If `N + 1 <= M`, then read the first block of these `N` runs into memory,
       use 1 block to store the sorted result, let name this block as the destination
       block.
 
       1. Iterate over the first tuple of these `N` blocks, **move** the smallest
          tuple to the destination block.
       2. Repeat the last step until all the `N` blocks are empty.
-      3. All these `N+1` blocks are sorted, write the sorted result to disk
+      3. All these `N` blocks are sorted, write the sorted result to disk
 
       > With the in-memory merge sort, we will merge 2 sorted array, this is called
       > 2-way merge.
@@ -561,11 +564,13 @@
       >
       > The above step merges `N` sorted arrays, this is called N-way merge.
 
-      4. Repeat the last 3 steps until all these `N` files are empty.
+      4. Repeat the last 3 steps until all these `N` runs are empty.
 
    3. If `N + 1 > M`, then we merge `M - 1` files first, this will be the input
       of the next merge, then we merge anther `M - 1` files until all files are
       processed.
+
+      > Every round is called a `pass`.
 
       > TODO: figure out the approach that has the best performance.
       >
@@ -606,10 +611,23 @@
 
 Cost:
 
-1. The first stage, sorting, we read `Nb` blocks, sort them, and write them 
-   back, which would give us `2Nb` blocks transfers.
+1. The # of block transfer
 
-2. 
+   > Assume we are using the merge strategy demostracted in the above diagram.
+
+   1. The first stage, sorting, we read `Nb` blocks, sort them, and write them 
+      back, which would give us `2Nb` blocks transfers.
+
+   2. We have `Nb/M` runs after the sorting phrase, every pass would decrease the
+      number of runs by a factor of `M-1`, so that the # of pass will be:
+
+      $\log _{M-1} (Nb/M)
+
+   3. So the # of block transfer is:
+
+      $\left [ \left ( 1 + \log _{M-1} (Nb/M) \right ) \right ] * 2Nb 
+
+2. The # of seeks
 
 # 15.5 Join Operation
 

@@ -12,6 +12,8 @@
    Though a more common optimization is to use the Top-N heap sort, where the
    DBMS only needs to maintain an ordered heap of capacity of `offset + limit`.
 
+   > std::collections::BinaryHeap
+
    ```
    TopNExec - TableScan
    ```
@@ -20,5 +22,7 @@
    >
    > * [DuckDB](https://github.com/duckdb/duckdb/pull/287)
    > * [RisingLight](https://github.com/risinglightdb/risinglight/blob/b391b48584fffdafbc36aabb7d8b569be690d0a1/src/executor/top_n.rs)
+
+2. Merge sort is a divide-and-conquer sorting algorithm.
 
 # Aggregation
