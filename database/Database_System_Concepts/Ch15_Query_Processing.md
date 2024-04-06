@@ -625,7 +625,7 @@ Cost:
 
    3. So the # of block transfer is:
 
-      $$ \left [ \left ( 1 + \log _{M-1} (Nb/M) \right ) \right ] * 2Nb $$
+      $$ \left [ \left ( 1 + \log _{M-1} (Nb/M) \right ) \right ] \times 2Nb $$
 
 2. The # of seeks
 
