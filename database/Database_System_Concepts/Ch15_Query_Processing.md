@@ -483,10 +483,15 @@
 1. Sorting is important as
  
    1. SQL supports specifying the order with the `ORDER BY` clause
-   2. Several relational operations, such as joins, can be implemented efficiently
-      if the input relatsions are first sorted.
+   2. Several relational operations, can be speeded up require the sorting operation:
 
-      > This is the reason why we cover sort beforing diving into joins.
+      1. `ORDER BY`
+      2. `DISTINCT`
+      3. merge join
+
+         > This is the reason why we cover sort beforing diving into joins.
+
+      4. Aggregation `GROUP BY`
 
 2. Sort records logically
 
@@ -618,7 +623,7 @@ Cost:
    1. The first stage, sorting, we read `Nb` blocks, sort them, and write them 
       back, which would give us `2Nb` blocks transfers.
 
-   2. We have `Nb/M` runs after the sorting phrase, every pass would decrease the
+   2. We have `Nb/M` runs after the sorting stage, every pass would decrease the
       number of runs by a factor of `M-1`, so that the # of pass will be:
 
       $$ \log _{M-1} (Nb/M) $$
