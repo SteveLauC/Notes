@@ -621,11 +621,11 @@ Cost:
    2. We have `Nb/M` runs after the sorting phrase, every pass would decrease the
       number of runs by a factor of `M-1`, so that the # of pass will be:
 
-      $\log _{M-1} (Nb/M)
+      $$ \log _{M-1} (Nb/M) $$
 
    3. So the # of block transfer is:
 
-      $\left [ \left ( 1 + \log _{M-1} (Nb/M) \right ) \right ] * 2Nb 
+      $$ \left [ \left ( 1 + \log _{M-1} (Nb/M) \right ) \right ] * 2Nb $$
 
 2. The # of seeks
 
