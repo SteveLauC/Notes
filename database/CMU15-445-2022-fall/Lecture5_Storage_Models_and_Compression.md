@@ -144,6 +144,11 @@ can fit the workloads most.
 
       This is called `late materialization`.
 
+      > For more info about what are materialization and late materialization,
+      > see [Lecture 11][link].
+      >
+      > [link]: https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2022-fall/Lecture11_Join_Algorithms.md
+
       > Why is this wanted?
       >
       > During execution, the data will be copied along the query route, the
