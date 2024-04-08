@@ -60,3 +60,96 @@
    based on the values of column `b`. A more efficient one, will read column `b`
    first, then do the filter, then we fetch the corresponding column `a` values.
 
+5. Cost analysis
+
+   We only analyze the # of block transfer in this class, the # of seeks (random
+   I/O) won't be counted.
+
+
+6. Join algorithms
+
+   1. Nested loop join
+
+      > QUES: The note says that we should use the smaller table as the outer 
+      > table, I don't understand this, for simple nested loop joins, I think 
+      > the inner table should be the smaller one as it will be read multiple 
+      > times.
+
+      1. Simple nested loop join
+
+         The note says that cost is: `M +(m×N)`, which assumes that there is
+         only 1 buffer available for the inner table, i.e., the cost under
+         the worst case.
+
+      2. Block nested loop join
+          
+         In the worse case, i.e., 1 buffer for each relation, the # of block 
+         transfers will be `M + M*N`.
+
+         If we follow the idea of block nested loop join, i.e., 1 tuple per inner
+         relation scan -> 1 block per innner relation scan, then we can do more
+         blocks at a time we have enough buffers.
+
+         Say we scan the inner relation per `B` blocks, 1 buffer for the inner 
+         relation, then the # of block transfers will be `M + (M/B)*N`.
+
+      3. Index nested loop join
+
+   2. Sort merge join
+
+      1. This algorithm will be useful (chosen by the planner) if:
+
+         1. One or both relations are already sorted
+         2. The result of the join needs to be sorted
+            
+            ```sql
+            SELECT students.name, students.score 
+            FROM students 
+                JOIN takes 
+                ON students.score = takes.score
+            ORDER BY students.score;
+            ```
+
+      2. The worse scenario for this algorithm is that all the tuples have the 
+         same value on their join attributes.
+
+         > QUES: why
+
+         > For the in-memory sorting algorithms, insertion sort is the fastest
+         > one if the input data is ordered.
+
+      3. Cost
+
+         1. Sort
+             
+            Assume we have `B` buffers for merge join, sorting the outer relation
+            needs `{1+[log(B-1)(M/B)]} * 2M`. Similarly, `{1+[log(B-1)(N/B)]} * 2N`
+            for the inner relation.
+
+         2. Merge 
+            
+            Only 1 scan for each relation is required, so `M+M`.
+
+         
+         3. Cost: sort + merge
+
+   3. Hash join
+      
+      1. Basic hash join
+        
+         The in-memory hash index should be a hash table, whose key is the value
+         of the join attributes, the value can be Record ID or the real tuple
+         value.
+         
+      2. Grace/partitioned hash join
+
+7. Cost conparison between different join algorithms
+
+   | algorithm              |  I/O Cost     | Example    |
+   |------------------------|---------------|------------|
+   |simple nested loop join | M + (m · N )  | 1.4 hours  |
+   | block nested loop join | M + (m · N )  | 1.4 hours  |
+   | index nested loop join | M + (m · N )  | 1.4 hours  |
+   | merge join             | M + (m · N )  | 1.4 hours  |
+   | hash join              | M + (m · N )  | 1.4 hours  |
+

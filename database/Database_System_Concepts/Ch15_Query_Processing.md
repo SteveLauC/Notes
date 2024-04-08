@@ -612,7 +612,7 @@
 
 ## 15.4.2 Cost Analysis of External Sort-Merge
 
-> NOTE: revisit ths in the future.
+> NOTE: revisit this in the future.
 
 Cost:
 
@@ -813,8 +813,16 @@ Cost:
    > It is more efficient to use the smaller relation as the outer relation to
    > decrease the last number.
    >
-   > n_block(outer) * n_block(inner) + n_block(outer)`
-   > n_block(inner) * n_block(outer) + n_block(inner)`
+   > ```
+   > n_block(outer) * n_block(inner) + { n_block(outer) }
+   > ```
+   > 
+   > Switching the relations won't change the value of `n_block(outer)` *
+   > `n_block(inner)`.
+   >
+   > Let say we have 2 relations, one has 3 blocks, the other has 5 blocks, 
+   > use the table with 3 blocks as the outer one, the cost will be 18. Switch
+   > them, the cost will become 20.
 
    And the # of seeks will be decreased to `n_block(outer) + n_block(outer)`.
 
@@ -1133,7 +1141,7 @@ Cost:
 
 3. What if the build relation cannot fit in memory? Split!
 
-   > This is called `Grace Hash Join`
+   > This is called `Grace/partitioned Hash Join`
 
    If the build relation is too big to fit in memory, then split both relations
    to multiple partitions using a hash algorithm, and do build-and-probe for
@@ -1151,8 +1159,10 @@ Cost:
    > Splitting the relations:
    >
    > 1. Reduces the size of data that needs to fit in memory
+   > 2. Reduces the number of comparisons the DBMS needs to perform **per tuple**.
    > 2. If two tuples have the same values on the join columns, then they should
-   >    be put in the same partition pair.
+   >    be put in the same partition pair, so the tuples in one bucket only
+   >    need to compare with the tuples in the other corresponding bucket.
    >
    >    This is why hash join can only hanlde equi-join and natural join. 
 
