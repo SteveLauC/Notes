@@ -137,19 +137,44 @@
       
       1. Basic hash join
         
-         The in-memory hash index should be a hash table, whose key is the value
-         of the join attributes, the value can be Record ID or the real tuple
-         value.
+         1. The in-memory hash index should be a hash table, whose key is the 
+            value of the join attributes, the value can be Record ID or the 
+            real tuple value.
+         
+         2. If the DBMS knows the size of the table on which the hash index is
+            going to be built, then it can use a static hash table, or it has
+            to use a dynamic hash table.
+
+         3. One can use bloom filter to optimize the probe phase
+
+            > QUES: how?
          
       2. Grace/partitioned hash join
 
+         The algorithm introduced in this class do not build an in-memory hash
+         index for each bucket, it instead uses a nested loop join.
+
+         The # of block transfers in grace/partitioned hash join is that:
+
+         1. Partition: 2 * (M+N)
+         1. Build and Probe/nested loop join: M+N
+
 7. Cost conparison between different join algorithms
 
-   | algorithm              |  I/O Cost     | Example    |
-   |------------------------|---------------|------------|
-   |simple nested loop join | M + (m · N )  | 1.4 hours  |
-   | block nested loop join | M + (m · N )  | 1.4 hours  |
-   | index nested loop join | M + (m · N )  | 1.4 hours  |
-   | merge join             | M + (m · N )  | 1.4 hours  |
-   | hash join              | M + (m · N )  | 1.4 hours  |
+   | algorithm              |  I/O Cost                 | Example    |
+   |------------------------|---------------------------|------------|
+   |simple nested loop join | M + (m · N ) (worst case) | 1.4 hours  |
+   | block nested loop join | M + (M · N ) (worst case) | 1.4 hours  |
+   | index nested loop join | M + (m · C )              | 1.4 hours  |
+   | merge join             | M + N + sort cost         | 1.4 hours  |
+   | hash join              | 3 * (M + N)               | 1.4 hours  |
+
+   The estimated time assumes that:
+
+   M = 1000, m = 10_0000, N = 500, n = 4_0000, B = 100, and 0.1 milisecond for I/O.
+
+   Hash joins are almost always better than sort-based join algorithms, but 
+   there are cases in which sorting- based joins would be preferred. This 
+   includes queries on non-uniform data, when the data is already sorted on 
+   the join key, and when the result needs to be sorted.
 
