@@ -1443,7 +1443,8 @@
    they deal with collision.
 
    In Open Hashing, we have an array, with each item is a linked list that is used
-   to store entries that have the same hash value (collision).
+   to store entries that have the same hash value (collision). Store all elements 
+   with hash collisions in a secondary data structure (linked list, BST, etc.)
 
    > This is how `HashMap` works
    >
@@ -1451,7 +1452,8 @@
 
    For Closed Hashing, we only have that array, in my data structure class,
    I have learned some ways to handle collision using just the array, they 
-   belong to Closed Hashing.
+   belong to Closed Hashing. Allow elements to “leak out” from their preferred
+   position and spill over into other positions.
 
    [Open Hashing vs Closed Hashing](https://programming.guide/hash-tables-open-vs-closed-addressing.html)
 

@@ -74,6 +74,11 @@
       > table, I don't understand this, for simple nested loop joins, I think 
       > the inner table should be the smaller one as it will be read multiple 
       > times.
+      >
+      > Future steve: I think this is not a deterministic problem, why not just
+      > calculate the costs during the optimization stage.
+      >
+      > Join reorder
 
       1. Simple nested loop join
 
@@ -140,6 +145,12 @@
          1. The in-memory hash index should be a hash table, whose key is the 
             value of the join attributes, the value can be Record ID or the 
             real tuple value.
+
+            > We always need to store join attributes since we want to give it
+            > a double check in case of hash collisions.
+
+            Which hash table implementation to use? Slides say that linear probing
+            hashing works best.
          
          2. If the DBMS knows the size of the table on which the hash index is
             going to be built, then it can use a static hash table, or it has
@@ -148,6 +159,22 @@
          3. One can use bloom filter to optimize the probe phase
 
             > QUES: how?
+
+            Future steve: Bloom filter is a probabilistic data structure that can
+            answer the question: if an item is in the set with:
+
+            1. The target item is guaranteed to not exist in the set
+            2. The item is probably in the set
+
+            Bloom filter is compact and can be well fit in the CPU cache, we can
+            build a bloom filter during the build phase, and check the bloom filter
+            before probing the hash table.
+
+            Such an optimization is sometimes called `Sideways information passing`.
+
+         4. During the build stage, you actully know the statistics of the build
+            relation, then you can use this statistics to prune the probe relation
+            while accessing it (if supported, e.g., parquet).
          
       2. Grace/partitioned hash join
 
@@ -161,13 +188,13 @@
 
 7. Cost conparison between different join algorithms
 
-   | algorithm              |  I/O Cost                 | Example    |
-   |------------------------|---------------------------|------------|
-   |simple nested loop join | M + (m · N ) (worst case) | 1.4 hours  |
-   | block nested loop join | M + (M · N ) (worst case) | 1.4 hours  |
-   | index nested loop join | M + (m · C )              | 1.4 hours  |
-   | merge join             | M + N + sort cost         | 1.4 hours  |
-   | hash join              | 3 * (M + N)               | 1.4 hours  |
+   | algorithm              |  I/O Cost                 | The # of block transfer  | Example    |
+   |------------------------|---------------------------|--------------------------|------------|
+   |simple nested loop join | M + (m · N ) (worst case) | 50_001_000               | 1.4 hours  |
+   | block nested loop join | M + (M · N ) (worst case) | 501_000                  | 50 secs    |
+   | index nested loop join | M + (m · C )              | ?                        | ?          |
+   | merge join             | M + N + sort cost         | 7_500                    | 0.75 secs  |
+   | grace hash join        | 3 * (M + N)               | 4500                     | 0.45 secs  |
 
    The estimated time assumes that:
 
