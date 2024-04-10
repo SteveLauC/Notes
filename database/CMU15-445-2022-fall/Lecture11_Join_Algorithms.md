@@ -172,11 +172,19 @@
 
             Such an optimization is sometimes called `Sideways information passing`.
 
-         4. During the build stage, you actully know the statistics of the build
-            relation, then you can use this statistics to prune the probe relation
-            while accessing it (if supported, e.g., parquet).
+            > Sideways information passing origins from Vertica (a columar analytics
+            > database).
+
+         4. Yet another Sideways information passing. During the build stage, you 
+            actully know the statistics of the build relation, then you can use 
+            this statistics to prune the probe relation while accessing it 
+            (if supported, e.g., parquet).
          
       2. Grace/partitioned hash join
+
+         > It is called Grace Hash Join, named after the [Grace database machine][link]
+         >
+         > [link]: https://museum.ipsj.or.jp/en/computer/other/0014.html
 
          The algorithm introduced in this class do not build an in-memory hash
          index for each bucket, it instead uses a nested loop join.
