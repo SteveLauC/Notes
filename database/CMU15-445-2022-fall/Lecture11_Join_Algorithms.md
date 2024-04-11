@@ -13,6 +13,13 @@
 
    * inner 
    * equi
+   * binary
+
+     > Binary joins means that the join operation takes 2 relations as the input,
+     > for joins over multple relations, we use binary join as well.
+     >
+     > Multi-way joins (native support for more than 2 relations) primarily exist
+     > in research literature.
 
    join.
 
@@ -105,6 +112,10 @@
       1. This algorithm will be useful (chosen by the planner) if:
 
          1. One or both relations are already sorted
+
+            > If both relations are sorted, then sort merge join has the minimal
+            > I/O cost.
+             
          2. The result of the join needs to be sorted
             
             ```sql
@@ -119,6 +130,14 @@
          same value on their join attributes.
 
          > QUES: why
+         >
+         > Future steve: because the algorithm used in this lecture needs you to
+         > **backtrack** the data under certain cases, so when all the tuples have
+         > the same value, you are going back to the start of the relation, which
+         > is basically a nested loop join.
+         >
+         > I think the algorithm introduced in the textbook does not need this
+         > so the statement here does not apply to that.
 
          > For the in-memory sorting algorithms, insertion sort is the fastest
          > one if the input data is ordered.
