@@ -1904,6 +1904,8 @@ With `GROUP BY` added, we need to distribute tuples into different groups by the
       >
       > Future steve: u r right
 
+   3. Vectorization
+
 ## 15.7.1 Materialization
 
 ```
