@@ -62,14 +62,19 @@
    > the fact that `major ID number` and `minor ID number` are all represented
    > in a 8-bit number. This was eased in kernel 2.6 as they switched to more
    > bits (12 and 20 respectively).
+   >
+   > Now they all have 32 bits, see [In Posix how is type dev_t getting used][link]
+   > [link]: https://stackoverflow.com/a/73923376/14092446
 
    How to create a `device special file`?
 
    You can do this through `mknod(1)` or `mknod(2)`.
-   > Actually, you can create regular file (which will be  created  empty),  
-   > *character  special  file, block special file*, FIFO (named pipe), or 
-   > UNIX domain socket throught this.
 
+   > Actually, you can create regular file (which will be created empty),  
+   > *character  special  file, block special file*, FIFO (named pipe), or 
+   > UNIX domain socket throught `mknod(2)`.
+   >
+   > Seems that you cannot create regular file through `mknod(1)`.
 
 2. each partition is treated as a separate device residing under `/dev`
 
@@ -140,6 +145,9 @@
    the kernel code.
 
    [homepage](https://github.com/libfuse/libfuse)
+
+   > Future steve: On Linux, mounting and unmounting a normal file system requires
+   > priviledge (`CAP_SYS_ADMIN`). However, with FUSE, this is not needed.
 
 5. file system structure
 
