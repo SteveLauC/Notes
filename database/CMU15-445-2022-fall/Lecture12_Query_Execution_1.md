@@ -57,10 +57,11 @@
    > continuously pulls that child operator until it yields `None`.
 
 3. One drawback of the iterator model is that it only handles 1 tuple in a 
-   function call.
+   function call `next()`.
 
-4. Materialization model is suitable for OLTP since it won't access too many tuples
-   at once, and we have fewer function calls compared to the iterator model.
+4. Materialization model is suitable for OLTP since in OLTP, we won't access 
+   too many tuples at once, and we have fewer function calls compared to the 
+   iterator model.
 
    And I think this model makes a lot of sense for in-memory databases, like 
    VoltDB. When things are in memory, the cost of the virtual functions calls
@@ -157,7 +158,7 @@
    For example, when you update a B+Tree, a value satisfies the predicate, then
    you remove it from the B+Tree, update the value then insert it back. It is
    possible that the new inserted value will be scanned again, and it also 
-   satisfies the condition, then you update it again, an error occurred.
+   satisfies the condition, then you update it again, an error occurs.
 
    ```sql
    UPDATE students
@@ -257,7 +258,7 @@
    > QUES: To do JIT, does the DBMS need a built-in compiler, or it can simply
    > use the one installed on the host?
 
-It is slow, speed it up with JIT.
+   It is slow, speed it up with JIT.
 
 2. The `PREPARE` statement can be used to avoid parsing the statements that will
    be used frequently:
