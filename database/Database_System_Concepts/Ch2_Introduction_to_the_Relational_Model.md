@@ -73,13 +73,64 @@
    * declrative query language
 
 #### 2.6 The Relational Algebra
-1. select operation: select tuples that satifies the given predicate
 
-   > In predicate, we can combine sub-predicate using connections like and, or and not.
-   You may wanna note its notation(page 49)
+1. What is relational algebra
 
-2. project operation
+   The relational algebra consists of a set of operations that take **1 or 2**
+   relations as input and produce a new relation as their result.
+
+2. Unary and binary operations
+
+   Operations like 
+
+   * select
+   * project
+   * rename
+
+   operate on one relation so that they are called unary operation.
+
+   Set operations like
+
+   * Union
+   * Intersection
+   * set difference
+   * Cartesian product (cross product)
+
+   operate on pairs of relations and are **binary** operations.
+
+3. By definition, a relation is a set of tuples so that a the tuples cannot
+   be duplicate. But in practise, tables in database systems are permitted to
+   contain duplicate tuples.
+
+4. Operations
+
+   1. select $ \sigma $ (unary)
+
+      select tuples that satifies the given predicate
+
+      > In predicate, we can combine sub-predicate using connections like and, 
+      > or and not. 
+      >
+      > * and: $ \wedge $
+      > * or: $ \vee $
+      > * not: $ \neg $
+
+   2. project $ \Pi $ (unary)
    
-   The basic version of project operation allows only attribute names to be 
-   present in the predicate, a generalized version allow experssion involving
-   attributes to apperar in it.
+      The basic version of project operation allows only attribute names to be 
+      present in the predicate(referenced columns), a generalized version allows 
+      experssion involving attributes to apperar in it.
+
+      > ```sql
+      > SELECT 1;
+      > ```
+
+   3. Cartesian product $ \times $ (binary)
+
+      This operation can be used to combine information from any 2 relations, e.g.,
+      doing the cartesian product over table a and b would be something like
+
+      $$ a \times b $$
+
+   4. (Inner) Join $ \Join $ (binary)
+
