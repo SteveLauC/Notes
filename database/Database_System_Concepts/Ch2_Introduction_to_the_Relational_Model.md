@@ -132,5 +132,25 @@
 
       $$ a \times b $$
 
-   4. (Inner) Join $ \Join $ (binary)
+   4. (Inner) (theta) Join $ \Join $ (binary)
+
+      The join operation allows us to combine a selection and a Cartesian product
+      into a single operation.
+
+      Consider relations `r` and `s`, then let $ \theta $ be a predicte on attributes
+      in schema $ R \cup S $, then the join operation is defined like this:
+
+      $$ r \Join s = \sigma \theta (r \times s) $$
+
+   5. Set operations
+
+      > Technically, Cartesian product should be a set operation.
+
+      > All set operations are **binary** operations.
+
+      1. Union $ \cup $
+      2. Intersection $ \cap $ 
+      3. Set-difference $ \setminus $ 
+   
+   6. Assignment $ \leftarrow $
 
