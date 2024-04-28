@@ -1,3 +1,17 @@
+> This chapter covers:
+>
+> 1. Equivalent rules in relational algebra (16.2)
+>
+>    > Review Relation Algebra (Ch2) if you cannot recall them clearly.
+>
+> 2. For a generated unoptimized logical plan, we know how to convert it to 
+>    an equivalent one using equivalent rules. Then we need to choose the least
+>    costly one by estimnating their cost (16.3)
+>
+> 3. How to generate the physical plan (16.4)
+> 4. Introduce materialized views, which can be used to speed up certain queries 
+>    (16.5)
+
 > * 16.1 Overview
 > * 16.2 Transformation of Relational Expressions
 >   * 16.2.1 Equivalence Rules
@@ -34,9 +48,38 @@
 1. 2 relational algebra expressions are said to be equivalent if, on every legal
    database instance, the 2 expressions generate the same set of tuples.
 
+   > The order of tuples does not matter since a relation is a set, and set does
+   > not have order.
+
 ## 16.2.1 Equivalence Rules
 
-1. Null rejecting or null rejection
+1. What is an equivalence rule
+
+   An equivalence rule says that expressions of two forms are equivalent.
+
+   The query optimizer uses equivalence rules to transform expressions into other
+   logically equivalent expression.
+
+2. Rules
+
+   For the following rules, we use $ \theta, \theta_{1}, \theta_{2} $ and so on
+   to denote predicates. $ L_{1}, L_{2}, L_{3} $ and so on to denote lists of
+   attributes, and $ E, E_{1}, E_{2} $ and so on to denote relational algebra
+   expressions.
+
+   1. Conjunctive selection operations can be deconstructed into a sequence of
+      individual selections, this transformation is referred to as a cascade
+      of $ \sigma $.
+
+      $$ \sigma_{\theta_{1} \wedge \theta_{2} } (E) = \sigma_{\theta_{1}} (\sigma_{\theta_{2}} (E)) $$
+
+   2. Selection operations are **commutative**.
+
+      $$ \sigma_{\theta_{1}} (\sigma_{\theta_{2}}) = \sigma_{\theta_{2}} (\sigma_{\theta_{1}}) $$
+
+   3. 
+
+2. Null rejecting or null rejection
 
    A outer join query like 
 
