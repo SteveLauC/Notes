@@ -85,6 +85,7 @@
 
    * select
    * project
+   * assignment
    * rename
 
    operate on one relation so that they are called unary operation.
@@ -132,7 +133,7 @@
 
       $$ a \times b $$
 
-   4. (Inner) (theta) Join $ \Join $ (binary)
+   4. (Inner) (theta) Join $ \Join_{\theta} $ (binary)
 
       The join operation allows us to combine a selection and a Cartesian product
       into a single operation.
@@ -140,17 +141,57 @@
       Consider relations `r` and `s`, then let $ \theta $ be a predicte on attributes
       in schema $ R \cup S $, then the join operation is defined like this:
 
-      $$ r \Join s = \sigma \theta (r \times s) $$
+      $$ r \Join_{\theta} s = \sigma_{\theta} (r \times s) $$
 
-   5. Set operations
+   5. Set operations (binary)
 
-      > Technically, Cartesian product should be a set operation.
+      > Technically, Cartesian product is also a set operation (they all come from
+      > set theory)
 
       > All set operations are **binary** operations.
 
       1. Union $ \cup $
       2. Intersection $ \cap $ 
       3. Set-difference $ \setminus $ 
-   
-   6. Assignment $ \leftarrow $
 
+      > All the set operations, must be done to compatible relations:
+      >
+      > 1. The 2 input relations should have the same number of attributes
+      > 2. For each i, the type of the ith attributes of both input relations must
+      >    be same
+   
+   6. Assignment $ \leftarrow $ (binary)
+
+      Assign the result of a relational-algebra expression to a **temporary** relation.
+
+      This is basically equivalent to the assignment operation in a programming
+      language, for example, assigning all the IDs of all male teacher to 
+      `id-of-male-teacher`:
+
+      $$ id-of-male-teacher \leftarrow \Pi_{id} (\sigma_{gender=male} (teacher)) $$
+
+   7. Rename $ \rho $ (unary)
+
+      > In SQL, we have the `as` keyword.
+
+      The rename operation allows us to rename a relation or fields of it, or 
+      both of them.
+
+      For example, to rename relation teacher to foo:
+
+      $$ \rho_{foo} (teacher) $$
+
+      To rename the name field of the teacher relation to bar:
+
+      $$ \rho_{bar/name} (teacher) $$
+
+      Assume the relation teacher has 3 attributes, to rename all the attributes 
+      something else, we do:
+
+      $$ \rho_{(name1, name2, name3)} (teacher) $$
+
+   8. Other common relational algebra expressions
+
+      1. Agregation
+      2. Natural join $ \Join $
+      3. Outer join
