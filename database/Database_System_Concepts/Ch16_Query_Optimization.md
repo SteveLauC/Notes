@@ -71,13 +71,85 @@
       individual selections, this transformation is referred to as a cascade
       of $ \sigma $.
 
-      $$ \sigma_{\theta_{1} \wedge \theta_{2} } (E) = \sigma_{\theta_{1}} (\sigma_{\theta_{2}} (E)) $$
+      $$ \sigma_{\theta_{1} \wedge \theta_{2} } (E) \equiv \sigma_{\theta_{1}} (\sigma_{\theta_{2}} (E)) $$
 
    2. Selection operations are **commutative**.
 
-      $$ \sigma_{\theta_{1}} (\sigma_{\theta_{2}}) = \sigma_{\theta_{2}} (\sigma_{\theta_{1}}) $$
+      $$ \sigma_{\theta_{1}} (\sigma_{\theta_{2}}) \equiv \sigma_{\theta_{2}} (\sigma_{\theta_{1}}) $$
 
-   3. 
+   3. Only the final operations in a sequence of projectionare needed, the others
+      can be omitted, this transformation can also be referred to as a cascade of
+      $ \Pi $ 
+
+      $$ \Pi_{L1} (\Pi_{L2} (.. (\Pi_{Ln} (E)))) \equiv \Pi_{L1} (E) $$
+
+      where $ L1 \subseteq L2 \subseteq ...  \subseteq Ln $
+
+   4. Selections can be combined with Cartesian products and theta join
+
+      1. $ \sigma_{\theta} (E1 \times E2) \equiv E1 \Join_{\theta} E2 $
+
+         > This is exactly the definition of Theta join.
+
+      2. $ \sigma_{\theta_{1}} (E1 \Join_{\theta_{2}} E2) \equiv E1 \Join_{\theta_{1} \wedge \theta_{2}} E2 $
+
+         > QUES: can this be applied to outer join?
+
+   5. Theta join operations are commutative.
+
+      > Natural join is a special case of theta join, so it is commutative as well.
+
+      $$ E1 \Join_{\theta} E2 \equiv E2 \Join_{\theta} E1 $$
+
+      > QUES: is this appliable to outer join?
+      >
+      > I think no, outer join is not commutative.
+      >
+      > But I believe there are cases where outer join is also commutative.
+
+      > NOTE: this rule holds if we don't care about the order of the attributes.
+
+      > We can choose which table will be used as the outer table while join 2 
+      > tables for better performance because of this rule.
+      > 
+      > See Ch15 for more information.
+
+      > Is cartesian product commutative?
+      >
+      > No if the order of pairs matter, but yes if it does not matter.
+
+   6. Associative property of join
+
+      > Is cartesian product associative?
+      >
+      > In set theory, no, assume a = {1}, b = {2}, c = {3}, then
+      >
+      > $ (a \times b) \times c  = $ {(1, 2), 3} 
+      >
+      > But 
+      >
+      > $ a \times (b \times c)  = $ {1, (2, 3)} 
+      >
+      > {(1, 2), 3} and {1, (2, 3)} are not the same thing.
+      >
+      > But I think in the relational algebra or SQL world, these 2 sets are the
+      > same set, so the answer would be yes. 
+
+     
+      1. Natural join is associative:
+
+         $$ (E1 \Join E2) \Join E3 \equiv E1 \Join (E2 \Join E3) $$
+
+         > QUES: is this appliable to outer join?
+         > 
+         > A general anawer is no, outer join is not associative, but there
+         > should be cases where the associative property is satisfied.
+
+      2. 
+
+
+
+      
 
 2. Null rejecting or null rejection
 
