@@ -94,6 +94,8 @@
       2. $ \sigma_{\theta_{1}} (E1 \Join_{\theta_{2}} E2) \equiv E1 \Join_{\theta_{1} \wedge \theta_{2}} E2 $
 
          > QUES: can this be applied to outer join?
+         >
+         > I guess yes.
 
    5. Theta join operations are commutative.
 
@@ -135,7 +137,6 @@
       > But I think in the relational algebra or SQL world, these 2 sets are the
       > same set, so the answer would be yes. 
 
-     
       1. Natural join is associative:
 
          $$ (E1 \Join E2) \Join E3 \equiv E1 \Join (E2 \Join E3) $$
@@ -145,7 +146,108 @@
          > A general anawer is no, outer join is not associative, but there
          > should be cases where the associative property is satisfied.
 
-      2. 
+      2. Theta join is associative in the following manner:
+
+         > QUES: I do not quite understand this.
+
+         $$ (E1 \Join_{\theta_{1}} E2) \Join_{\theta_{2} \wedge \theta_{3}} E3 \equiv E1 \Join_{ \theta_{1} \wedge \theta_{3}} (E2 \Join_{\theta_{2}} E3) $$
+
+         where $ \theta_{2} $ only involves attributes from $ E2 $ and $ E3 $
+
+         > Commutative property and associative property are important for join 
+         > reordering in query optimization.
+
+   7. Selection distributes over theta-join (inner join)
+
+      > Predicate pushdown in inner join
+
+      > QUES: does this apply to outer join?
+      >
+      > I highly doubt no.
+
+      1. If all the attributes in $ \theta_{1} $ only involve the attributes of
+         one of the expressions, say $ E1 $ in this example, then the following
+         equivalence rule holds:
+
+         $$ \sigma_{ \theta_{1}} (E1 \Join_{\theta} E2) \equiv (\sigma_{\theta_{1}} (E1)) \Join_{\theta} E2 $$
+
+      2. Similar to the last rule, if the condition is $ \theta_{1} \wedge \theta_{2} $, 
+         and $ \theta_{1} $ only involves the attributes of $ E1 $, $ \theta_{2} $ only 
+         involves the attributes of $ E2 $, then:
+
+         $$ \sigma_{\theta_{1} \wedge \theta_{2}} (E1 \Join_{\theta} E2) \equiv (\sigma_{\theta_{1}} E1) \Join_{\theta} (\sigma_{\theta_{2}} E2)) $$
+
+   8. The projection operation distributes over the theta-join operation under the
+      following conditions.
+
+      > Projection pushdown in theta join
+
+      > NOTE: This applies to left/right/full outer join as well.
+
+      1. Let $ L1 $ and $ L2 $ be attributes of $ E1 $ and $ E2$, respectively.
+         Suppose that the join condition $ \theta $ involves only attributes
+         in $ L1 \cup L2 $ (to make the join operation doable after the projection
+         pushdown), then:
+
+         $$ \Pi_{ L1 \cup L2 } (E1 \Join_{\theta} E2) \equiv (\Pi_{L1} (E1)) \Join_{\theta} (\Pi_{L2} (E2)) $$
+
+      2. Consider a join $ E1 \Join_{\theta} E2 $, let $ L1 $ and $ L2 $ be sets
+         of attributes from $ E1 $ and $ E2 $, respectively. Let $ L3 $ be attributes
+         of $ E1 $ that are involved in the join operation $ \theta $ but not in
+         $ L1 $, $ L4 $ are attributes that are involved in $ \theta $ as well but
+         not in $ L2 $, then:
+
+         $$ \Pi_{ L1 \cup L2 } (E2 \Join_{\theta} E2) \equiv \Pi_{L1 \cup L2} ((\Pi_{L1 \cup L3} (E1)) \Join_{\theta} (\Pi_{L2 \cup L4} (E2)))$$
+
+         We only want attributes $ L1 \cup L2 $, but since the join condition 
+         $ \theta $ needs $ L3 $ and $ L4 $ as well, we also need to push them
+         down to do the join operation.
+
+   9. Set operations like Union an Intersection are commutative.
+
+      $$ E1 \cup E2 \equiv E2 \cup E1 $$
+      $$ E1 \cap E2 \equiv E2 \cap E1 $$
+
+      > Set difference is not commutative.
+      >
+      > Example, $ a = \{1\}, b = \emptyset $, $ a \setminus b = \{1\} $ , $ b \setminus a = \emptyset $.
+
+   10. Set operations like Union and Intersection are associative.
+
+
+       $$ (E1 \cup E2) \cup E3 \equiv E1 \cup (E2 \cup E3) $$
+       $$ (E1 \cap E2) \cap E3 \equiv E1 \cap (E2 \cap E3) $$
+
+       > set difference is not associative.
+       >
+       > > If you are interested in proof, check [this][proof] out.
+       >
+       > [proof]: https://proofwiki.org/wiki/Set_Difference_is_not_Associative
+       >
+       > Example, $ a = b = c \neq \emptyset $
+       >
+       > $$ (a \setminus b) \setminus c = \emptyset \setminus c = \emptyset $$
+       > $$ a \setminus (b \setminus c) = a \setminus \emptyset = a $$
+
+   11. The selection operation distributes over set operations:
+
+       $$ \sigma_{\theta} ( E1 \cup E2) \equiv (\sigma_{\theta} E1) \cup (\sigma_{\theta} E2) $$
+       $$ \sigma_{\theta} ( E1 \cap E2) \equiv (\sigma_{\theta} E1) \cap (\sigma_{\theta} E2) $$
+       $$ \sigma_{\theta} ( E1 \setminus E2) \equiv (\sigma_{\theta} E1) \setminus (\sigma_{\theta} E2) $$
+
+       > This should be something like predicate pushdown for sub-queries.
+
+       And if we push the predicate down to only 1 side, then:
+
+       $$ \sigma_{\theta} ( E1 \cap E2) \equiv (\sigma_{\theta} E1) \cap (E2) $$
+       $$ \sigma_{\theta} ( E1 \cap E2) \equiv (E1) \cap (\sigma_{\theta} E2) $$
+       $$ \sigma_{\theta} ( E1 \setminus E2) \equiv (\sigma_{\theta} E1) \setminus (E2) $$
+
+
+
+
+
+
 
 
 
