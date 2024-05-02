@@ -19,6 +19,11 @@
 >   * 16.2.3 Join Ordering
 >   * 16.2.4 Enumeration of Equivalent Expressions
 > * 16.3 Estimating Statistics of Expression Results
+>   * 16.3.1 Catalog information
+>   * 16.3.2 Selection Size Estimation
+>   * 16.3.3 Join Size Estimation
+>   * 16.3.4 Size Estimation for Other Operations
+>   * 16.3.5 Estimation of Number of Distinct Values 
 > * 16.4 Choice of Evaluation Plans (physical plan)
 > * 16.5 Materialized Views
 >   * How to maintain (keep it update-to-date) it
@@ -178,6 +183,8 @@
          involves the attributes of $ E2 $, then:
 
          $$ \sigma_{\theta_{1} \wedge \theta_{2}} (E1 \Join_{\theta} E2) \equiv (\sigma_{\theta_{1}} E1) \Join_{\theta} (\sigma_{\theta_{2}} E2)) $$
+
+         > This equivalence can be derived from rule 1 and 7.1
 
    8. The projection operation distributes over the theta-join operation under the
       following conditions.
@@ -375,10 +382,168 @@
 
 
 ## 16.2.2 Examples of Transformations
+
+1. A set of equivalence rules is said to be **minimal** if no rule can be derived
+   from any combination of others.
+
+   Since the rule 7.2 can be derived from the rule 1 and 7.1, the rule set introduced 
+   in section 16.2.1 is NOT minimal.
+
+   The number of difference ways of generating an expression increases when we use
+   a nonminimal set of equivalence rules, so query optimizer should use minimal
+   sets of equivalence rules.
+
 ## 16.2.3 Join Ordering
+
+1. What is join ordering and why we need to optimize it
+
+   Join is a binary operation, which means you have to join 2 tables, then another
+   2 tables. In real world scenarios, it is common to join over multiple tables,
+
+   ```sql
+   SELECT * FROM a JOIN b JOIN c;
+   ```
+
+   The above query wants to join over 3 tables a, b and c, but we cannot join over
+   3 tables, only 2 tables are allowed in the join operation, and since natural 
+   inner join is commutative and associative, so we can do
+
+   > Why is `a JOIN b JOIN c` equivalent to
+   >
+   > `(a JOIN b) JOIN c`
+   > `a JOIN (b JOIN c)`
+   >
+   > see [`Why is 1+2+3 = (1+2)+3`][link]
+   >
+   > [link]: https://math.stackexchange.com/q/4901826/1313487
+
+   ```sql
+   SELECT * FROM (a JOIN b) JOIN c;
+   SELECT * FROM a JOIN (b JOIN c);
+   SELECT * FROM (a JOIN c) JOIN b;
+   SELECT * FROM a JOIN (c JOIN b);
+   SELECT * FROM (b JOIN a) JOIN c;
+   SELECT * FROM b JOIN (a JOIN c);
+   SELECT * FROM (b JOIN c) JOIN a;
+   SELECT * FROM b JOIN (c JOIN a);
+   SELECT * FROM (c JOIN a) JOIN b;
+   SELECT * FROM c JOIN (a JOIN b);
+   SELECT * FROM (c JOIN b) JOIN a;
+   SELECT * FROM c JOIN (b JOIN a);
+   ```
+
+   The above 12 SQLs are equivalent, but they can be different when it comes 
+   to execution efficiency. We want to choose the on with the most minimal cost.
+
+   > For 3 tables, there are 12 ways to do the join operation, for 4 tables,
+   > there are 120 ways, for 5 tables, there are 1680 ways.
+
+
 ## 16.2.4 Enumeration of Equivalent Expressions
 
+1. Pseudo code for the procedure to generate all equivalent expressions
+
+   ```rs
+   #[derive(Clone, PartialEq, Eq)]
+   struct RealtionalAlgebraExpr;
+
+   struct Rule;
+
+   impl Rule {
+      /// Return `Some(new_expr)` if `self` can be applied on `old_expr`.
+      fn apply(&self, old_expr: &RealtionalAlgebraExpr) -> Option<RealtionalAlgebraExpr> {
+         unimplemented!()
+      }
+   }
+
+   static EQUIVALENE_RULES: Vec<Rule> = Vec::new();
+
+   fn generate_equivalent_expr(init_expr: &RealtionalAlgebraExpr) -> Vec<RealtionalAlgebraExpr> {
+      let mut ret: Vec<RealtionalAlgebraExpr> = vec![init_expr.clone()];
+
+      for expr in ret.iter() {
+         for rule in EQUIVALENE_RULES.iter() {
+               if let Some(new_expr) = rule.apply(&expr) {
+                  if !ret.contains(&new_expr) {
+                     ret.push(new_expr);
+                  }
+               }
+         }
+      }
+
+      ret
+   }
+   ```
+
+   The above code is problematic because it changes the `ret` while iterating it...
+
+   ```sh
+   $ cargo check -q
+   error[E0502]: cannot borrow `ret` as mutable because it is also borrowed as immutable
+   --> src/main.rs:22:21
+      |
+   18 |     for expr in ret.iter() {
+      |                 ----------
+      |                 |
+      |                 immutable borrow occurs here
+      |                 immutable borrow later used here
+   ...
+   22 |                     ret.push(new_expr);
+      |                     ^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+
+   For more information about this error, try `rustc --explain E0502`.
+   warning: `rust` (bin "rust") generated 1 warning
+   error: could not compile `rust` (bin "rust") due to 1 previous error; 1 warning emitted
+   ```
+
+2. The procedure listed in the last note is extremely costly in both space and 
+   in time.
+
+   There are 2 ways that a query optimizer can reduce the cost, I am gonna cover
+   it here since I don't quite understand the whole process.
+
+   TODO: revisit this in the future.
+
+3. Among the equivalent expressions, a cost-based query optimizer will analyze
+   their cost and choose the one that is least costly.
+
+   > Cost analysis will be covered in section 16.3
+   
+   > For the part that how the query optimizer will choose the least costly one, 
+   > see 16.4.
+
 # 16.3 Estimating Statistics of Expression Results
+
+1. How to do cost analysis of an expression
+
+   In chapter 15, we covered the implementations of different operators and their
+   costs, that is for single operator.
+
+   An expression consists of a lot of operators, it is a tree of operators.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202024-05-02%20at%2020.36.36.png)
+
+   We can start from the bottom-level operations, and estimate their statistics,
+   and continue the process on higher-level operations till we reach the root of
+   the tree.
+
+2. One thing to note is that the estimates are not very accurate, since they are
+   based on assumptions that may not hold exactly.
+
+   A query-evaluation plan that has the lowest estimated execution cost may 
+   therefore not actually have the lowest actual execution cost.
+
+   However, real-world expreience has shown that even if the estimates are not 
+   precise, the plan with the lowest estimated costs usually have actual execution
+   costs that are either the lowest actual execution costs or are close to the
+   lowest actual execution costs.
+
+## 16.3.1 Catalog information
+## 16.3.2 Selection Size Estimation
+## 16.3.3 Join Size Estimation
+## 16.3.4 Size Estimation for Other Operations
+## 16.3.5 Estimation of Number of Distinct Values 
+
 # 16.4 Choice of Evaluation Plans (physical plan)
 # 16.5 Materialized Views
 # 16.6 Advanced Topics in Query Optimization
