@@ -75,11 +75,11 @@
 
    2. Selection operations are **commutative**.
 
-      $$ \sigma_{\theta_{1}} (\sigma_{\theta_{2}}) \equiv \sigma_{\theta_{2}} (\sigma_{\theta_{1}}) $$
+      $$ \sigma_{\theta_{1}} (\sigma_{\theta_{2}} E) \equiv \sigma_{\theta_{2}} (\sigma_{\theta_{1} } E) $$
 
-   3. Only the final operations in a sequence of projectionare needed, the others
-      can be omitted, this transformation can also be referred to as a cascade of
-      $ \Pi $ 
+   3. Only the final operations in a sequence of projection operation needed, the 
+      others can be omitted, this transformation can also be referred to as a 
+      cascade of $ \Pi $ 
 
       $$ \Pi_{L1} (\Pi_{L2} (.. (\Pi_{Ln} (E)))) \equiv \Pi_{L1} (E) $$
 
@@ -108,6 +108,8 @@
       > I think no, outer join is not commutative.
       >
       > But I believe there are cases where outer join is also commutative.
+      >
+      > Future steve: full outer join is commutative, see rule 14.
 
       > NOTE: this rule holds if we don't care about the order of the attributes.
 
@@ -124,15 +126,15 @@
 
       > Is cartesian product associative?
       >
-      > In set theory, no, assume a = {1}, b = {2}, c = {3}, then
+      > In set theory, no, assume $ a = \{1\}, b = \{2\}, c = \{3\} $, then
       >
-      > $ (a \times b) \times c  = $ {(1, 2), 3} 
+      > $ (a \times b) \times c  = \{(1, 2), 3\} $
       >
       > But 
       >
-      > $ a \times (b \times c)  = $ {1, (2, 3)} 
+      > $ a \times (b \times c)  = \{1, (2, 3)\} $
       >
-      > {(1, 2), 3} and {1, (2, 3)} are not the same thing.
+      > $ \{(1, 2), 3\} $ and $ \{1, (2, 3)\} $ are not the same thing.
       >
       > But I think in the relational algebra or SQL world, these 2 sets are the
       > same set, so the answer would be yes. 
@@ -163,7 +165,7 @@
 
       > QUES: does this apply to outer join?
       >
-      > I highly doubt no.
+      > See rule 15.
 
       1. If all the attributes in $ \theta_{1} $ only involve the attributes of
          one of the expressions, say $ E1 $ in this example, then the following
@@ -182,7 +184,7 @@
 
       > Projection pushdown in theta join
 
-      > NOTE: This applies to left/right/full outer join as well.
+      > NOTE: This **applies** to left/right/full outer join as well.
 
       1. Let $ L1 $ and $ L2 $ be attributes of $ E1 $ and $ E2$, respectively.
          Suppose that the join condition $ \theta $ involves only attributes
@@ -235,93 +237,141 @@
        $$ \sigma_{\theta} ( E1 \cap E2) \equiv (\sigma_{\theta} E1) \cap (\sigma_{\theta} E2) $$
        $$ \sigma_{\theta} ( E1 \setminus E2) \equiv (\sigma_{\theta} E1) \setminus (\sigma_{\theta} E2) $$
 
+       > For set operations like union/intersection/set-difference, the operatee
+       > should have have the same schema, so if $ \theta $ involves attributes 
+       > of $ E1 $, the it also involves attributes from $ E2 $.
+       >
+       > This is the reason why you don't see things like
+       >
+       > $$ \sigma_{\theta} (E1 \cup E2 ) \equiv (\sigma_{\theta} (E1)) \cup E2 $$
+       >
+       > if $ \theta $ involves only the attributes from $ E1 $, which is impossible.
+
        > This should be something like predicate pushdown for sub-queries.
 
        And if we push the predicate down to only 1 side, then:
 
-       $$ \sigma_{\theta} ( E1 \cap E2) \equiv (\sigma_{\theta} E1) \cap (E2) $$
-       $$ \sigma_{\theta} ( E1 \cap E2) \equiv (E1) \cap (\sigma_{\theta} E2) $$
+       $$ \sigma_{\theta} ( E1 \cap E2) \equiv (\sigma_{\theta} E1) \cap (E2) \equiv  (E1) \cap (\sigma_{\theta} E2)  $$
        $$ \sigma_{\theta} ( E1 \setminus E2) \equiv (\sigma_{\theta} E1) \setminus (E2) $$
 
+   12. The projection operation distributes over the union operation
+
+       $$ \Pi_{L} (E1 \cup E2) \equiv (\Pi_{L} E1) \cup (\Pi_{L} E2) $$
+
+       This does not apply to intersection, example
+
+       Assume $ E1 $ is:
+
+       | name | age | 
+       |------|-----|
+       | steve| 1   |
+       
+       Assume $ E2 $ is:
+
+       | name | age | 
+       |------|-----|
+       | steve| 2   |
+
+       then $ \Pi_{name} (E1 \cap E2) = \emptyset $ 
+
+       But $ (\Pi_{name} E1) \cap (\Pi_{name} E2) = \{ steve \} $
+
+       The same example applies to set-difference as well:
+
+       $ \Pi_{name} (E1 \setminus E2) = \{ steve \}$, but $ (\Pi_{name} E1) \setminus (\Pi_{name} E2) = \emptyset $.
+
+   13. Selection distrbutes over aggregation under the following conditions, let
+       $ G $ be a set of group by attributes, and $ A $ a set of aggregate 
+       expressions. When $ \theta $ only involves attributes in $ G $, the following
+       equivalence holds:
+
+       $$ \sigma_{\theta} (G gA(E) ) \equiv GgA (\sigma_{\theta}E) $$
+
+   14. Commutative property of outer join
+
+       1. Full outer join is commutative
+       2. Left and right outer join are not commutative.
+
+   15. Selection distributes over **left/right** outer join is the condition $\theta$
+       only involves the attributes from one side, and that side is the outer one
+
+       $$ \sigma_{\theta} (E1 left-outer-join E2 ) \equiv (\sigma_{\theta} E1) left-outer-join E2 $$
+       $$ \sigma_{\theta} (E2 left-outer-join E1 ) \equiv (\sigma_{\theta} E2) left-outer-join E1 $$
+
+       > What about full outer join?
+       >
+       > I think predicate pushdown cannot be done with full outer join.
 
 
+   16. Null rejecting or null rejection
+
+       A outer join query like 
+
+       ```sql
+       SELECT * FROM table1 LEFT OUTER JOIN table2 ON {JOIN CONDITION} WHERE {CONDITION};
+       ```
+
+       If `CONDITION` will be evaluated to `false` or unknown when the fields of
+       `table2` are `NULL`, then the above query can be converted into an inner join:
+
+       > For the extra tuples introduced by the left outer join, their values of 
+       > `table2` will be `NULL`, since `CONDITION` will be evaluated to `false`
+       > or unknown under this case, they will be removed from the result.
+
+       ```sql
+       SELECT * FROM table1 JOIN table2 ON {JOIN CONDITION} WHERE {CONDITION};
+       ```
+
+       Take a look at an example:
+
+       Table customer:
+
+       | name | order ID |
+       |------|----------|
+       |steve | 1        |
+       |mike | 3        |
+
+       Table orde:
+
+       | price | order ID |
+       |-------|----------|
+       | 50    | 2        |
+       | 30    | 3        |
+
+       ```sql
+       SELECT * FROM customer LEFT OUTER JOIN orde ON customer.order_id = orde.order_id;
+       ```
+
+       would return:
+
+       | name | order id | price | order id |
+       |------|----------|-------|----------|
+       |steve | 1        | null  |   null   |
+       |mike  | 3        | 30    |   3      |
 
 
+       Now we add the condition `orde.order_id IS NOT NULL` on it:
 
+       ```sql
+       SELECT * FROM customer LEFT OUTER JOIN orde ON customer.order_id = orde.order_id
+       WHERE orde.order_id IS NOT NULL;
+       ```
 
+       | name | order id | price | order id |
+       |------|----------|-------|----------|
+       |mike  | 3        | 30    |   3      |
 
+       The result is same as the inner join:
 
-      
+       ```sql
+       SELECT * FROM customer JOIN orde ON customer.order_id = orde.order_id
+       WHERE order.order_id IS NOT NULL;
+       ```
 
-2. Null rejecting or null rejection
-
-   A outer join query like 
-
-   ```sql
-   SELECT * FROM table1 LEFT OUTER JOIN table2 ON {JOIN CONDITION} WHERE {CONDITION};
-   ```
-
-   If `CONDITION` will be evaluated to `false` or unknown when the fields of
-   `table2` are `NULL`, then the above query can be converted into an inner join:
-
-   > For the extra tuples introduced by the left outer join, their values of 
-   > `table2` will be `NULL`, since `CONDITION` will be evaluated to `false`
-   > or unknown under this case, they will be removed from the result.
-
-   ```sql
-   SELECT * FROM table1 JOIN table2 ON {JOIN CONDITION} WHERE {CONDITION};
-   ```
-
-   Take a look at an example:
-
-   Table customer:
-
-   | name | order ID |
-   |------|----------|
-   |steve | 1        |
-   |mike | 3        |
-
-   Table orde:
-
-   | price | order ID |
-   |-------|----------|
-   | 50    | 2        |
-   | 30    | 3        |
-
-   ```sql
-   SELECT * FROM customer LEFT OUTER JOIN orde ON customer.order_id = orde.order_id;
-   ```
-
-   would return:
-
-   | name | order id | price | order id |
-   |------|----------|-------|----------|
-   |steve | 1        | null  |   null   |
-   |mike  | 3        | 30    |   3      |
-
-
-   Now we add the condition `orde.order_id IS NOT NULL` on it:
-
-   ```sql
-   SELECT * FROM customer LEFT OUTER JOIN orde ON customer.order_id = orde.order_id
-   WHERE orde.order_id IS NOT NULL;
-   ```
-
-   | name | order id | price | order id |
-   |------|----------|-------|----------|
-   |mike  | 3        | 30    |   3      |
-
-   The result is same as the inner join:
-
-   ```sql
-   SELECT * FROM customer JOIN orde ON customer.order_id = orde.order_id
-   WHERE order.order_id IS NOT NULL;
-   ```
-
-   > More info:
-   >
-   > * [DataFusion: convert outer join to inner join to improve performance](https://github.com/apache/arrow-datafusion/issues/1585)
-   > * [NULL rejection in mysql](https://stackoverflow.com/q/16982845/14092446)
+       > More info:
+       >
+       > * [DataFusion: convert outer join to inner join to improve performance](https://github.com/apache/arrow-datafusion/issues/1585)
+       > * [NULL rejection in mysql](https://stackoverflow.com/q/16982845/14092446)
 
 
 ## 16.2.2 Examples of Transformations

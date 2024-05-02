@@ -154,11 +154,14 @@
       2. Intersection $ \cap $ 
       3. Set-difference $ \setminus $ 
 
-      > All the set operations, must be done to compatible relations:
+      > All the set operations, must be done to **compatible** relations:
       >
       > 1. The 2 input relations should have the same number of attributes
       > 2. For each i, the type of the ith attributes of both input relations must
       >    be same
+      >
+      > This schema-compatible restriction is not requested in the set theory, 
+      > it is added in relational algebra.
    
    6. Assignment $ \leftarrow $ (binary)
 
