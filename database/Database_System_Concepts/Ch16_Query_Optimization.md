@@ -20,11 +20,15 @@
 >   * 16.2.4 Enumeration of Equivalent Expressions
 > * 16.3 Estimating Statistics of Expression Results
 >   * 16.3.1 Catalog information
->   * 16.3.2 Selection Size Estimation
+>   * 16.3.2 Selection (relational algebra) Size Estimation
 >   * 16.3.3 Join Size Estimation
 >   * 16.3.4 Size Estimation for Other Operations
 >   * 16.3.5 Estimation of Number of Distinct Values 
 > * 16.4 Choice of Evaluation Plans (physical plan)
+>   * 16.4.1 Cost-Based Join-Order Selection
+>   * 16.4.2 Cost-Based Optimization with Equivalence Rules
+>   * 16.4.3 Heuristics in Optimization
+>   * 16.4.4 Optimizing Nested Subqueries
 > * 16.5 Materialized Views
 >   * How to maintain (keep it update-to-date) it
 >   * How to do queries on materialized views
@@ -47,6 +51,32 @@
       expression that is less costly.
 
    2. Choose the best algorithm while generating physical plans.
+
+3. Query optimizer
+
+   There are 2 categories of query optimizer:
+
+   1. Rule based optimizer
+     
+      A rule based optimizer will convert a given query into a set of equivalent
+      queries through a set equivalence rules, you will see this in section 16.2.1
+
+   2. Cost based optimizer
+
+      After converting the given query to its equivalen alternatives, we need to 
+      estimate the cost of those alternatives and choose the one that is least
+      costly, such an optimizer is cost-based.
+
+      As you can see, a cost-based optimizer **relies on** rule-based optimizer.
+
+   A database system can only have RBO, i.e., after applying the equivalence rule,
+   the new query is guaranteed to be more efficient than the original one, e.g.,
+   predicate and projection pushdown.
+
+   DataFusion, a stand-alone query engine, does not have CBO because that would 
+   require statistics information. Though they are indeed working towards better
+   statistics support: https://github.com/apache/datafusion/issues/8229.
+
 
 # 16.2 Transformation of Relational Expressions
 
@@ -539,12 +569,127 @@
    lowest actual execution costs.
 
 ## 16.3.1 Catalog information
-## 16.3.2 Selection Size Estimation
+
+1. For a cost-based optimizer, the database needs to maintain some metadata
+   in its catalog, e.g.
+
+   1. the # of tuples in a relation
+   2. the # of blocks in a relation
+   3. the blocking factor of a relation, i.e., the # of tuples that fit into one
+      block
+   4. the # of distinct values of an attribute of a relation
+
+      > Columnar formats store this value directly in the file
+
+   Maintaining these metadata can be costly and can enforce a limit on concurrency,
+   so most systems do not update the statistics on every modification. Instead, 
+   they update the statistics during periods of light system load.
+
+2. If no catalog is available, then the query optimizer would assume the data
+   is uniformly distributed.
+
+   > Well, you should recall that you have done this when doing algorithm 
+   > complexity analysis.
+   
+   This can be inaccurate, but it is the best thing we can do when there is no
+   statistics.
+
+3. How to create statistics
+
+   The most straightforward way is to scan the whole relation, then build the
+   statistics, but this is inpractical for AP engines with millions rows, the
+   more common way is to build the statistics for sample data.
+
+   NOTE: the sample must be random.
+
+3. Update strategy of statistics
+
+   > Updating statistics can be costly.
+
+   1. No automatic update, they need the DBA to do it manuall.
+   2. Automatically update after a period of time
+   3. Automatically update when the optimizer realized that the statistics are
+      kinda outdated.
+
+   > In PostgreSQL, one can update the statistics manually or automatically.
+   >
+   > 1. Use the [`analyze`][link1] command to update it manually
+   >
+   > [link1]: https://www.postgresql.org/docs/current/sql-analyze.html
+   >
+   > 2. Enable the automatic refresh with [feature `autovacuum`][link2]
+   >
+   > [link2]: https://www.postgresql.org/docs/current/routine-vacuuming.html#AUTOVACUUM
+
+## 16.3.2 Selection (in relational algebra) Size Estimation
+
+> The size estimate of the result of a selection operation depends on the selection
+> predicate, we first consider a single equality predicate (field = value), then
+> a gingle comparsion predicate, and finally combinations of predicates.
+
+> Nonations
+>
+> * $ n_r $: the # of tuples in the relation `r`
+> * $ b_r $: the # of blocks in the relation `r`
+> * $ V(A, r) $: the # of distinct values that appear in the relation `r`
+
+
+1. Selection with single equality predicate 
+
+   $$ \sigma_{A=a} $$
+
+   Some systems maintain statistics for values that are frequently accessed, if
+   `a` is one of them, we can directly use that value directly.
+
+   If there is no statistic for this value, then we assume
+
+   1. The data of attribute `A` is uniformly distributed
+      
+      > This is not realistic
+
+   2. Value `a` exists in the data
+
+      > This is typically true.
+
+   The row count is $ n_r / V(A, a) $
+
+2. Selection with single comparsion predicate
+
+   $$ \sigma_{A \le v} (r) $$
+
+   Suppose data is uniformly distributed and we know the maximum and minimum value
+   of attribute A, then the size estimate is:
+
+   * 0 if $ v < min(A) $
+   * $ n_r $ if $ v \ge max(A) $
+   * $ n_r \times ( \frac{v - min(A)}{max(A) - min(A)}) $, otherwise
+
+   If the value `v` is unknown during the plan stage, for example:
+
+   > In DudkDB, `random()` return a random number between 0 and 1.
+
+   ```sql
+   SELECT * FROM table1 WHERE A <= random() * 100;
+   ```
+
+   For this case, we have no idea what the value of `v` is, we simply assume that
+   this predicate would return half tuples, so the row count is $ n_r / 2 $.
+
+   > This is quite stupid, but it is the best thing we can do.
+   
+
+3. Selection with combinations of predicates
+
+
 ## 16.3.3 Join Size Estimation
 ## 16.3.4 Size Estimation for Other Operations
 ## 16.3.5 Estimation of Number of Distinct Values 
 
 # 16.4 Choice of Evaluation Plans (physical plan)
+## 16.4.1 Cost-Based Join-Order Selection
+## 16.4.2 Cost-Based Optimization with Equivalence Rules
+## 16.4.3 Heuristics in Optimization
+## 16.4.4 Optimizing Nested Subqueries
 # 16.5 Materialized Views
 # 16.6 Advanced Topics in Query Optimization
 # 16.7 Summary
