@@ -651,7 +651,7 @@
 
       > This is typically true.
 
-   The row count is $ n_r / V(A, a) $
+   The row count is $ n_r / V(A, r) $
 
 2. Selection with single comparsion predicate
 
@@ -680,13 +680,204 @@
 
 3. Selection with combinations of predicates
 
+   1. Conjunction
+
+      $$ \sigma_{ \theta_{1} \land \theta_{2} \land \cdot \cdot \cdot \land \theta_{n}} (r) $$
+
+      For each predicate $ \theta_i $, assume the size of $ \sigma_{\theta_{i}} (r) $
+      is $ s_i $, so the probability of $ \theta_{i} $ is $ s_i / n_r $, assume 
+      that those predicates are **independent**, 
+
+      > again, this is not realistic
+
+      then the probability of $ \theta_1 \land \theta_2 \land \cdot \cdot \cdot \land \theta_n $
+      is $ \frac{s_1 \times s_2 \times s_3 \times \cdot \cdot \cdot s_n}{n_r^n} $, 
+      so the row count is $ n_r \times  \frac{s_1 \times s_2 \times s_3 \times \cdot \cdot \cdot s_n}{n_r^n} $ 
+
+   2. Disjunction
+
+      $$ \sigma_{ \theta_{1} \lor \theta_{2} \lor \cdot \cdot \cdot \lor \theta_{n}} (r) $$
+
+      Use $ P(E) $ to denote the probability of $E$, then 
+
+      > we still assume that those predicates are independent.
+
+      $$ P(\sigma_{ \theta_{1} \lor \theta_{2} \lor \cdot \cdot \cdot \lor \theta_{n}} (r)) = 1 - P(\sigma_{\lnot ( \theta_{1} \lor \theta_{2} \lor \cdot \cdot \cdot \lor \theta_{n})} (r)) $$
+      $$ = 1 - P(\sigma_{(\lnot \theta_1) \land (\lnot \theta_2) \land \cdot \cdot \cdot \land (\lnot \theta_n)} (r)) $$
+      $$ = 1 - (1-\frac{s_1}{n_r}) \times (1-\frac{s_2}{n_r}) \times \cdot \cdot \cdot \times (1 - \frac{s_n}{n_r})  $$
+
+   3. Negation
+
+      $$ \sigma_{\lnot \theta} (r) $$
+
+      $$ P(\sigma_{\lnot \theta} (r) ) = 1 - P(\sigma_{\theta} (r)) $$
+
+      For how to calculate $ P(\sigma_{\theta} (r)) $, please refer to the previous sections. 
 
 ## 16.3.3 Join Size Estimation
-## 16.3.4 Size Estimation for Other Operations
+
+1. Estimate the size of Cartesian Product
+
+   > Use $ l_r $ to denote the size of the relation $ r $.
+
+   $ r \times s $ contains $ n_r \times n_s $ tuples, each tuple from the result would occupy $ l_r + l_s $ bytes.
+
+2. Estimate the size of natural join $ r(R) \Join s(S) $
+
+   1. If $ R \cap S = \emptyset $, then this natural join would be a Cartesian 
+      product, i.e., $ n_r \times n_s $ tuples.
+      
+   2. If $ R \cap S $ is a key (unique) for $ R $, then we know that a tuple in
+      $s$ will join with at most 1 tuple from $r$, so that the # of tuples will
+      be no greater than $ n_s $.
+
+      > If unmatched, it will join with 0 tuples. Otherwise, it is guaranteed to
+      > be 1.
+
+      A more special case, if $ R \cap S $ is a primary key on $R$ and a foreign
+      key on $S$, then there won't be any unmatched tuples from $S$, so the row
+      count will be exactly $n_s$.
+
+      Examples:
+
+      | ID | name |
+      |----|------|
+      | 1  | steve|
+
+      | ID | event |
+      |----|-------|
+      | 1  | yes   |
+      | 1  | no    |
+      | 2  | ye    |
+
+      The row count won't be greater than $n_s$ (3), actually, the row count is 2.
+
+   3. If $ R \cap S $ is neither a key of relation $r$, nor a key of table $s$
+
+      Without any further statistics information, we simply assume:
+
+      1. the data in both relations are uniformly distributed
+      2. for relation $r$, every value of attribute $R \cap S$ exists in relation
+         $s$, and vice versa
+
+      then for every tuple in relation $R$, the # of tuples in $r \Join s$ produced
+      by it should be $ \frac{n_s}{V(R \cap S,s)} $, then considering all the tuples
+      from relation $r$, the # of tuples will be $ n_r \times  \frac{n_s}{V(R \cap S,s)} $
+
+      Reverse the roles of $r$ and $s$, we will get an estimate 
+      $ \frac{n_r \times n_s}{V(R \cap S, r)} $.
+
+      These 2 estimates can be different since $V(R \cap S, r)$ and $V(R \cap S, s)$
+      can be different. 
+      
+      > QUES: The textbook says that we should use the lower one as the estimate,
+      > I don't quite get it.
+
+3. Estimate the size of theta join
+
+   Consider the definition of theta join
+
+   $$ r \Join_{\theta} s = \sigma_{\theta} (r \times s) $$
+
+   We estimate the size of a theta join by:
+
+   1. estimate the size of the Cartesian Product
+   2. estimate the size of the selection operation
+
+## 16.3.4 Size Estimation for Other Operationo
+
+1. Projection
+
+   The # of tuples of a projection $ \Pi_{A}(r)$ is the # of tuples of $r$.
+
+2. Aggregation
+  
+   The size estimation is the # of distinct value of those `GROUP BY` attributes.
+   
+3. Set operations
+
+   1. If a set operation is done against the same relation, then it can be 
+      rewritten as selection
+
+      * Union
+
+        $$ (\sigma_{\theta_1} r) \cup (\sigma_{\theta_2} r) \equiv \sigma_{\theta_1 \lor \theta_2} (r) $$
+
+      * Intersection
+
+        $$ (\sigma_{\theta_1} r) \cap (\sigma_{\theta_2} r) \equiv \sigma_{\theta_1 \land \theta_2} (r) $$
+
+      * Set difference
+        
+        $$ (\sigma_{\theta_1} r) \setminus (\sigma_{\theta_2} r) \equiv \sigma_{(\theta_1) \land (\lnot \theta_2) } (r)$$
+
+      then we can do size estimation to the selection operation.
+
+   2. Otherwise
+
+      * Union: the # of tuples in $r$ + the # of tuples in $s$
+      * Intersection: min(the # of tuples in $r$, the # of tuples in $s$)
+      * Set difference ($r - s$): the # of tuples in $r$
+
+4. Outer join
+   
+   * left outer join: the # of tuples in $r \Join s$ + the # of tuples in $r$ 
+   * right outer join: the # of tuples in $r \Join s$ + the # of tuples in $s$ 
+   * full outer join:the # of tuples in $r \Join s$ + the # of tuples in $r$ + the # of tuples in $s$
+
 ## 16.3.5 Estimation of Number of Distinct Values 
 
+> In the previous sections, $V(A, r)$ is frequently used to estimate the size, so
+> it is quite important. If $r$ is a stored table, then it is hightly possible
+> that such information is stored in the catalog as we have seen in section 16.3.1
+>
+> However, if $r$ is a relation that needs to be computed during runtime, then
+> we need to estimate it!
+
+1. If $r$ is a relation generated from a selection operation with simple predicates
+
+   1. If the predicate is something like $ A = a $, then $V(A, \sigma_{\theta} (r))$
+      will just be 1.
+
+   2. If the predicate is something like $ A = a \lor A = b \lor \cdot \cdot \cdot \lor A = z $, 
+      then $V(A, \sigma_{\theta} (r))$ will just be the # of specified values.
+
+   3. In all other cases, we just estimate it with
+
+      $$ min(V(A, r), n_{\sigma_{\theta} (r)}) $$
+
+2. If $r$ is a relation generated from a selection operation with join
+
+   > steve: I don't think this will help/work in real world systems, so I just 
+   > skip the last few paragraphs...
+
+3. If $r$ is a relation generated from a selection operation with projection
+4. If $r$ is a relation generated from a selection operation with aggregation
+
 # 16.4 Choice of Evaluation Plans (physical plan)
+
+> We first start by covering simple join-order and join algorithm selection in
+> section 16.4.1, then we introduce how to build a general-purpose optimizer
+> that is based on equivalence rules in section 16.4.2.
+>
+> Exploring the space of all possible plans may be too expensive for complex
+> queries, most optimizers use heuristics to reduce the cost of query optimization,
+> at the cost of the possibility of not finding the optimal plan, this will be
+> explained in section 16.4.3.
+
 ## 16.4.1 Cost-Based Join-Order Selection
+
+1. With $n$ tables being joined, there can be $\frac{(2(n-1))!}{(n-1)!}$ join
+   orders.
+
+   | n | the # of join orders |
+   |---|----------------------|
+   | 3 | 12                   | 
+   | 4 | 120                  |
+   | 5 | 1680                 |
+   | 7 |665280                |
+   | 10|17.6 billion          |
+
 ## 16.4.2 Cost-Based Optimization with Equivalence Rules
 ## 16.4.3 Heuristics in Optimization
 ## 16.4.4 Optimizing Nested Subqueries

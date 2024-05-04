@@ -677,6 +677,57 @@ Cost:
       natural join is a special kinds of join, the fields (on different tables) 
       it uses should have the same name.
 
+      > If one joins 2 tables that do not have common attributes, then what will
+      > happen, will the database do a Cartesian Product or simply return an empty
+      > set.
+      >
+      > In relational algebra, theta join is defined as follows:
+      >
+      > $$ E1 \Join_{\theta} E1 = \sigma_{\theta} (E1 \times E2) $$
+      >
+      > Considering that theta join is defined using Cartesian product, then the
+      > system should do Cartesian Product.
+      >
+      > But we know that is not how those join algorithms work, so, let's test this:
+      >
+      > ```sql
+      > $ CREATE TABLE foo (id INT);
+      > $ INSERT INTO foo VALUES (1);
+      > $ INSERT INTO foo VALUES (2);
+      > $ CREATE TABLE bar (name VARCHAR);
+      > $ INSERT INTO bar VALUES ('steve');
+      > $ INSERT INTO bar VALUES ('miko');
+      > ```
+      >
+      > * DuckDB
+      >  
+      >   ```sql
+      >   D SELECT * FROM foo NATURAL JOIN bar;
+      >   Error: Binder Error: No columns found to join on in NATURAL JOIN.
+      >   Use CROSS JOIN if you intended for this to be a cross-product.
+      >      Left candidates: foo.id
+      >      Right candidates: bar.name
+      >   LINE 1: SELECT * FROM foo NATURAL JOIN bar;
+      >                          ^
+      >   ```
+      >
+      > * PostgreSQL
+      >
+      >   ```sql
+      >   steve=> select * from foo natural join bar;
+      >    id | name
+      >   ----+-------
+      >     1 | steve
+      >     1 | miko
+      >     2 | steve
+      >     2 | miko
+      >   (4 rows)
+      >   ```
+      >
+      > * Clickhouse
+      >
+      >   Clickhouse does not support the above natural join grammar.
+
    > All the above joins, equi join and natural join, can be 
    > inner/left outer/right outer/full outer.
 
