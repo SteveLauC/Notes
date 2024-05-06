@@ -870,6 +870,16 @@
 1. With $n$ tables being joined, there can be $\frac{(2(n-1))!}{(n-1)!}$ join
    orders.
 
+   > TODO: Prove this
+   >
+   >
+   > A wrong proof (just record it here so that future steve can understand the 
+   > mistake that I made)
+   >
+   > $$ A_{n}^{2} \times A_{n-1}^{2} \times ... \times A_{2}^{2} $$
+   >
+   > When $n=4$, this formula will be 144, so there are some duplciates cases.
+
    | n | the # of join orders |
    |---|----------------------|
    | 3 | 12                   | 
@@ -877,6 +887,7 @@
    | 5 | 1680                 |
    | 7 |665280                |
    | 10|17.6 billion          |
+
 
 ## 16.4.2 Cost-Based Optimization with Equivalence Rules
 ## 16.4.3 Heuristics in Optimization
