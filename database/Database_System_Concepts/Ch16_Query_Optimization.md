@@ -867,6 +867,34 @@
 
 ## 16.4.1 Cost-Based Join-Order Selection
 
+1. What is dynamic programming
+
+   It is a way of finding optimal solutions to a problem by:
+
+   1. Splitting the problem into over-lapping sub-problems
+   2. Recursively find the optimal solution to the sub-problems
+
+   A problem can be sovled via DP if:
+
+   1. It can be splitted into sub-problems
+   2. The splitted sub-problems are over-lapping
+
+      If they are not over-lapping, then we use the divide-and-conquer.
+
+   3. If we get the optimal solution for the sub-problems, then we get the optimal
+      solution for the problem.
+
+2. Why is DP good
+
+   To find the optimal solution of a problem, one way to do it is to enumerate
+   all the possible solutions and use the best one.
+
+   This is not pratical if the the problem can have tons of solutions, enumerating
+   all the solutions will be a problem as well.
+
+   DP **won't** enumerate all the solutions, instead, it only checks the soluctions
+   that are possibly the best one.
+  
 1. With $n$ tables being joined, there can be $\frac{(2(n-1))!}{(n-1)!}$ join
    orders.
 
