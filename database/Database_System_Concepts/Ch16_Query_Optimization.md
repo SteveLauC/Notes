@@ -879,7 +879,7 @@
    1. It can be splitted into sub-problems
    2. The splitted sub-problems are over-lapping
 
-      If they are not over-lapping, then we use the divide-and-conquer.
+      If they are not over-lapping, then we use the divide-and-conquer algorithm.
 
    3. If we get the optimal solution for the sub-problems, then we get the optimal
       solution for the problem.
@@ -895,7 +895,7 @@
    DP **won't** enumerate all the solutions, instead, it only checks the soluctions
    that are possibly the best one.
   
-1. With $n$ tables being joined, there can be $\frac{(2(n-1))!}{(n-1)!}$ join
+3. With $n$ tables being joined, there can be $\frac{(2(n-1))!}{(n-1)!}$ join
    orders.
 
    > TODO: Prove this
@@ -916,6 +916,13 @@
    | 7 |665280                |
    | 10|17.6 billion          |
 
+4. Using DP to do join order selection
+
+   $$ r_1 \Join r_2 \Join r_3 \Join r_4 \Join \cdot \cdot \cdot \Join r_n $$
+
+   Let's denote the best plan for joining $n$ tables with $J(n)$, then:
+
+   $$ J(n) $$
 
 ## 16.4.2 Cost-Based Optimization with Equivalence Rules
 ## 16.4.3 Heuristics in Optimization
