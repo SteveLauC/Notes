@@ -1537,6 +1537,12 @@ The textbook says that:
 
    2. Intersection
 
+      > QUES: When checking if an item from `lhs` exists in `rhs`, can we use
+      > binary search?
+      >
+      > Data resides on disk, and they can be variable-length, so we cannot use
+      > binary search.
+
       ```rs
       fn intersect(lhs: &[i32], rhs: &[i32]) -> vec<i32> {
           let mut lp = 0;
@@ -1575,6 +1581,12 @@ The textbook says that:
       ```
 
    3. Difference
+
+      > QUES: When checking if an item from `lhs` exists in `rhs`, can we use
+      > binary search?
+      >
+      > Data resides on disk, and they can be variable-length, so we cannot use
+      > binary search.
 
       ```rs
       /// `lhs` - `rhs`

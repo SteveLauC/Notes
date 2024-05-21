@@ -892,8 +892,15 @@
    This is not pratical if the the problem can have tons of solutions, enumerating
    all the solutions will be a problem as well.
 
-   DP **won't** enumerate all the solutions, instead, it only checks the soluctions
-   that are possibly the best one.
+   DP **won't** enumerate all the solutions, instead, since the problem can be
+   splitted into overlapping sub-problems, it will record the best solutions for
+   those sub-problems because these solutions can be **reused** in the future
+   given that the sub-problems are overlapping. By reusing the solutions, the
+   whole search space can be enormously shrunk.
+
+   For example, to join table a and b, if I alreay know the best way to do it is
+   $ a \Join b $, then I won't enumerate all the possible approaches when I want
+   to join them again in the future.
   
 3. With $n$ tables being joined, there can be $\frac{(2(n-1))!}{(n-1)!}$ join
    orders.
@@ -918,11 +925,178 @@
 
 4. Using DP to do join order selection
 
-   $$ r_1 \Join r_2 \Join r_3 \Join r_4 \Join \cdot \cdot \cdot \Join r_n $$
+   Pseudocode:
 
-   Let's denote the best plan for joining $n$ tables with $J(n)$, then:
+   For the following impl, we:
 
-   $$ J(n) $$
+   1. Access every table through `TableScan`
+   2. Join `a` and `b` via: `a NestedLoopJoin b`
+   3. This chooses the physical plan for the join operation since it checks
+      the join algorithm, the table access path.
+
+   ```rs
+   use once_cell::sync::Lazy;
+   use std::sync::RwLock;
+   use std::{collections::HashMap, ops::BitAnd};
+
+   #[easy_ext::ext(SubSet)]
+   impl &[String] {
+       /// Return all the non-empty, proper subsets.
+       pub fn non_empty_proper_subsets(&self) -> impl Iterator<Item = Vec<String>> {
+           let len = self.len();
+           let n_subset = 2_usize.pow(len as u32);
+           let mut ret = Vec::with_capacity(n_subset - 2);
+
+           for idx in 1..(n_subset - 1) {
+               let mut subset = Vec::new();
+               for bit_idx in 0..len {
+                   if idx.bitand(2_usize.pow(bit_idx as u32)) != 0 {
+                       subset.push(self[bit_idx].clone());
+                   }
+               }
+               ret.push(subset);
+           }
+
+           ret.into_iter()
+       }
+
+       /// Set difference operation: `self - other`.
+       //
+       // We can iterate `self` and do binary search to search if an item exists
+       // in `other`, or we can use the approach introduced in chapter 15 that is
+       // used to implement set difference.
+       pub fn difference(&self, other: &Self) -> Vec<String> {
+           let mut ret = Vec::new();
+           for item in self.iter() {
+               if other.binary_search(item).is_err() {
+                    ret.push(item.clone());
+               }
+           }
+           ret
+       }
+   }
+
+   #[derive(Debug, Clone)]
+   struct PlanWithCost {
+       /// The cost of a plan.
+       cost: f64,
+       /// The actual plan, just use an unit type for it.
+       plan: Plan,
+   }
+
+   #[derive(Debug, Clone)]
+   enum AccessPath {
+       TableScan,
+       IndexScan,
+   }
+
+   #[derive(Debug, Clone)]
+   enum Plan {
+       TableScan {
+           table: String,
+           path: AccessPath,
+       },
+       Join {
+           left: Box<PlanWithCost>,
+           algorithm: JoinAlgorithm,
+           right: Box<PlanWithCost>,
+       },
+   }
+
+   #[derive(Debug, Clone)]
+   enum JoinAlgorithm {
+       NestedLoopJoin,
+       BlockNestedLoopJoin,
+       IndexedNestedLoopJoin,
+       MergeJoin,
+       BasicHashJoin,
+       PartitionedHashJoin,
+   }
+
+   /// A global variable used to stored the best plans we have investiaged.
+   ///
+   /// This is how dynamic programming typically works, store finds so that
+   /// we don't need to reinvestigage.
+   static BEST_PLAN: Lazy<RwLock<HashMap<Vec<String>, PlanWithCost>>> =
+       Lazy::new(|| RwLock::new(HashMap::new()));
+
+   /// Find the best plan for joining the tables specified in `table_set`.
+   ///
+   /// # Assumption
+   ///
+   /// Since `HashSet<String>` is not `Hash`, so we use a `Vec<String>` instead, and
+   /// we assume that the table names stored in the `Vec` is sorted.
+   fn find_best_plan(table_set: &[String]) -> PlanWithCost {
+       // this has already been found
+       if let Some(plan) = BEST_PLAN.read().unwrap().get(table_set) {
+           return plan.clone();
+       }
+
+       if table_set.len() == 1 {
+           // find the best access path for this table
+           //
+           // We just use a TableScan here.
+           let best_plan_for_accessing_this_table = PlanWithCost {
+               cost: 1.0,
+               plan: Plan::TableScan {
+                   table: table_set[0].to_string(),
+                   path: AccessPath::TableScan,
+               },
+           };
+           // store it
+           BEST_PLAN.write().unwrap().insert(
+               table_set.to_vec(),
+               best_plan_for_accessing_this_table.clone(),
+           );
+           return best_plan_for_accessing_this_table;
+       }
+
+       let subsets = table_set
+           .non_empty_proper_subsets()
+           .collect::<Vec<_>>();
+       let subsets_len = subsets.len();
+       let (left_part, right_part) = subsets.split_at(subsets_len / 2);
+       let paired_iter = std::iter::zip(left_part, right_part.iter().rev());
+
+       let mut plan_for_table: Option<PlanWithCost> = None;
+       for (left, right) in paired_iter {
+           let best_plan_for_left = find_best_plan(left);
+           let best_plan_for_right = find_best_plan(right);
+           let mut write_gaurd = BEST_PLAN.write().unwrap();
+           write_gaurd.insert(left.to_vec(), best_plan_for_left.clone());
+           write_gaurd.insert(right.to_vec(), best_plan_for_right.clone());
+           drop(write_gaurd);
+
+           // Choose the algorithm to join left and right
+           //
+           // We just do it like: left NestedLoopJoin right
+           let plan = Plan::Join {
+               left: Box::new(best_plan_for_left),
+               algorithm: JoinAlgorithm::NestedLoopJoin,
+               right: Box::new(best_plan_for_right),
+           };
+           let plan = PlanWithCost { cost: 1.0, plan };
+
+           match plan_for_table {
+               Some(ref mut prev_plan) => {
+                   if plan.cost < prev_plan.cost {
+                       *prev_plan = plan;
+                   }
+               }
+               None => plan_for_table = Some(plan),
+           }
+       }
+       plan_for_table.unwrap()
+   }
+
+   fn main() {
+       let best_plan = find_best_plan(&["a".into(), "b".into(), "c".into()]);
+       println!("{:#?}", best_plan);
+   }
+   ```
+
+5. 
+
 
 ## 16.4.2 Cost-Based Optimization with Equivalence Rules
 ## 16.4.3 Heuristics in Optimization
