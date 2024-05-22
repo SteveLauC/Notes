@@ -954,8 +954,8 @@ Cost:
 
 3. Cost analysis
 
-   An index loopup on the inner relation has to be performed for every tuple 
-   of the outer relation, let's denote the cost of an index loopup with `c`,
+   An index lookup on the inner relation has to be performed for every tuple 
+   of the outer relation, let's denote the cost of an index lookup with `c`,
    then the cost will be `n_tuple(outer) * c`.
 
    > `c` varies from cases to cases, see section 15.3 for details.
