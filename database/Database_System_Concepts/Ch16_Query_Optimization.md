@@ -1117,9 +1117,9 @@
    **Interesting sort order**: If an order of tuples can be useful for later 
    operation, then it is said to be an interesting sort order.
 
-8. To take interesting join order into account, the pseudocode has to be modified.
+8. To take interesting sort order into account, the pseudocode has to be modified.
    We no longer store the best plan only for the subsets, instead, we store the
-   best plan for each subsset, for each interesting sort order of the join result
+   best plan for each subset, for each interesting sort order of the join result
    for thta subset. Then the global variable would be changed to: 
    `HashMap<(Subset, Interesting sort order), PlanWithCost>`
 
@@ -1134,6 +1134,51 @@
    should not join them while searching for the best plan.
 
 ## 16.4.2 Cost-Based Optimization with Equivalence Rules
+
+> The join order optimization introduced in the last section is the most common
+> one in real-world scenarios. It uses equivalence rules:
+>
+> 1. Theta inner join is commutative
+> 2. Natural inner join is associative
+>
+> There are tons of queries that use other features, this section covers how to
+> do general cost based query optimization with equivalence rules.
+>
+> In section 16.2.4, we saw how to enumerate all the equivalent expressions to
+> a given query, that is forlogical plan. The case for physical plan generation
+> is pretty > similar to that process, where we add a new class of equivalence
+> rules **physical equivalence rules**, which can be used to convert a logical
+> operator into the corresponding physical one, e.g., join -> hash join.
+
+> QUES: for the physical equivalence rules described above, havn't we seen it
+> in the last section?
+
+It turns out that this section won't cover the details on how to implement a
+cost-based optimizer using equvivalence rules. IMO, that is definited quite
+complicated.
+
+The textbook says that to implement it based on the pseudocode introduced in
+section 16.2.4, we should:
+
+1. Make an space-efficient representation of expressions that avoids making multiple
+   copies of the same subexpressions when equivalence rules are applied.
+   
+   > steve: can we do this `Rc` or `Arc`?
+
+2. Efficient techniques for detecting duplicate derivations of the same 
+   expression, i.e., when deriving a new expression using one equivalence
+   rule, we can efficiently check if this expression exists in our expression
+   collection.
+
+   > The most sutupid way to do is to iterate over all the existing expressions,
+   > then compare them.
+
+3. Dynamic programming
+
+   We don't want to enumerate all the expressions, for the best plan of a 
+   sub-expression, we need to store it so that we can reuse it in the future.
+
+
 ## 16.4.3 Heuristics in Optimization
 ## 16.4.4 Optimizing Nested Subqueries
 # 16.5 Materialized Views
