@@ -1128,8 +1128,10 @@
 
    When n is 10, this number is around 59049. Enumerating join orders for 10 relations
    would result in 17.6 billion options.
-   
 
+9. Another optimization that can be made is that don't do cartesian product, if
+   2 relations don't have any join condition linking the 2 relations, then we 
+   should not join them while searching for the best plan.
 
 ## 16.4.2 Cost-Based Optimization with Equivalence Rules
 ## 16.4.3 Heuristics in Optimization
