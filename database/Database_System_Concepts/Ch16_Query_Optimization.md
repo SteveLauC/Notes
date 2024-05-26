@@ -1178,9 +1178,243 @@ section 16.2.4, we should:
    We don't want to enumerate all the expressions, for the best plan of a 
    sub-expression, we need to store it so that we can reuse it in the future.
 
-
 ## 16.4.3 Heuristics in Optimization
+
+> Use heuristics to limit the search space, DP is good, but it is not sufficient.
+
+1. What is heuristic query optimization?
+
+   The query optimization approaches we talked about generally consist of 2 
+   categorizes:
+
+   1. Rule-based
+   2. Cost-based
+
+   Heuristic approach is kinda similar to the rule-based one, we will have some
+   predefined rules, but with heuristic approach, we **blindly** follow the defined
+   rules and apply them during query optimization **without considering their actual 
+   cost** because we, as human, **trust** these rules that they will reduce the cost.
+
+   Some heuristic rules:
+
+   1. Perform selection operations as early as possible 
+   2. Perform projections early
+
+   > It is usually better to perform selections earlier than projections, since
+   > selections have the potential to reduce the sizes of relations greatly.
+
+   Yeah, they "should" speed the query since the the amount of data that needs to
+   be transfered is shrank.
+
+   And for a single-table scan, there rules are definitely correct and effective.
+   But for operations that involve multiple tables, it can make things worse.
+
+   But heuristic optimizer is used wiedly in real world engines since:
+
+   1. Find the best plan with equivalence rules is NP hard
+   2. Cost estimation can be literally a guess
+   3. Heuristic optimizer can make things worse, but it is intuitive
+
+2. Query optimization is hard, most systems don't do cost-based optimization for
+   all the operations, they
+
+   1. Use heuristic approaches
+   2. Use cost-based approach for join order seleection
+
+   > This is confirmed by the comment from Andrew Lamb, see the summary section.
+
+3. heuristic approach in join order selection
+
+   > This is used by a lot of query optimizers, including the System R optimizer.
+
+   When choosing join order, they don't consider all the options, instead, only
+   those **left-deep join orders** will be considered.
+
+   > Left-deep join order is an order where teh right operand of each join is
+   > one of the initial relations.
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202024-05-26%20at%209.18.21%20AM.png)
+
+   They do this because left-deep join tree will be easy to implement, i.e., it
+   fits the pipeline model pretty well.
+
+4. optimization cost budget
+
+   For those cost-based optimizers, they typically allow a cost budget to be 
+   specified for query optimization, the search for the optimal plan is terminated
+   when the budget is exceeded, and the best plan that is found up to this point
+   is returned.
+
+5. Plan caching
+
+   Finding the optimal plan for a given query is hard, why not cache the best
+   plan we have found for the queries.
+
+   PostgreSQL does this for the query given by `PREPARE` statement.
+
 ## 16.4.4 Optimizing Nested Subqueries
+
+> https://ericfu.me/subquery-optimization/ 
+
+> https://duckdb.org/2023/05/26/correlated-subqueries-in-sql.html
+
+1. There are 2 kinds of subqueries in SQL
+
+   1. Non-correlated subquery (非关联子查询)
+      
+      This means that the subquery does not involve anything from the outer 
+      relation, i.e., they are totally indepedent.
+
+      This kinda of subquery needs no special optimization, just execute the
+      subquery, materialize it and pass it to the upper executors.
+
+      We care more obout correlated subquery.
+     
+   2. Correlated subquery (关联子查询)
+
+      Different from non-correlated subquery, a correlated subquery itself is
+      incomplete and needs some information from the relation of the outer query.
+
+      One can basically treat it as a function that takes a argument (the 
+      correlated field) from the outer relation.
+
+      Let's see an example:
+
+      ```sql
+      D SHOW TABLES;
+      ┌────────────┐
+      │    name    │
+      │  varchar   │
+      ├────────────┤
+      │ instructor │
+      │ teaches    │
+      └────────────┘
+      D SELECT * FROM instructor;
+      ┌───────┬─────────┐
+      │  id   │  name   │
+      │ int32 │ varchar │
+      ├───────┼─────────┤
+      │     0 │ steve   │
+      │     1 │ mike    │
+      └───────┴─────────┘
+      D SELECT * FROM teaches;
+      ┌───────┬───────┬─────────┐
+      │  id   │ year  │ course  │
+      │ int32 │ int32 │ varchar │
+      ├───────┼───────┼─────────┤
+      │     0 │  2019 │ math    │
+      │     0 │  2019 │ english │
+      └───────┴───────┴─────────┘
+      ```
+
+      Let's find the instructors that have ever teached a class:
+
+      ```sql
+      D SELECT name
+        FROM instructor
+        WHERE EXISTS
+            (SELECT *
+             FROM teaches
+             WHERE teaches.id = instructor.id);
+      ┌─────────┐
+      │  name   │
+      │ varchar │
+      ├─────────┤
+      │ steve   │
+      └─────────┘
+      ```
+
+      The above subquery, `SELECT * FROM teaches WHERE teaches.id = instructor.id`
+      itself is not a valid SQL due to that extra `instructor.id` field, this field
+      needs to be provided by the outer relation `instructor`.
+
+      Let's take a look at the unoptimized query plan of this query:
+
+      ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202024-05-26%20at%204.12.08%20PM.png)
+
+      You can see that the subquery is under a `Filter` node, i.e., for every tuple
+      from the `instructor` table, we would scan the whole `teaches` table, this is
+      basically equivalent to a nested-loop join, which is quite expensive and 
+      inefficient.
+
+      Then how can we optimize it? Rewrite it using join.
+
+      > Decorrelation: the process of replacing a nested query by a query with 
+      > a join, semi-join, or anti-semijoin is called "decorelation".
+      
+      At the first glance, we
+      should be able to do it by simply 
+      `instructor JOIN teaches ON instructor.id=teaches.id`, but:
+
+      ```sql
+      D SELECT name 
+        FROM instructor JOIN teaches 
+        ON instructor.id = teaches.id;
+      ┌─────────┐
+      │  name   │
+      │ varchar │
+      ├─────────┤
+      │ steve   │
+      │ steve   │
+      └─────────┘
+      ```
+
+      As you can see, it returns 2 "steve" since instructor steve has teached 
+      2 courses. Then, how can I optimize this correctly, using semi join.
+
+      ```sql
+      D SELECT name
+        FROM instructor SEMI JOIN teaches
+        ON instructor.id = teaches.id;
+      ┌─────────┐
+      │  name   │
+      │ varchar │
+      ├─────────┤
+      │ steve   │
+      └─────────┘
+      ```
+
+2. What are semi join and anti join
+
+   > Not sure where these 2 joins come from
+
+   Semi join: By joining $r$ and $s$, if a tuple $r_i$ appears n times in $r$, 
+   then it will appear n times in the join result if there is a tuple $s_j$ 
+   such that $ r_i $ and $s_j$ together satisfy the join condition.
+   
+   Semi join consists of:
+
+   * left semi join
+   * right semi join
+
+   Different from other join we have seen before, semi join only return the half
+   part data. Left semi join would return tuples from the left table, right semi
+   join would return tuples from the right table.
+
+   Anti join is in the reverse direction of semi join, a tuple will be returned
+   only if it does satisfy the join condition.
+
+3. Decorrelation is hard, many optimizers do only a limited amount of decorrelation.
+
 # 16.5 Materialized Views
 # 16.6 Advanced Topics in Query Optimization
 # 16.7 Summary
+
+I would like to quote a comment from the Andrew Lamb:
+
+> https://github.com/apache/datafusion/issues/1972#issuecomment-1156308944
+
+
+I would second your assertion that almost **all successful real world (e.g. 
+commerical) query optimizers are not implemented with a cascades like framework**,
+but instead are **some combination of heuristics and cost models**.
+
+I also think the point that cost models have unsolved error propagation issues,
+my experience was that after about 2-3 joins, the output cardinality estimation
+is basically a guess, even with advanced statistics like histograms.
+
+What I would like to see in DataFusion is:
+
+* A solid "classic" heuristic optimizer as a default
+* Sufficient extension points that anyone who wants to experiment / create / use
+  a different optimizer strategy can easily do so.
