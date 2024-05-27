@@ -30,9 +30,23 @@
 >   * 16.4.3 Heuristics in Optimization
 >   * 16.4.4 Optimizing Nested Subqueries
 > * 16.5 Materialized Views
->   * How to maintain (keep it update-to-date) it
->   * How to do queries on materialized views
+>   > 1. How to maintain (keep it update-to-date) it
+>   > 2. How to do queries on materialized views
+>
+>   * 16.5.1 View Maintence
+>   * 16.5.2 Incremental View Maintenance
+>     * 16.5.2.1 Join Operation
+>     * 16.5.2.2 Selection and Projection Operations
+>     * 16.5.2.3 Aggregation Operations
+>     * 16.5.2.4 Other Operations
+>     * 16.5.2.5 Handling Expressions
 > * 16.6 Advanced Topics in Query Optimization
+>   * 16.6.1 Top-K Optimization
+>   * 16.6.2 Join Minimization
+>   * 16.6.3 Optimization of Updates
+>   * 16.6.4 Multiquery Optimization and Shared Scans
+>   * 16.6.5 Parametric Query Optimization
+>   * 16.6.6 Adaptive Query Processing
 > * 16.7 Summary
 
 # 16.1 Overview
@@ -1396,8 +1410,43 @@ section 16.2.4, we should:
 
 3. Decorrelation is hard, many optimizers do only a limited amount of decorrelation.
 
+4. For non-correlated subqueries, there are 3 kinds of them:
+
+   1. Scalar subquery
+
+      Scalar subquery would return a single value, i.e., a table with only 1 
+      column and 1 row.
+
+      If it returns more than 1 line of data, then a runtime error would occur.
+      
+   2. `EXISTS`
+
+      This returns a boolean value, one can basically treat it as something like
+      "set is not empty".
+
+   3. `IN`/`ANY`/`ALL`
+
+      returns a boolean value.
+
+      `IN (list)` is equivalent to `= ANY (list)` and `<> ALL(list)`.
+
 # 16.5 Materialized Views
+## 16.5.1 View Maintence
+## 16.5.2 Incremental View Maintenance
+### 16.5.2.1 Join Operation
+### 16.5.2.2 Selection and Projection Operations
+### 16.5.2.3 Aggregation Operations
+### 16.5.2.4 Other Operations
+### 16.5.2.5 Handling Expressions
+## 16.5.3 Query Optimization and Materialized Views
+## 16.5.4 Materialized View and Index Selection
 # 16.6 Advanced Topics in Query Optimization
+## 16.6.1 Top-K Optimization
+## 16.6.2 Join Minimization
+## 16.6.3 Optimization of Updates
+## 16.6.4 Multiquery Optimization and Shared Scans
+## 16.6.5 Parametric Query Optimization
+## 16.6.6 Adaptive Query Processing
 # 16.7 Summary
 
 I would like to quote a comment from the Andrew Lamb:
