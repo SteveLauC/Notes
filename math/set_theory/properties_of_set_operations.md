@@ -18,7 +18,12 @@
 
       $$ A \cap (B \cup C) = (A \cap B) \cup (A \cap C) $$
 
-4. Cartesian product distributes over union and intersection
+4. Cartesian product distributes over 
+
+   1. union 
+   2. intersection
+   3. Set difference
 
    $$ A \times (B \cup C) = (A \times B) \cup (A \times C) $$ 
    $$ A \times (B \cap C) = (A \times B) \cap (A \times C) $$ 
+   $$ A \times (B \setminus C) = (A \times B) \setminus (A \times C) $$

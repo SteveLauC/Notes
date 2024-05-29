@@ -39,7 +39,7 @@
 >     * 16.5.2.2 Selection and Projection Operations
 >     * 16.5.2.3 Aggregation Operations
 >     * 16.5.2.4 Other Operations
->     * 16.5.2.5 Handling Expressions
+>     * 16.5.2.5 Handling Expressions (complex queries)
 > * 16.6 Advanced Topics in Query Optimization
 >   * 16.6.1 Top-K Optimization
 >   * 16.6.2 Join Minimization
@@ -1431,13 +1431,157 @@ section 16.2.4, we should:
       `IN (list)` is equivalent to `= ANY (list)` and `<> ALL(list)`.
 
 # 16.5 Materialized Views
+
+1. When you define a view in database, the system will only store the query, the
+   data that will be returned by the query won't be stored.
+
+   Materialized view is different, it is view but materialized!
+
+   > QUES: What is materialization?
+   >
+   > We have
+   >
+   > 1. late/early materialization
+   >    Materialization here refers to the process of converting the data from 
+   >    a format to the data format that can be consumed by the upper execution 
+   >    node/operator.
+   >
+   > 2. materialized view
+   >
+   >    Seemingly, materialization means the processing of storing data.
+
+2. When to need materialized views?
+
+   * The same **complex** query needs to be repeatedly recalculated over a large 
+     amount of data.
+   * Low end-to-end latency is required but access to up-to-the-moment data 
+     is not a critical requirement
+   * Storage space is not a major concern. 
+   * You data won't be updated frequently (or the cost of updating materialized 
+     view can be large, thus the write performance can be reduced)
+
 ## 16.5.1 View Maintence
+
+1. A problem with materialized views is they have to be updated when the data
+   used in the view definition changes.
+
+   The procedure of keeping a materialzed view up-to-date with the underlying
+   data is called **view maintenance**.
+
+   > QUES: I am interested in why it isn't called materialized view maintenance.
+
+2. There are generally 3 ways on how to maintain materialized view
+
+   1. Update it manually, i.e., whenever there are changes to the data, update
+      the materialized view. This is tedious and error-prone.
+
+   2. Define triggers
+
+   3. The DBMS can automatically keep your materialized view update-to-date
+
+      1. Immediate view maintenance
+
+      2. Deferred view maintenance
+
+      > Well, PostgreSQL does not have this, users need to manually 
+      > `REFRESH MATERIALIZED VIEW`, or users can use triggers.
+
+3. How to update materialized view
+
+   1. Rebuild a completely new one on modification
+   2. Do incremental update (obviously, this is a better option)
+
+4. When it comes to view maintenance, materialized view is kinda similar to
+   index, index of the most databases will be updated automatically, and
+   should be incremental update.
+
 ## 16.5.2 Incremental View Maintenance
+
+> Before reading the next few sections, think about the **query**(R) operations 
+> we have in SQL:
+>
+> > I don't think there would be people that will create materialized views for 
+> > insert/update/delete.
+> >
+> > PostgreSQL does not allow materialized views with `INSERT/UPDATE/DELETE`.
+>
+> 1. Projection
+> 2. Selection
+> 3. Aggregation
+> 4. Join and subquery
+> 5. Set operation
+
+> For incremental update, you should be able to update the materialied view by
+> updating view only for the **diff** part.
+
+1. In the following sections, we introduce how to update the materialized view
+   if they are defined as the following operations.
+
+   Modifications to the table can be `INSERT/UPDATE/DELETE`, We only cover `INSERT`
+   and `DELETE` since `UPDATE` can be achieved by `INSERT` and `DELETE`.
+
 ### 16.5.2.1 Join Operation
+
+$ mv = r \Join s $
+
+* insert $i$ to $r$
+     
+  > Applied Property: cartesian product distributes over set union.
+
+  $$ mv_{new} = $$
+  $$ (r \cup i) \Join s  = $$
+  $$ (r \Join s) \cup (i \Join s) =  $$
+  $$ (mv_{old}) \cup (i \Join s) =  $$
+
+* delete $i$ from $r$
+
+  > Applied property: cartesian product distributes over set difference.
+
+  $$ mv_{new} = $$
+  $$ (r \setminus i ) \Join s = $$
+  $$ (r \Join s) \setminus (i \Join s) = $$
+  $$ mv_{old} \setminus (i \Join s) = $$
+
+> Modifiction to $r$ will be handled in exactly symmetric fashion.
+
 ### 16.5.2.2 Selection and Projection Operations
+
+> I assume that duplicate tuples are alloed in relation, which is different from
+> the procedure descibed in the textbook.
+>
+> This is closer to the case in SQL.
+
+$ mv = \sigma_{\theta} (r) $
+
+* Insert $i$ to $r$
+
+  > Applied property: selection distributes over set union
+
+  $$ mv_{new} = \sigma_{\theta} (r \cup i) \equiv $$
+  $$ mv_{new} = (\sigma_{\theta} (r)) \cup (\sigma_{\theta} (i)) = $$
+  $$ mv_{new} = (mv_{old}) \cup (\sigma_{\theta} (i)) $$
+
+  We do the selection operation on $i$, if a tuple satisfies the condition, append
+  it to the materialized view (no matter if there is a tuple with the same value
+  exists or not).
+
+* Delete $i$ from $r$
+
+  > Applied property: selection distributes over set difference
+
+  $$ mv_{new} = \sigma_{\theta} (r \setminus i) \equiv $$
+  $$ mv_{new} = \sigma_{\theta} (r) \setminus \sigma_{\theta} (i) = $$
+  $$ mv_{new} = mv_{old} \setminus \sigma_{\theta} (i) $$
+
+  Traverse the tuples in $i$, if one satisfies the condition, remove it from
+  the materialized view.
+
+  If there is only one tuple with this value, then just remove it, otherwise,
+  just pick one from them and remove it.
+
 ### 16.5.2.3 Aggregation Operations
 ### 16.5.2.4 Other Operations
-### 16.5.2.5 Handling Expressions
+### 16.5.2.5 Handling Expressions (Complex queries)
 ## 16.5.3 Query Optimization and Materialized Views
 ## 16.5.4 Materialized View and Index Selection
 # 16.6 Advanced Topics in Query Optimization
