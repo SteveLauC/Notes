@@ -1546,44 +1546,282 @@ $ mv = r \Join s $
 
 ### 16.5.2.2 Selection and Projection Operations
 
-> I assume that duplicate tuples are alloed in relation, which is different from
+> I assume that duplicate tuples are allowed in relation, which is different from
 > the procedure descibed in the textbook.
 >
 > This is closer to the case in SQL.
 
-$ mv = \sigma_{\theta} (r) $
+1. Selection $ mv = \sigma_{\theta} (r) $
 
-* Insert $i$ to $r$
+   * Insert $i$ to $r$
 
-  > Applied property: selection distributes over set union
+     > Applied property: selection distributes over set union (introduced in 
+     > section 16.2.1)
 
-  $$ mv_{new} = \sigma_{\theta} (r \cup i) \equiv $$
-  $$ mv_{new} = (\sigma_{\theta} (r)) \cup (\sigma_{\theta} (i)) = $$
-  $$ mv_{new} = (mv_{old}) \cup (\sigma_{\theta} (i)) $$
+     $$ mv_{new} = \sigma_{\theta} (r \cup i) \equiv $$
+     $$ mv_{new} = (\sigma_{\theta} (r)) \cup (\sigma_{\theta} (i)) = $$
+     $$ mv_{new} = (mv_{old}) \cup (\sigma_{\theta} (i)) $$
 
-  We do the selection operation on $i$, if a tuple satisfies the condition, append
-  it to the materialized view (no matter if there is a tuple with the same value
-  exists or not).
+     We do the selection operation on $i$, if a tuple satisfies the condition, 
+     append it to the materialized view (no matter if there is a tuple with the
+     same value exists or not).
 
-* Delete $i$ from $r$
+     > So technically it is not a `UNION` operation, it is a `UNION ALL`.
 
-  > Applied property: selection distributes over set difference
+   * Delete $i$ from $r$
 
-  $$ mv_{new} = \sigma_{\theta} (r \setminus i) \equiv $$
-  $$ mv_{new} = \sigma_{\theta} (r) \setminus \sigma_{\theta} (i) = $$
-  $$ mv_{new} = mv_{old} \setminus \sigma_{\theta} (i) $$
+     > Applied property: selection distributes over set difference (introduced
+     > in section 16.2.1)
 
-  Traverse the tuples in $i$, if one satisfies the condition, remove it from
-  the materialized view.
+     $$ mv_{new} = \sigma_{\theta} (r \setminus i) \equiv $$
+     $$ mv_{new} = \sigma_{\theta} (r) \setminus \sigma_{\theta} (i) = $$
+     $$ mv_{new} = mv_{old} \setminus \sigma_{\theta} (i) $$
 
-  If there is only one tuple with this value, then just remove it, otherwise,
-  just pick one from them and remove it.
+     Traverse the tuples in $i$, if one satisfies the condition, remove it from
+     the materialized view.
+
+     If there is only one tuple with this value, then just remove it, otherwise,
+     just pick one from them and remove it.
+
+2. Projection $ mv = \Pi_{A} (r) $ 
+
+   1. Insert $i$ to $r$
+
+      > Applied property: Projection distributes over set union
+      
+      $$ mv_{new} = \Pi_{A} ( r \cup i) \equiv $$
+      $$ mv_{new} = \Pi_{A} (r) \cup \Pi_{A} (i) = $$
+      $$ mv_{new} = mv_{old} \cup \Pi_{A} (i) $$
+      
+      Still, it should be `UNION ALL` rather than `UNION`. 
+
+   2. Delete $i$ from $r$
+
+      Projection DOES NOT distribute over set difference(see section 16.2.1), but
+      I think we can simply do the projection to $i$ and removee the value from 
+      the materialized view given that:
+
+      1. We allow duplicate values in "set"s.
+      2. $r$ is a super-set of $i$
 
 ### 16.5.2.3 Aggregation Operations
+
+> They can have `GROUP BY` statements.
+
+1. Count
+
+   1. insert a tuple
+      
+      Check the `GROUP BY` value in the materialized view, if it does not exist,
+      add a new tuple `value, 1` to the materialized view, otherwise, increment
+      the corresponding counter by 1.
+
+   2. Delete a tuple
+      
+      Check the `GROUP BY` value in the materialized view (it should exist)
+
+      Decrease the counter by 1, and if the counter becomes 0, remove this tuple.
+
+2. Sum
+
+   1. insert a tuple
+
+      Check the `GROUP BY` value in the materialized view, if it does not exist,
+      then, add a new tuple `value, value` to the view, otherwise, increment the
+      sum value.
+
+   2. Delete a tuple
+      
+      Check the `GROUP BY` value in the materialized view (it should exist), 
+      decrease the value, if it reaches 0, then remove the whole tuple from the
+      view.
+
+3. Avg
+
+   > To allow updates, `Avg` is implemented using `Sum` and `Count`.
+
+   1. insert 
+
+      Just do the procedures of how to handle `Sum` and `Count`
+
+   2. Delete
+
+      Just do the procedures of how to handle `Sum` and `Count`
+
+      > When `Sum` becomes 0, `Count` should become 0 as well, one can use any
+      > of them to decide if the tuple should be removed from the view.
+
+4. Min
+
+   1. insert 
+
+      Check the `GROUP BY` value, if it exists, then compre the new value with
+      the stored min value, if the new value is smaller, then update the min
+      value.
+
+      If it does not exist, simlply add a new tuple.
+
+   2. Delete
+
+      If the delete tuple's value is not the minimum one, then we don't need to
+      do anything. Otherwise, we have to iterate over all the values to see if
+      the stored min value is still valid. 
+
+      > The deletion can be expensive.
+
+5. Max
+
+   Same as the Min aggregation.
+
 ### 16.5.2.4 Other Operations
+
+What are not covered by the above sections
+
+1. outer join
+
+   1. Left outer join (r left outer join s)
+      
+      1. insert i to r
+         
+         $ mv_{old} \cup (i \Join s) $ 
+
+         > NOTE: the above $\Join$ is left outer join
+
+      2. remove i from r
+        
+         $ mv_{old} \setminus (i \Join s) $
+
+         > NOTE: the above $\Join$ is left outer join
+         
+      3. insert i to s
+
+         1. Do inner join $ i \Join r $, and append it the view
+         2. Traverse the view and find the tuples generated from unmatched data,
+            check if they are still unmatched after insertion of $i$, if not, 
+            remove the tuple
+
+      4. remove i from s
+
+         1. Do inner join $ i \Join j $, and remove it the view
+         2. Traverse the tuples of r, check if they become unmatched due to the
+            removal of i, if so, add an unmatched tuple to the view.
+     
+   2. Right outer join (r left outer join s)
+
+      Mirror operation of the procedure introduced in the last section.
+
+   3. Full outer join
+      
+      1. Insert i to r
+         
+         1. Do the left outer join, and append it to the view
+         2. Traverse the unmatched data in s, check if it is still unmatched, 
+            if so, do nothing, otherwise, remove it from the view.
+
+      2. Remove i from r
+
+         1. Do the left outer join, and remove it to the view
+         2. Traverse the tuples of s, check if it is becomes unmatched, if so,
+            add it to the view.
+
+      3. Insert i to s
+
+         Mirror operation of the precedure for `Insert i to r`.
+
+      4. Remove i from s
+
+         Mirror operation of the precedure for `Remove i from r`.
+   
+2. set operation
+
+   1. Union 
+
+      * UNION $ mv = r \cup s $
+        
+        1. Insert i to r 
+           
+           For every tuple in i, check if it already exists in the view, if not,
+           add it.
+
+        2. Remove i from r
+
+           For every tuple from i, it should exist in the view, we cannot remove
+           it from the view unless we are sure that it is the tuple in `r union
+           all s`.
+
+           To do so, we have to maintain an extra counter for every tuple in the
+           view.
+
+      * UNION ALL
+
+        Handle it in the same way as the projection.
+   
+   2. Intersection $mv = r \cap s$
+
+      1. Insert i to r
+         
+         For every tuple in i, chece if it exists in s, if so, and it does not 
+         exist in the view, add it to the view.
+         
+      2. Remove i from r
+
+         > We have to maintain 2 counter (one for r, one for s) for the tuples
+         > stored in the view.
+
+         For every tuple in i, if it exists in the view, decrease the counter for
+         r by 1, if either counter becomes 0(for case "remove i from r", it should
+         be the counter for r), remove it from the view.
+
+   3. Set difference $mv = r \setminus s$
+
+      1. Insert i to r
+         
+         For every tuple in i, if it does not exist in s and the view, add it 
+         to the view.
+
+      2. Remove i from r
+
+         > We have to maintain a counter for the tuples that are shown in the 
+         > view, recording their amount in r.
+         
+         For every tuple in i, if it exists in the view (the counter should be 
+         at least 2), decrease the counter by 1, if the counter becomes 1, then
+         remove it from the view.
+
 ### 16.5.2.5 Handling Expressions (Complex queries)
+
+A complex query would be a tree, to maintain materialized view of complex queies,
+we should start with the smallest subexpressions.
+
 ## 16.5.3 Query Optimization and Materialized Views
+
+1. Sometimes, we can rewrite the query plan to use materialized view to speed up 
+   query, e.g., assume we have a materialized view $ v = r \Join s $, a query like
+   $ r \Join s \Join t $ can be written as $ v \Join t $ to speed it up.  
+
+2. But sometimes, blindly using materialized views can make the performance worse,
+   say we have a materialized view $ v = (r \Join s) $, and column $A$ is only 
+   present in relation $r$, and an index is available on $A$, there is also an 
+   index for common column $B$ so that we can use hash join. For a query like 
+   $\sigma_{A=10} (v)$, the optimial plan will never be using the materialized
+   view, instead, we should rewrite it to:
+
+   $$ \sigma_{A=10} (r \Join s) \equiv $$
+   $$ (\sigma_{A=10} (r) ) \Join s \equiv $$
+
+3. It is up to the query optimizer to decide if a query should be optimized using
+   materialized view.
+
 ## 16.5.4 Materialized View and Index Selection
+
+1. Index is good, it can speed up query, but what fields should I build index 
+   for? This problem is called index selection. Materialized view has a similar
+   problem, materialized view selection.
+
+2. Materialized view and index selection should be done according to the typical
+   workload of the system. Modern DBMSes would provide tools to help adminisrator
+   to make decisions.
+
 # 16.6 Advanced Topics in Query Optimization
 ## 16.6.1 Top-K Optimization
 ## 16.6.2 Join Minimization
