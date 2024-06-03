@@ -4,11 +4,11 @@
 
 2. volatile and non-volatile storage
 
-   * volatile storage is **byte-accessable**, which means that we can jump to 
+   * volatile storage is **byte-accessible**, which means that we can jump to 
      any byte address and get the value there.
 
-   * non-volatile storage is **page/block-accessable**. If we wanna fetch the 
-     data at particular offset, we have to fetch the whole page/blcok containing
+   * non-volatile storage is **page/block-accessible**. If we wanna fetch the 
+     data at particular offset, we have to fetch the whole page/block containing
      that byte
 
 3. System Design Goal
@@ -24,7 +24,7 @@
       The OS can flush dirty pages at any time.
 
       For a transaction in DBMS, we want to flush dirty pages only if the 
-      transaction has been commited.
+      transaction has been committed.
 
    2. I/O stalls (block thread)
 
@@ -46,7 +46,7 @@
 
 4. Problems we are gonna figure out in this class
  
-   1. how the dbms represents the database in the disk file(letcture 3)
+   1. how the dbms represents the database in the disk file(lecture 3)
    2. how the dbms manages its memory and move data back and forth from the disk
    (between the disk file and the buffer pool)(lecture 5)
 
@@ -64,7 +64,7 @@
    don't mix the different types of data within a page(i.e if one page contains a
    tuple, and all the stuff this page has are tuples)
 
-   > 1. The hardware page, is the smallest unit that the disk can guarante that
+   > 1. The hardware page, is the smallest unit that the disk can guarantee that
    >    read/write is atomic. (Either finished or not started)
    > 2. Bigger database page means more sequential I/O, for example, in MySQL, 
    >    page is 16KB, a write of such a page would result in 4 hardware page
@@ -72,9 +72,9 @@
    >    want a tuple (say it is 20B), the almost all the 16KB is wasted. There
    >    is tradeoff.
 
-   4. Each page has a unique ID which enables the DBMS to map the Id to the phycial
+   4. Each page has a unique ID which enables the DBMS to map the Id to the physical
       location. If the database is a single file, then ID can just be the page 
-      offset (indirection layer allowing us to move the phycial data freely, e.g.
+      offset (indirection layer allowing us to move the physical data freely, e.g.
       compact the data)
 
       > Most systems map PageID to (path, offset)
@@ -97,7 +97,7 @@
 
    #### Page directory(exists in both memory and disk, see diagram above)
    The database maintains a `special page` that tracks the location of data pages
-   in the database files. The directory also reocrds the number of free slots per
+   in the database files. The directory also records the number of free slots per
    page. The DBMS has to ensure that the directory page has to be in sync with
    the data pages
 
@@ -195,7 +195,7 @@
    ```
    But this is highly not recommended as PostgreSQL can alter it at any time.
 
-8. tuple layout(how to represent a record inside the page, fixed-length reocrd 
+8. tuple layout(how to represent a record inside the page, fixed-length record 
    and variable-length record)
 
    > The class does not cover how to store variable-length tuples while the 
@@ -207,11 +207,11 @@
    ![demo](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2014-48-06.png)
 
    * header: 
-   	1. visibility info(concurrency control)
-	2. bitmap to indeicate NULL values
+     1. visibility info(concurrency control)
+	  2. bitmap to indicate NULL values
 
    * data: attributes are typically stored in the order that specify when you 
-   create the table
+     create the table
    	
 	![demo](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-18%2014-52-55.png)
 
@@ -219,14 +219,14 @@
    the disk file(s)
 
 10. What will DBMS do when query happens? Say, we want the information of the student
-   whose name is steve.
+    whose name is steve.
 
-   DBMS will first fetch a `record id` from index, which is a pair of `page_id, 
-   solt_id`, then it will ask the `page directory` to give the the location of 
-   that page, after knowing this, it will ask the `slot array` to give it the
-   starting location of that tuple, then the DBMS gets it.
+    DBMS will first fetch a `record id` from index, which is a pair of `page_id, 
+    slot_id`, then it will ask the `page directory` to give the the location of 
+    that page, after knowing this, it will ask the `slot array` to give it the
+    starting location of that tuple, then the DBMS gets it.
 
 
-11. two indirectional layers
+11. Two indirection layers
    1. Page ID in directory page
    2. Slot ID in slot array

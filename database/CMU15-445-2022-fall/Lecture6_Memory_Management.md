@@ -3,7 +3,7 @@
 > * Introduction
 > * Locks vs Latches
 > * Buffer pool
->   * Buffer pool meatadata
+>   * Buffer pool metadata
 >   * Memory allocation policies
 > * Buffer pool optimization
 >   * Multiple Buffer Pools
@@ -137,7 +137,7 @@ There are a number of ways to optimize the Buffer Pool:
       > This is quite simple, the OS can also do this for us. For example, if 
       > you ask a page a disk file using `mmap`, then the OS will prefetch the
       > following pages for us. So by the time of asking subsequent pages, they
-      > are alreay in the memory.
+      > are already in the memory.
 
    2. Index scans
     
@@ -178,7 +178,7 @@ There are a number of ways to optimize the Buffer Pool:
 
    > This is called `synchronized scans` in PostgreSQL's term.
 
-   If a query starts a scan and there is alredy one doing this, then the DBMS 
+   If a query starts a scan and there is already one doing this, then the DBMS 
    will attach the new task to the existing query's cursor.
 
    For example:
@@ -204,7 +204,7 @@ There are a number of ways to optimize the Buffer Pool:
 
 4. Buffer pool bypass
 
-   Bringing a page into the buffer pool has its overhead(Page Table Metadaa 
+   Bringing a page into the buffer pool has its overhead(Page Table Metadata 
    Management), if the page content is only used ONCE, there is no need to 
    store it in the buffer pool(if so, we have to replace it later)
 
@@ -253,7 +253,7 @@ There are a number of ways to optimize the Buffer Pool:
       it is accessed by the query or not, when it is accessed, set the bit to 1.
 
       When the clock hand visits a buffer, check its reference bit, if it is
-      1, set it to 0(alright, this page survices this round); if it is 0, 
+      1, set it to 0(alright, this page survives this round); if it is 0, 
       which means there is no access since clock hand's last visit, it is out.
 
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-24%2015-19-00.png)
@@ -286,10 +286,10 @@ There are a number of ways to optimize the Buffer Pool:
    
    * Fast way: Ignore dirty frames, simply drop frames that are not dirty.
 
-   * Slow way: Write the dity frame back to the disk and drop it
+   * Slow way: Write the dirty frame back to the disk and drop it
 
    The slow way is expensive. And there is a method which is: the DBMS 
-   **periodically** walks through the `page table` and writes the diry frame back 
+   **periodically** walks through the `page table` and writes the dirty frame back 
    to disk in the background. When the modification is sent back to the disk, 
    the DBMS can drop it or simply unset its dirty flag. 
 

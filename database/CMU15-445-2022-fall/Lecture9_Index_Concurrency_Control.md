@@ -11,7 +11,7 @@
    voltDB, they don't do these things.
 
    > Redis is single thread per process, voltDB can have multiple threads within
-   > a single process, but they are all bound to differnt cores so that they 
+   > a single process, but they are all bound to different cores so that they 
    > won't touch the same query at the same time (violated)
 
 2. Concurrency control protocol
@@ -152,7 +152,7 @@ These are two modes you can use when implementing Hash Table Latching:
 
    1. Modifications from multiple threads at the same time
 
-      > This is easy cause write latches inheriently prohibits this.
+      > This is easy cause write latches inherently prohibits this.
 
    2. One thread traversing the tree while another thread splits/merges 
       nodes.
@@ -168,7 +168,7 @@ These are two modes you can use when implementing Hash Table Latching:
 
       At this time, the leaf node that just has 44 removed becomes empty, let's 
       assume that we should use `redistribution` instead of `coalescence` to handle
-      this issue. But remeber that t1 hasn't done this yet.
+      this issue. But remember that t1 hasn't done this yet.
 
       Then another thread t2 tries to find(41), it traverses down to the node `D`, 
       then it gets suspended as well...
@@ -178,7 +178,7 @@ These are two modes you can use when implementing Hash Table Latching:
       it cannot find `41`, returns None.
 
       But 41 is actually in the tree. This is actually a "good" result, the 
-      thread t1 can acually merge node `H` to node `I`, then thread t2 will 
+      thread t1 can actually merge node `H` to node `I`, then thread t2 will 
       get a dangling pointer, it deref that pointer, bombing, segfault.
 
       > The above case happens if a thread that tries to update the tree only
@@ -203,29 +203,29 @@ These are two modes you can use when implementing Hash Table Latching:
 
          If it is more than half full, even though you need to delete an item 
          from it (By 1. directly removing an item from it 2. coalescence made
-         by childre nodes), it won't need a coalescence so that the parent node
+         by children nodes), it won't need a coalescence so that the parent node
          won't be touched and modified.
 
       2. For a thread that tries to insert an item, if the current node is not 
          full, the parent node is safe.
 
          Even though we will insert an item to the current node, it won't be 
-         splitted so that the parent node won't be touched and modified.
+         split so that the parent node won't be touched and modified.
 
       3. For a thread that tries to find an item, it will always be safe.
 
-      > Pro tip on realeasing latches on the parent nodes: 
+      > Pro tip on releasing latches on the parent nodes: 
       >
-      > Releasing the collected latchs **from top to bottom** would be more 
+      > Releasing the collected latches **from top to bottom** would be more 
       > efficient as latches that are closer to the Root block a larger 
       > portion of nodes.
   
-   > By this approach, after traversing to the target leaf node (we only konw
+   > By this approach, after traversing to the target leaf node (we only know
    > if it is really safe until we reach the leaf, the origin of all changes), 
    > for insert and delete, we ONLY hold the write locks to the nodes that 
    > we will really modify.
    >
-   > Beforing reaching the leaf node, we are holding lock **defensively**.
+   > Before reaching the leaf node, we are holding lock **defensively**.
 
 3. How the Latch Crabbing would solve the last issue:
 

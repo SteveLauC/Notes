@@ -4,7 +4,7 @@
 > * Static Hashing Schemas
 > * Dynamic Hashing Schemas
 
-1. Cource Status
+1. Course Status
 
 2. While implementing a HashMap, what you need to consider:
  
@@ -31,7 +31,7 @@
    > We pay more space for maintaining average `O(1)` time complexity
    
    > Another thing is, in the world of database, we care about `O(1)`, theoretical
-   > result is different from the phycial one.
+   > result is different from the physical one.
 
 ## Hash Functions
 
@@ -99,7 +99,7 @@
            > In the most extreme case, these item's hash location is exactly
            > the deleted one, shift them back by one slot, making the first
            > item in its hash location and other items behind their hash 
-           > location, this is totaly correct.
+           > location, this is totally correct.
 
    * How to handle unique keys 
 
@@ -122,7 +122,7 @@
    stores the distance they are from their hash location, an item that has a lower
    distance is considered richer.
 
-   The implmentation is basically the same as `Linear Probe Hashing` except for
+   The implementation is basically the same as `Linear Probe Hashing` except for
    the `insert` operation.
    
    * Insert

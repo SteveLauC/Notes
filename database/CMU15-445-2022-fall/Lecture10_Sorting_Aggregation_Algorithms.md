@@ -70,15 +70,15 @@
    > I mean, if buffer is totally sufficient, why not just do it in multiple
    > threads?
 
-5. Optimization for comparsion
+5. Optimization for comparison
 
    1. Code specialization
 
-      Within the sort implementaion, make the comparsision procedure part of 
+      Within the sort implementation, make the comparison procedure part of 
       the sorting code rather than a function pointer so that we don't need to
       do one indirection.
       
-      > This optimization works well if comparsion happens in memory
+      > This optimization works well if comparison happens in memory
    
     2. 
 
@@ -89,7 +89,7 @@
    1. Sorting
       
       1. Sort the relation by `GROUP BY` columns
-      2. Sequentically scan the ordered relation to calculate the aggregation
+      2. Sequentially scan the ordered relation to calculate the aggregation
       
    2. Hashing 
       

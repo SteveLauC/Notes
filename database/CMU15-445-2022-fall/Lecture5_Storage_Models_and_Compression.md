@@ -36,7 +36,7 @@ can fit the workloads most.
 
    > What we will do in this semester.
 
-   The DBMS sotres all attributes for a single tuple continuously in a page.
+   The DBMS stores all attributes for a single tuple continuously in a page.
 
    * Advantages:
      1. fast `inserts`, `updates`, and `deletes`
@@ -52,7 +52,7 @@ can fit the workloads most.
 
 2. decomposition storage model(aka **column storage**)(DSM)
 
-   The DBMS sotres the values of a single attribute for all tuples continuously
+   The DBMS stores the values of a single attribute for all tuples continuously
    in a page. If we only need one attribute, then we just need one page.
 
    * Advantage:
@@ -103,7 +103,7 @@ can fit the workloads most.
       key) with it.
 
       > Overhead: we need to store an extra attribute(storage overhead), and 
-      > when seaching for a specific tuple, we need to read the tuple ID first.
+      > when searching for a specific tuple, we need to read the tuple ID first.
       > (Or there need to be an index)
 
 ### Database Compression
@@ -111,7 +111,7 @@ can fit the workloads most.
 1. Why do we need compression
   
    Compression is widely used in disk-based DBMSs. Because disk I/O is (almost) 
-   always the main bottleneck. More CPU reousrces needed since compression and
+   always the main bottleneck. More CPU resources needed since compression and
    decompression are CPU bound, but most cases, CPU is much faster than the disk.
 
    > For in-memory databases, they don't have that bottleneck but also wants to
@@ -294,7 +294,7 @@ can fit the workloads most.
 
      > Only practical **if the value cardinality is low**.
      >
-     > An example demostrating how does it look like with data that has high 
+     > An example demonstrating how does it look like with data that has high 
      > cardinality:
      > In the US, there are 43000 zip codes(each take 32 bits), assume we have 
      > `10_000_000` rows, without compression, it takes 10_000_000 * 32 = 320_000_000

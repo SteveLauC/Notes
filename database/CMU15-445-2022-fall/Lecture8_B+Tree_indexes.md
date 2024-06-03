@@ -28,7 +28,7 @@
    4. When used as an index:
       1. Every node is an array of key-value pairs.
       2. The keys are derived from the attributes that the index is based on(search key)
-      3. The values will differ based on whehter it is a internal node or leaf node.
+      3. The values will differ based on whether it is a internal node or leaf node.
       4. The array is (usually) kept in order (for binary search)
 
 2. What should be stored in the leaf node:
@@ -81,7 +81,7 @@
          > If the parent node exceeds it capacity after the insertion of that 
          > entry, do the same thing with the parent node.
 
-    > B+TREE grows by spliting the leaf nodes and inserting nodes to the parent 
+    > B+TREE grows by splitting the leaf nodes and inserting nodes to the parent 
     > node. In other words, this tree grows from bottom up. (The depth of a B+TREE
     > gets increased when the root node is split)
 
@@ -89,7 +89,7 @@
    1. Find the leaf node `L` that contains this entry
    2. Remove the entry
       1. If `L` is at least half full, done. 
-      2. If `L` has ONLY `M/2-1` entries (we have to reblance it)
+      2. If `L` has ONLY `M/2-1` entries (we have to rebalance it)
          1. Try to borrow from sibling (adjacent node that has the same parent 
             with `L`) if this won't make sibling un-balanced (less than half full)
          2. If borrow fails, merge `L` and sibling, and delete the entry (pointing
@@ -132,11 +132,11 @@
 8. What is `Clustered Index`
 
    A clustered index is a special kind of index that reorders the way that
-   records are phycially stored on the disk. And ONLY one clustered index 
+   records are physically stored on the disk. And ONLY one clustered index 
    can exist for a table.
 
 
-9. Sequential iterting over entries using a non-clustering index can be 
+9. Sequential iterating over entries using a non-clustering index can be 
    inefficient
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-06-25%2011-42-33.png)
@@ -179,7 +179,7 @@
    1. Pointers
 
       Store a pointer to the key instead of the key itself, you don't want to 
-      do this in a disk system as everytime you access a node, you have to
+      do this in a disk system as every time you access a node, you have to
       access the address pointed by that pointer, which is a random access.
 
       You only want this in a memory system.
@@ -231,7 +231,7 @@
 
 1. Pointer swizzing
 
-   Within a B+Tree, a node's pointers are alwasy `PageID`s, while traversing
+   Within a B+Tree, a node's pointers are always `PageID`s, while traversing
    a B+Tree, we get a `PageID` then ask this page from the buffer pool, the
    buffer pool will search this in its `PageTable`.
 

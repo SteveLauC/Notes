@@ -10,7 +10,7 @@
      
      1. Resources are physically close to each other
      2. Resources communicate over high-speed internet
-     3. Communication is assumed to be cheap and repliable
+     3. Communication is assumed to be cheap and reliable
      
    * Distributed Database
 
@@ -22,22 +22,22 @@
 
 1. What is process model
 
-   Process model is how a DBMS handles mutliple concurrent requests, there are 
+   Process model is how a DBMS handles multiple concurrent requests, there are 
    typically 3 process models
 
    > A worker is the DBMS component that is responsible for executing tasks 
    > on behalf of the client and returning the results.
 
-   1. Processs per worker
+   1. Process per worker
 
-      Eevery worker is a separate OS process
+      Every worker is a separate OS process
 
       * Scheduling relies on the OS
 
         > QUES: I think we can intervene the scheduling, for example:
         >
         > * Use `SIGSTOP` to suspend a process
-        > * Use `SIGCONT` to resumee a process
+        > * Use `SIGCONT` to resume a process
         > * Change a process's priority flag
         >
         > So is this statement correct?
@@ -52,7 +52,7 @@
       And the main reason why PostgreSQL uses this model is that it was invented
       before `pthread` exists, and every OS has `fork(2)` implemented.
 
-      And the PostgreSQL communicaty is going to [make PostgreSQL multiple threaded][link]
+      And the PostgreSQL community is going to [make PostgreSQL multiple threaded][link]
 
       [link]: https://www.postgresql.org/message-id/31cc6df9-53fe-3cd9-af5b-ac0d801163f4%40iki.fi
       
@@ -61,7 +61,7 @@
       Pretty much every system built within the last 20 years uses this approach 
       except for those PostgreSQL forks.
 
-      For scheduling, the DBMS always knows better than the OS. An intersting 
+      For scheduling, the DBMS always knows better than the OS. An interesting 
       project is SQLOS(SQL Server Operating System), which is an OS that directly
       runs inside of SQL Server and manages the hardware resources.
 
@@ -69,7 +69,7 @@
       >
       > > No idea what intra-query is, search it within this note.
       >
-      > e.g., MySQL uses thread per worker model but it onlys uses 1 thread for a
+      > e.g., MySQL uses thread per worker model but it only uses 1 thread for a
       > query.
 
    3. Embedded DBMS
@@ -82,31 +82,31 @@
       * RocksDB
       * DataFusion
 
-      Since embeded systems run in the same process as application, application
+      Since embedded systems run in the same process as application, application
       is responsible for the scheduling.
 
       Though the embedded system itself can still spawn threads or processes.
 
       > The first embedded database is BerkeleyDB.
 
-# Execution Parallemism
+# Execution Parallelism
 
-1. There are 2 kinds of query parallemism
+1. There are 2 kinds of query parallelism
 
-   1. Inter-query parallemism
+   1. Inter-query parallelism
      
       Execute multiple queries at the same time.
 
-   2. Intra-query parallemism
+   2. Intra-query parallelism
 
       Execute a single query with multiple workers.
 
-2. Intra-query parallemism
+2. Intra-query parallelism
 
    For every query algorithm we have talked about so far, there are parallel
    versions of it.
 
-   There are 3 kinds of intra-query parallemism:
+   There are 3 kinds of intra-query parallelism:
 
    1. Intra-operator (horizontal)
       

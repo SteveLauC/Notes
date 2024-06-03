@@ -45,10 +45,10 @@
    > FYI, materialization is called "物化" in chinese, and late materialization
    > is "延迟物化".
 
-   Meaterialization refers to the process of converting the data from a format
+   Materialization refers to the process of converting the data from a format
    to the data format that can be consumed by the upper execution node/operator.
 
-   This concept is specifical for column-based stores, e.g., for the below SQL:
+   This concept is specific for column-based stores, e.g., for the below SQL:
 
    ```sql
    SELECT * FROM table;
@@ -99,7 +99,7 @@
          transfers will be `M + M*N`.
 
          If we follow the idea of block nested loop join, i.e., 1 tuple per inner
-         relation scan -> 1 block per innner relation scan, then we can do more
+         relation scan -> 1 block per inner relation scan, then we can do more
          blocks at a time we have enough buffers.
 
          Say we scan the inner relation per `B` blocks, 1 buffer for the inner 
@@ -213,7 +213,7 @@
          1. Partition: 2 * (M+N)
          1. Build and Probe/nested loop join: M+N
 
-7. Cost conparison between different join algorithms
+7. Cost comparison between different join algorithms
 
    | algorithm              |  I/O Cost                 | The # of block transfer  | Example    |
    |------------------------|---------------------------|--------------------------|------------|

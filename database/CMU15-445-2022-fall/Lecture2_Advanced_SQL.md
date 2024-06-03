@@ -1,4 +1,4 @@
-0. How to pronounce `SQL`, remeber its orig name `SEQUEL`.
+0. How to pronounce `SQL`, remember its orig name `SEQUEL`.
 
 1. SQL can be classified into 3 classes:
 
@@ -12,7 +12,7 @@
 
 3. string
 	
-   SQL standard sayes string is single-quotes only. But MySQL also support double
+   SQL standard says string is single-quotes only. But MySQL also support double
    quotes. And the standard also demands that string is case-sensitive, but by
    default, MySQL is not.
 
@@ -59,7 +59,7 @@
       query can access attributes from outer query), but not the other way 
       around.
 
-5. Common Table experssion
+5. Common Table expression
 
    ```SQL
    WITH tmp_table_name as (
@@ -71,6 +71,6 @@
 
 6. SQL is based on bags whereas relational algebra is based on sets
 
-   * bag: an unorderd collection of elements **with** duplicates
-   * set: an unorderd collection of elements without duplicates
+   * bag: an unordered collection of elements **with** duplicates
+   * set: an unordered collection of elements without duplicates
 

@@ -31,7 +31,7 @@
    > e.g., S3/HDFS
 
    > And you need to distinguish between the features of disk the those cloud
-   > stroage like S3, for disk, to modify a byte, you have to overwrite the 
+   > storage like S3, for disk, to modify a byte, you have to overwrite the 
    > whole page that contains that byte. In S3, this is not allowed, you have
    > to overwrite the old file.(or we can say, create a new one) 
    >
@@ -44,7 +44,7 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202023-05-06%2019-01-10.png)
 
-   In a log structure system, CRUD is simplified to two basic operatons:
+   In a log structure system, CRUD is simplified to two basic operations:
    1. PUT (insert or update)
    2. DEL (delete) 
       > `DEL` can be seen as a special kind of `PUT`, it `PUT`s a special value,
@@ -52,7 +52,7 @@
 
 3. Compaction
 
-   Since log structured storcture always apapends logs to the end of the file(
+   Since log structured storage always appends logs to the end of the file(
    duplicate entries, space amplification), the DBMS need to compact them 
    periodically.
 
@@ -71,10 +71,10 @@
    2. Space amplification
 
    If the compaction is very frequent, then write amplification can also be a
-   probelm, but with compaction, read amplication and space amplication are
+   problem, but with compaction, read amplification and space amplification are
    mitigated.
 
-5. LSM or B+Tree, they are the stroage layer, that is a lower layer, we can
+5. LSM or B+Tree, they are the storage layer, that is a lower layer, we can
    support Relational Model or KV Model on any top of them.
 
    In reality, most SQL DBs use B+Tree, and most NoSQL DBs use LSM. But there 
@@ -215,7 +215,7 @@
    2. External value storage
 
       If the value so big that `overflow page` cannot hold it, then DBMS will use 
-      a seperate file to store it. This is named BLOB type(bad way).
+      a separate file to store it. This is named BLOB type(bad way).
 
       Since the data is managed by the file system, you may encounter violation of
       constrictions. Some DBMSs, however, to prevent this from happening, make them

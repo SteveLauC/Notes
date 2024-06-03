@@ -40,7 +40,7 @@
      * block nested loop join: kinda blocking
      * index nested loop join: If an index is available, does not seem blocking
      * Merge join: the sorting phase is blocking, after that, it is not
-     * Hash join: the building phase is blocking, after thatm, it does not seem blocking
+     * Hash join: the building phase is blocking, after that, it does not seem blocking
 
    * sub-query
 
@@ -104,7 +104,7 @@
 
    3. Parallelization
       
-      Do I/O using mutliple threads
+      Do I/O using multiple threads
 
       > DataFusion has this by partitioning and Tokio.
 
@@ -129,7 +129,7 @@
    conditions are specified in the query and there are multiple indexes available,
    we should use the index that could produce the minimal rows.
 
-4. Mutliple index scan
+4. Multiple index scan
 
    > Elasticsearch does this by default.
 
@@ -142,11 +142,11 @@
 
 # Modification Queries
 
-1. What are modifycation queries
+1. What are modification queries
 
    Modification queries are queries that modify the data:
 
-   * UPDATE/DELET
+   * UPDATE/DELETE
      
      The child operator should return the Record IDs of the tuples that need to
      be modified.
@@ -244,6 +244,9 @@
    > [wiki]: https://en.wikipedia.org/wiki/Halloween_Problem
    >
    > [Blog from CockroachDB](https://www.cockroachlabs.com/blog/the-halloween-problem-sql/)
+   >
+   > Also see Database System Concepts 16.6.3 for the cases where this problem
+   > will never happen. 
 
 # Expression Evaluation
 

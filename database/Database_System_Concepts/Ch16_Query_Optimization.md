@@ -6,7 +6,7 @@
 >
 > 2. For a generated unoptimized logical plan, we know how to convert it to 
 >    an equivalent one using equivalent rules. Then we need to choose the least
->    costly one by estimnating their cost (16.3)
+>    costly one by estimating their cost (16.3)
 >
 > 3. How to generate the physical plan (16.4)
 > 4. Introduce materialized views, which can be used to speed up certain queries 
@@ -33,7 +33,7 @@
 >   > 1. How to maintain (keep it update-to-date) it
 >   > 2. How to do queries on materialized views
 >
->   * 16.5.1 View Maintence
+>   * 16.5.1 View Maintenance
 >   * 16.5.2 Incremental View Maintenance
 >     * 16.5.2.1 Join Operation
 >     * 16.5.2.2 Selection and Projection Operations
@@ -77,7 +77,7 @@
 
    2. Cost based optimizer
 
-      After converting the given query to its equivalen alternatives, we need to 
+      After converting the given query to its equivalent alternatives, we need to 
       estimate the cost of those alternatives and choose the one that is least
       costly, such an optimizer is cost-based.
 
@@ -152,7 +152,7 @@
 
       $$ E1 \Join_{\theta} E2 \equiv E2 \Join_{\theta} E1 $$
 
-      > QUES: is this appliable to outer join?
+      > QUES: is this applicable to outer join?
       >
       > I think no, outer join is not commutative.
       >
@@ -1460,7 +1460,7 @@ section 16.2.4, we should:
    * You data won't be updated frequently (or the cost of updating materialized 
      view can be large, thus the write performance can be reduced)
 
-## 16.5.1 View Maintence
+## 16.5.1 View Maintenance
 
 1. A problem with materialized views is they have to be updated when the data
    used in the view definition changes.
@@ -1824,11 +1824,107 @@ we should start with the smallest subexpressions.
 
 # 16.6 Advanced Topics in Query Optimization
 ## 16.6.1 Top-K Optimization
+
+For Top-K queries, **if `K` is quite small**, it is rather inefficient to sort all the
+tuples, then take `K` values from it.
+
+The typical approach for this is to use a priority queue with capacity set to `K`, 
+insert every data pipelined from the bottom operators, after traversing all the 
+data, the data remained in the priority queue would be the Top `K` data.
+
 ## 16.6.2 Join Minimization
+
+Join minimization is for cases where:
+
+1. A query would use a materialied view that is defined using join
+2. The join operation is done over multiple tables
+3. A query may not need all the tables joined in the materialized view
+
+In such case, we can "drop" some relations from the join.
+
+> QUES:
+>
+> I don't quite understand this, how can we drop a relation from the result of
+> join operation.
+
 ## 16.6.3 Optimization of Updates
+
+1. The Halloween problem
+
+   > We have seen this in CMU 15-445 Lecture 12.
+
+   When updating an ordered data structure (e.g., B+Tree), if the update is done
+   while the selection is being evaluated by an scan, an updated tuple may be
+   reinserted in the data structure ahead of the scan and seen **again** by the
+   scan, and thus will be updated twice (or even more).
+
+   This is called Halloween problem.
+
+2. How to solve the Halloween problem
+
+   1. One can do the update in 2 phases
+      
+      1. Selection, find out the tuples that satisfy the condition and collect
+         their RecordIDs.
+
+      2. Apply the update to the tuples specified by the collected RecordIDs.
+
+   2. There are cases where this problem will never happen:
+
+      1. If the update statement will update field `A`, and the ordered structure
+         is sorted on field `B`, then this problem will never happen.
+
+         > Well, that's true
+
+      2. Even though the update statement and the ordered structure will all use
+         the same column, if the update will decrease the value, and we are 
+         scanning the table in an increasing order, then this problem won't happen.
+
+3. Other optimizations that can be made to update
+
+   1. Do it in a batch
+   2. When updating the underlying sorted structure, e.g., B+Tree, sort the modifications,
+      then do them sequentially to avoid random I/O.
+
+      Update a B+Tree would:
+
+      1. Remove the old value from it
+      2. Insert the new value to it
+
+      One should do the above 2 steps sequentially.
+
 ## 16.6.4 Multiquery Optimization and Shared Scans
+
+1. What is multiquery optimization
+
+   When a batch of queries are submitted together, those queries would typically
+   share something in common, so theoretically the query optimizer can reuse the
+   things that they share to optimize them.
+
+2. Common multiquery optimization
+
+   1. Common subexpression elimination
+     
+      > This is [a wildly applied optimization in programming language compilers][link].
+      >
+      > [link]: https://en.wikipedia.org/wiki/Common_subexpression_elimination
+
+      For those common sub-expressions, we would compute them once and get them
+      stored so that we can reuse them later.
+
+   2. Shared scan
+      
+      When multiple queries are done against the same relation, we can read it once
+      and pipeline the tuples to all the above operators.
+
 ## 16.6.5 Parametric Query Optimization
+
+QUES: Don't quite understand what this is.
+
 ## 16.6.6 Adaptive Query Processing
+
+Adjusts the query plan during execution time.
+
 # 16.7 Summary
 
 I would like to quote a comment from the Andrew Lamb:

@@ -4,13 +4,13 @@
     real world
 
 2. flat file storage problems
-    1. data intergrity
+    1. data integrity
     * How can we ensure that the artist is the same for each album release
     * What if someone overwrites the album year with an invalid string
     2. implementation perspective
     * parser program is complicated to impl
     3. durability
-    * what if your machine crashes when updaing a record
+    * what if your machine crashes when updating a record
 
     > That's why we need DBMS. So we don't need to handle this complexity in our
     application code
@@ -25,9 +25,9 @@
     * NoSQL DB
       * key value(skytable)
       * graph(neo4j)
-      * Doucment(es/mondb)/object-oriented
+      * Document(es/mongodb)/object-oriented
     * Vector DB
-      * For Machine Learning(Milvus)
+      * For Machine Learning (Vector databases like Milvus)
 
     schema: defines exactly what we are going to store in a database
 
@@ -61,7 +61,7 @@
     > have the query optimizer to can alter the statements.
 
 
-4. comparison between our python query code(phycial level highly related) and SQL
+4. comparison between our python query code(physical level highly related) and SQL
 
    ![pic](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-02%2015-47-21.png)
 
