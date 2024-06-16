@@ -28,7 +28,7 @@
 >   * 16.4.1 Cost-Based Join-Order Selection
 >   * 16.4.2 Cost-Based Optimization with Equivalence Rules
 >   * 16.4.3 Heuristics in Optimization
->   * 16.4.4 Optimizing Nested Subqueries
+>   * 16.4.4 Optimizing Nested Subqueries (correlated subqueries/semi-join/anti-join)
 > * 16.5 Materialized Views
 >   > 1. How to maintain (keep it update-to-date) it
 >   > 2. How to do queries on materialized views

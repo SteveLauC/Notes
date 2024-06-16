@@ -59,9 +59,9 @@
    来对`fd`进行操作
    
    ```c
-   int terflags = fcntl(0, F_GETFD);
+   int terflags = fcntl(0, F_GETFL);
    terflags |= O_NONBLOCK;
-   fcntl(0, F_SETFD, terflags);
+   fcntl(0, F_SETFL, terflags);
    ``` 
 
 4. 在c中检查某个字符串是否包含字符，可以使用`strchr/strrchr`
