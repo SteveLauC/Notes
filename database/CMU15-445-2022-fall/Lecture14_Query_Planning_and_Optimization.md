@@ -55,6 +55,12 @@
 
 # Query cost model
 
+> How to estimate the cost of a query
+>
+> 1. Know the size of the input of this query
+> 2. Know the probability of the operation involved in this query
+> 3. Then you know the size of the output of this query
+
 1. Cost model components
 
    1. Physical costs
@@ -87,6 +93,23 @@
 
    > Ref: [Planner Cost Constants][link]
    > [link]: https://www.postgresql.org/docs/current/runtime-config-query.html#RUNTIME-CONFIG-QUERY-CONSTANTS
+
+3. Statistic is needed to estimate cost
+
+   DBMSes maintain internal statistics about tables, attributes, and indexes in
+   its catalog.
+
+   And they have different update strategy.
+
+4. Different kinds of statistics
+
+   1. Histogram
+   2. Equi-width histogram
+   3. Sketches
+
+5. How DBMS builds statistics, sampling!
+
+4. Some
 
 
 # Cost-based optimization

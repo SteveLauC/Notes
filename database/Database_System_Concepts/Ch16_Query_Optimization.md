@@ -611,7 +611,7 @@
 3. How to create statistics
 
    The most straightforward way is to scan the whole relation, then build the
-   statistics, but this is inpractical for AP engines with millions rows, the
+   statistics, but this is impractical for AP engines with millions rows, the
    more common way is to build the statistics for sample data.
 
    NOTE: the sample must be random.
@@ -620,7 +620,7 @@
 
    > Updating statistics can be costly.
 
-   1. No automatic update, they need the DBA to do it manuall.
+   1. No automatic update, they need the DBA to do it manually.
    2. Automatically update after a period of time
    3. Automatically update when the optimizer realized that the statistics are
       kinda outdated.
@@ -888,10 +888,10 @@
    1. Splitting the problem into over-lapping sub-problems
    2. Recursively find the optimal solution to the sub-problems
 
-   A problem can be sovled via DP if:
+   A problem can be solved via DP if:
 
-   1. It can be splitted into sub-problems
-   2. The splitted sub-problems are over-lapping
+   1. It can be split into sub-problems
+   2. The split sub-problems are over-lapping
 
       If they are not over-lapping, then we use the divide-and-conquer algorithm.
 
@@ -903,16 +903,16 @@
    To find the optimal solution of a problem, one way to do it is to enumerate
    all the possible solutions and use the best one.
 
-   This is not pratical if the the problem can have tons of solutions, enumerating
+   This is not practical if the the problem can have tons of solutions, enumerating
    all the solutions will be a problem as well.
 
    DP **won't** enumerate all the solutions, instead, since the problem can be
-   splitted into overlapping sub-problems, it will record the best solutions for
+   split into overlapping sub-problems, it will record the best solutions for
    those sub-problems because these solutions can be **reused** in the future
    given that the sub-problems are overlapping. By reusing the solutions, the
    whole search space can be enormously shrunk.
 
-   For example, to join table a and b, if I alreay know the best way to do it is
+   For example, to join table a and b, if I already know the best way to do it is
    $ a \Join b $, then I won't enumerate all the possible approaches when I want
    to join them again in the future.
   
@@ -927,7 +927,7 @@
    >
    > $$ A_{n}^{2} \times A_{n-1}^{2} \times ... \times A_{2}^{2} $$
    >
-   > When $n=4$, this formula will be 144, so there are some duplciates cases.
+   > When $n=4$, this formula will be 144, so there are some duplicates cases.
 
    | n | the # of join orders |
    |---|----------------------|
@@ -939,7 +939,7 @@
 
 4. Using DP to do join order selection
 
-   Pseudocode:
+   Pseudo-code:
 
    For the following impl, we:
 
@@ -1111,11 +1111,11 @@
 
 5. The textbook says:
 
-   > The join cost formulae taht we saw in Chapter 15 can be used with appropriate
+   > The join cost formulae that we saw in Chapter 15 can be used with appropriate
    > modifications to ignore the cost of reading the input relations.
 
    I don't quite understand because the cost analysis introduced in Chapter 15
-   primarly and almost only covers the cost of the I/O (block transfer + seek)
+   primarily and almost only covers the cost of the I/O (block transfer + seek)
 
 6. Time complexity $ O(3^n) $
 
@@ -1134,7 +1134,7 @@
 8. To take interesting sort order into account, the pseudocode has to be modified.
    We no longer store the best plan only for the subsets, instead, we store the
    best plan for each subset, for each interesting sort order of the join result
-   for thta subset. Then the global variable would be changed to: 
+   for that subset. Then the global variable would be changed to: 
    `HashMap<(Subset, Interesting sort order), PlanWithCost>`
 
    The number of interesting sort order is found to be small, so the time 
@@ -1159,23 +1159,23 @@
 > do general cost based query optimization with equivalence rules.
 >
 > In section 16.2.4, we saw how to enumerate all the equivalent expressions to
-> a given query, that is forlogical plan. The case for physical plan generation
+> a given query, that is for logical plan. The case for physical plan generation
 > is pretty > similar to that process, where we add a new class of equivalence
 > rules **physical equivalence rules**, which can be used to convert a logical
 > operator into the corresponding physical one, e.g., join -> hash join.
 
-> QUES: for the physical equivalence rules described above, havn't we seen it
+> QUES: for the physical equivalence rules described above, haven't we seen it
 > in the last section?
 
 It turns out that this section won't cover the details on how to implement a
-cost-based optimizer using equvivalence rules. IMO, that is definited quite
+cost-based optimizer using equivalence rules. IMO, that is defined quite
 complicated.
 
-The textbook says that to implement it based on the pseudocode introduced in
+The textbook says that to implement it based on the pseudo-code introduced in
 section 16.2.4, we should:
 
 1. Make an space-efficient representation of expressions that avoids making multiple
-   copies of the same subexpressions when equivalence rules are applied.
+   copies of the same sub-expressions when equivalence rules are applied.
    
    > steve: can we do this `Rc` or `Arc`?
 
@@ -1184,7 +1184,7 @@ section 16.2.4, we should:
    rule, we can efficiently check if this expression exists in our expression
    collection.
 
-   > The most sutupid way to do is to iterate over all the existing expressions,
+   > The most stupid way to do is to iterate over all the existing expressions,
    > then compare them.
 
 3. Dynamic programming
@@ -1233,7 +1233,7 @@ section 16.2.4, we should:
    all the operations, they
 
    1. Use heuristic approaches
-   2. Use cost-based approach for join order seleection
+   2. Use cost-based approach for join order selection
 
    > This is confirmed by the comment from Andrew Lamb, see the summary section.
 
@@ -1266,7 +1266,7 @@ section 16.2.4, we should:
 
    PostgreSQL does this for the query given by `PREPARE` statement.
 
-## 16.4.4 Optimizing Nested Subqueries
+## 16.4.4 Optimizing Nested Sub-queries
 
 > https://ericfu.me/subquery-optimization/ 
 
