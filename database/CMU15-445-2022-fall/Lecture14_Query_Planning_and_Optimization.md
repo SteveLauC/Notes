@@ -15,8 +15,18 @@
    1. Heuristic, i.e., use static rules
 
       > Heuristic is also rule-based
+      >
+      > QUES: But what is the difference between heuristic rules and the equivalence
+      > rules that are used for plan enumeration?
+      >
+      > I think heuristic rules should be a subset of the equivalence rules, and as
+      > human being, we trust that the plan rewritten with heuristic rules is 
+      > guaranteed to be more efficient. However, equivalence rules do not have
+      > such a guarantee.
 
-   2. Cost-based optimization
+   2. Cost-based optimization 
+      
+      > built on top of plan rewriting with equivalence rules
 
 3. System architecture
 
@@ -107,18 +117,56 @@
    2. Equi-width histogram
    3. Sketches
 
-5. How DBMS builds statistics, sampling!
+5. How DBMS builds statistics, sampling! And samples will be updated when the 
+   underlying data changed significantly.
 
 4. Some
 
 
 # Cost-based optimization
 
+1. Single relation planning
 
-4. For single relation queries, the biggest problem is choosing the table access
+   For single relation queries, the biggest problem is choosing the table access
    path (sequential scan, binary search (can we?), index scan).
 
    > I think for such queries, choosing the appropriate access path and using 
    > heuristics to reduce the cost would work pretty well.
+   
+   OLTP queries are usually easy to deal with because:
+   
+   * just pick the best index 
+   * Joins are alomost always on the foreign key relations with a small cardinity
+   * Can be implemented with heuristics
+
+2. Multi-relation query planning
+  
+   For multi-relation query palnning, there are generally 2 choices:
+   
+   1. Bottom-up optimization
+      
+      Do the initial optimization with heuristic rules, then use dynamic programming
+      to determine the join orders.
+      
+      > IBM System R, DB2, MySQL, PostgreSQL 
+   
+   2. Top-down optimization(?)
+   
+      Start with the output you want(how), then work down the tree to find the 
+      optimial plan.
+      
+      > MSSQL, Greenplum, CockroachDB
+      
+3. Bottom-up optimization
+
+
+4. Top-down optimization
+
+https://www.cockroachlabs.com/blog/building-cost-based-sql-optimizer/
+
+
+4. System R optimizer
+
+
 
 5. When a query involving multiple relations, the equivalent query plans.
