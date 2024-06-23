@@ -50,8 +50,9 @@
    $ mkdir pg_data
    ```
 
-6. PostgreSQL will create a lock file under `/var/run/postgresql`, change the 
-   owner and group of this directory to `$USER` so that it is writable.
+6. PostgreSQL will create a lock file and a UNIX socket file under 
+   `/var/run/postgresql`, change the owner and group of this directory 
+   to `$USER` so that it is writable.
 
    ```sh
    $ chown steve:steve /var/run/postgresql

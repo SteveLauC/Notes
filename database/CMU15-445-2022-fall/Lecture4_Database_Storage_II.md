@@ -205,12 +205,17 @@
       ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202022-07-20%2012-29-17.png)
        
       For example:
+
       * In PostgreSQL: if the value is bigger than a constant 2KiB(this is called
         `TOAST`), then it will be stored in overflow page.
+
+        > [73.2_TOAST.md](../PostgreSQL/pg16_docs/Ch73_Database_Physical_Storage/73.2_TOAST.md)
 
       * MySQL: page size is typically 16 KiB, threshold is the half size of page 
 
       * SQL Server: threshold is the page size.
+
+      * SQLite: it is called exactly overflow pages
 
    2. External value storage
 
