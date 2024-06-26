@@ -156,13 +156,22 @@
    .rw-------@     1   89 steve steve 20 Jun 16:19  .s.PGSQL.5432.lock
    ```
 
+   > Update: this directory can be configured via `$ postgres -k`, though I have
+   > no idea how to let `pg_ctl` accept this argument.
+
 7. Make sure the port that the server will listen on is available, it is 5432 by
    default.
 
 8. Initialize the data directory
 
    ```sh
-   $ createdb -D ~/Documents/pg_data
+   $ initdb -D ~/Documents/pg_data
+   ```
+
+9. Start the server
+
+   ```sh
+   pg_ctl -D ~/Documents/pg_data -l logfile start
    ```
 
 9. Create a database named with `$USER`
