@@ -92,6 +92,8 @@
    reason, the only reason that I can image is that there was no `u64` before this
    type appeared.
 
+   TODO: ask this in the mailing list `pgsql-general`.
+
    ```c
    /*
     * For historical reasons, the 64-bit LSN value is stored as two 32-bit
@@ -118,3 +120,47 @@
        ((ptr).xlogid = (uint32) ((lsn) >> 32), (ptr).xrecoff = (uint32) (lsn))
    ```
 
+7. I don't quite understand this sentence
+
+   > A dirty buffer cannot be dumped to disk until xlog has been flushed at 
+   > least as far as the page's LSN.
+
+   Looks like Postgres won't `fsync(2)` every WAL append.
+
+8. `pd_prune_xid` field in the page header records the transaction ID of the
+   last (image that there is a sequence of transactions that need to be cleaned
+   up) transaction that hasn't been cleaned up.
+
+   When this last is relatively new, then it means the last cleanup was done
+   in the near time, and we don't need to clean it up.
+
+   If the transaction ID is pretty old, then we need to clean up the page.
+
+   This is just a **hint field**, i.e., it is used as a hint.
+
+9. `pd_pagesize_version` in the page header uses an `u16` to store 2 values, which
+   is due to historical reasons, there was no `version` value in this field back
+   in the day, then they want to add one, so they use the lower byte to store
+   the version, higher byte for page size.
+
+   NOTE: Do you remember that the max page size in Postgres is `2^15` as limited
+   by the `ItemIdData.pd_off` field, this header field adds another restriction,
+   it needs to be a multiple of 256, so the the lower 8 bits won't be set by the
+   page size. (There is only 1 byte for page size).
+
+   If these 2 bytes have the following value (assume little endian machines)
+
+   ```sh
+   [0x04, 0x20]
+   ```
+
+   ```rs
+   fn main() {
+       let version = u8::from_ne_bytes([0x04]);
+       println!("version: {}", version);
+
+       // set the first byte to 0s, as it is the value of version
+       let pagesize = u16::from_ne_bytes([0x00, 0x20]);
+       println!("page size: {}", pagesize);
+   }
+   ```
