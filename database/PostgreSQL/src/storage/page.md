@@ -1,9 +1,71 @@
+> This chapter is about:
+>
+> * Before I read it
+> * After I read it
+>
 > Buffer page management.
+
+> What do you expect to learn from it
+>
+> * If you are new to it, ...
+> * If you already knew something about it, ... (tip: think more, read less)
+>
+>   1. How is the page structure defined
+>
+>      * Page header (see `struct PageHeaderData`)
+>      * line pointer array
+>      * free space
+>      * special space
+>
+>      Special space is specific to access methods, e.g., for an index page, this
+>      space stores the pointers to the sibling pages.
+>
+>      The structure of heap tuple and index tuple are not covered here.
+>
+>   2. What does an empty page looks 
+>      
+>      An empty page only has the header initialized 
+>
+>   3. How Postgres add new item to the database, then to the page
+>
+>      Postgres first looks for a page that has enough free space for the tuple 
+>      using the free space map fork, then it calls `PageAddItemExtended()`. 
+>
+>      For heap pages, the transaction ID of the transaction that inserts the 
+>      data will be set in the Item.
+>
+>   4. How Postgres removes an item
+>
+>      Postgres does delete to heap and index pages differently:
+>
+>      * heap pages: QUES: I just take a guess here. Postgres will set the 
+>        pointer to `LP_UNUSED`, then mark the tuple dead by setting the `t_xmax`
+>        field in the heap tuple header to the transaction ID of the transaction
+>        that removes this tuple.
+>
+>        Later, when appropriate, Postgres will compact the page.
+>       
+>      * index pages
+>
+>         ```
+>         void PageIndexTupleDelete(Page page, OffsetNumber offnum);
+>         void PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems);
+>         void PageIndexTupleDeleteNoCompact(Page page, OffsetNumber offnum);
+>         ```
+>
+>   5. How Postgres updates an item
+>
+>      Remove the existing one, then add a new tuple.
+>
+>   6. Concurrency and locks
 
 # Navigation
 
 * `src/include/storage/bufpage.h` for the related types and structure specification
   of buffer pages and disk blocks (they use the same structure)
+
+* `src/backend/storage/page/bufpage.c`: implementations of the function defined in 
+  `src/include/storage/bufpage.h`
 
 * `src/include/storage/itemid.h` for slot (slotted-page structure) definition 
   `ItemIdData` and its getters/setters.
@@ -187,8 +249,15 @@
     This field is a bitflag:
 
     * `PD_HAS_FREE_LINES` (0x001): A hint flag is set if there are available 
-      line pointers before `pd_lower`, it is just a hint flag, may not be 
+      **line pointers** before `pd_lower`, it is just a hint flag, may not be 
       accurate.
+      
+      > This will be checked when calling 
+      > `PageAddItemExtended(Page, Item, Size, InvalidOffsetNumber, flags)`
+      > though it is simply a hint, that function will still scan the line pointer
+      > array to check available slots.
+      >
+      > After scan, if no available slot is found, this hint will be cleared.
 
     * `PD_PAGE_FULL` (0x002): If an `UPDATE` operation does not find enough free
       space for the new version of tuple, then this flag will be set.
@@ -297,4 +366,276 @@
     > The page size should be a multiple of `256`, so that the lower byte of field
     > `pd_page_version` is 0.
 
-16. 
+# `src/backend/storage/page/bufpage.c`
+
+```
+extern void PageTruncateLinePointerArray(Page page);
+extern Size PageGetFreeSpace(Page page);
+extern Size PageGetFreeSpaceForMultipleTuples(Page page, int ntups);
+extern Size PageGetExactFreeSpace(Page page);
+extern Size PageGetHeapFreeSpace(Page page);
+extern void PageIndexTupleDelete(Page page, OffsetNumber offnum);
+extern void PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems);
+extern void PageIndexTupleDeleteNoCompact(Page page, OffsetNumber offnum);
+extern bool PageIndexTupleOverwrite(Page page, OffsetNumber offnum,
+									Item newtup, Size newsize);
+extern char *PageSetChecksumCopy(Page page, BlockNumber blkno);
+extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
+```
+
+1. `void PageInit(Page page, Size pageSize, Size specialSize)`
+
+   Initialize the page by:
+
+   1. `MemSet()` the whole page to 0
+
+      > This `MemSet()` is a macro rather than a function to avoid function runtime
+      > overhead 
+
+   2. setting the header fields. `pd_lsn` and `pd_checksum` won't be set in this
+      function, they will be set when this page is written.
+
+      ```c
+      p->pd_flags = 0;
+      p->pd_lower = SizeOfPageHeaderData;
+      p->pd_upper = pageSize - specialSize;
+      p->pd_special = pageSize - specialSize;
+      PageSetPageSizeAndVersion(page, pageSize, PG_PAGE_LAYOUT_VERSION);
+      /* p->pd_prune_xid = InvalidTransactionId;		done by above MemSet */
+      ```
+
+      > Love the last line of commented code!
+
+   Note that the `specialSize` will be aligned to 8:
+
+   ```c
+   specialSize = MAXALIGN(specialSize);
+   ```
+
+   ```c
+   /* Define as the maximum alignment requirement of any C data type. */
+   #define MAXIMUM_ALIGNOF 8
+   ```
+
+   
+2. `bool PageIsVerifiedExtended(Page page, BlockNumber blkno, int flags)`
+
+   Cheaply check if page header and checksum are valid, this will be invoked
+   when a page is loaded from disk, if check passed, then it will be added to
+   buffer pool. Return `true` if checksum is correct (if checksum is enabled)
+   and the basic header is valid.
+
+   Postgres adds the block number when computing checksum, so this function needs
+   a `blkno` argument. `flags` can be used to configure 
+
+3. `OffsetNumber PageAddItemExtended(Page page, Item item, Size size, OffsetNumber offsetNumber, int flags)`
+
+   > There is no lock in this function.
+
+   Put an item in the page by:
+
+   1. Setting a line pointer
+   2. Put the data in the free space
+
+   `Item` is simply a pointer, so we need another `size` argument to provide
+   the tuple length, **this `size` argument will also be max aligned** so that
+   we can adjust `pd_upper` accordingly, but the tuple size stored in `ItemIdData`.
+   is not aligned.
+
+   The `OffsetNumber` argument has to be:
+
+   1. `InvalidOffsetNumber` (None) to ask this function to find a available pointer.
+      If page hint `PD_HAS_FREE_LINES` is set, then we search the existing line
+      pointers to find one that is unused and does not have storage. If not found,
+      append a line pointer.
+      
+      Otherwise, append a line pointer.
+      
+   2. a number between `[FirstOffsetNumber, number_of_line_ptr_in_page + 1]`
+      
+      In this case, if `PAI_OVERWRITE` is set in `flags`, then we just put the 
+      item in the specified `OffsetNumber`. (If the `OffsetNumber` is 
+      `number_of_line_ptr_in_page + 1`, then you won't overwrite anything)
+      
+      Otherwise, if `OffsetNumber` is not `number_of_line_ptr_in_page + 1`, you
+      move all the line pointers whose offset is greater than or equal to `OffsetNumber`
+      by `sizeof(ItemIdData)`
+      
+      ```text
+      | 1 | 2 | 3 |
+      
+      | 1 |   | 2 | 3 |
+      ```
+      
+    To summarize, this function will eiter:
+    
+    1. Successfully add an item to the page
+       1. In an unused existing slot that does not have storage, overwrite or move 
+          the previous one.
+       2. Append a new slot
+    2. Fail
+    
+4. `Page PageGetTempPage(Page page)`
+
+   Allocates an **uninitialized** temporary page that has the same size as `page`.
+   
+5. `Page PageGetTempPageCopy(Page page)`
+
+   Similar to `PageGetTempPage()`, but will copy the contents of `Page` to this new
+   temporary page.
+   
+6. `Page PageGetTempPageCopySpecial(Page page)`
+
+   1. Create a temporary page
+   2. Initialize it with the `page`'s size and special space size
+   3. Copy the special space of `page` to new page
+   4. return
+   
+7. `void PageRestoreTempPage(Page tempPage, Page oldPage)`
+
+   Processing has been done on `tempPage`, copy the contents of `tempPage` to
+   `oldPage`.
+   
+8. `void PageRepairFragmentation(Page page)` and 
+   `static void compactify_tuples(itemIdCompact itemidbase, int nitems, Page page, bool presorted)`
+   
+   > `PageRepairFragmentation()` is for heap pages only, `compactify_tuples()`
+   > is used in both heap and index pages.
+   
+   `compacitfy_tuples()` is a helper function that will be invoked by 
+   `PageRepairFragmentation()`, `PageRepairFragmentation()` sequentially scans
+   the line pointer to find the tuples that **are still in use**, which will be
+   stored in an array of `itemIdCompact (struct itemIdCompactData)`
+
+   ```c
+   /*
+    * Tuple defrag support for PageRepairFragmentation and PageIndexMultiDelete
+    *
+    * Steve's NOTE: this type represents a tuple that is still in use.
+    */
+   typedef struct itemIdCompactData
+   {
+       uint16		offsetindex;	/* linp array index */
+       int16		itemoff;		  /* page offset of item data */
+  	   uint16		alignedlen;		/* aligned length! MAXALIGN(item data len) */
+   } itemIdCompactData;
+   ```
+   
+   Then this array will be passed to `compactify_tuples()`, `compactify_tuples()`
+   remove the data of dead tuples and **sort** the tuples so that they are in the
+   reverse order of their line pointers. If the `presorted` parameter is `true`,
+   then the tuples are alreay sorted, they just have gaps, then Postgres only moves
+   the tuples.
+   
+   > QUES: what is the benefit of sorting the tuples?
+   >
+   > Answer: If the tuples are ordered, then the next time we compact the page,
+   > then the `itemidbase` is highly to be ordered, then we can simply scan 
+   > the the `itemidbase`, the first line pointer should point to the last tuple,
+   > `memmove()` the tuple to `pd_upper - aligned_len_of_tuple`, and repeat until
+   > all the line pointers have been handled. 
+   >
+   > This is a fairly new change, done in 2020 [commit][link]
+   >
+   > [link]: https://github.com/postgres/postgres/commit/19c60ad69a91f346edf66996b2cf726f594d3d2b
+   >
+   > Otherwise, using the approach described above can overwrite exising tuples.
+   > we have to create a  temporary buffer to store all the tuples, then `memcpy()`
+   > it back to the page.
+   
+   
+   > How can tuples be unordered?
+   >
+   > Remove a tuple that uses a line pointer in the middle of the line pointer 
+   > array, making this unused line pointer the first unused one, then insert
+   > another tuple, this line pointer will be reused, you will notice that this
+   > line pointer is still in the middle of array, but the data is put at the 
+   > end of the free space.
+
+
+9. `void PageTruncateLinePointerArray(Page page)`
+
+   For **heap pages only**, truncate the tailing *continuous* unused line pointers
+   (`LP_UNUSED`). If all the line pointers are all unused, then Postgres will 
+   leave the first one there.
+   
+   QUES: why?
+   
+   ```c
+   * We avoid truncating the line pointer array to 0 items, if necessary by
+   * leaving behind a single remaining LP_UNUSED item.  This is a little
+   * arbitrary, but it seems like a good idea to avoid leaving a PageIsEmpty()
+   * page behind.
+   
+	 /*
+	  * This is an unused line pointer that we won't be truncating
+	  * away -- so there is at least one.  Set hint on page.
+	  */
+   ```
+   
+   This function's comment mentions lock:
+   
+   > Caller can have either an exclusive lock or a full cleanup lock on page's
+   > buffer.  The page's PD_HAS_FREE_LINES hint bit will be set or unset based
+   > on whether or not we leave behind any remaining LP_UNUSED items.
+   
+10. `Size PageGetFreeSpace(Page page)`
+    
+    If the free space calculated through `size = pd_upper - pd_lower` is bigger than
+    `sizeof(ItemIdData)`, then return `size - sizeof(ItemIdData)`. Otherwise, 0 is
+    returned.
+    
+11. `Size PageGetFreeSpaceForMultipleTuples(Page page, int ntups)`
+    
+    Similar to `PageGetFreeSpace()`, but for multiple tuples. 
+    
+    If the free space calculated through `size = pd_upper - pd_lower` is bigger than
+    `ntups * sizeof(ItemIdData)`, then return `size - ntups * sizeof(ItemIdData)`. 
+    Otherwise, 0 is returned.
+
+12. `Size PageGetExactFreeSpace(Page page)`
+
+    If the free space calculated through `pd_upper - pd_lower` is greater than
+    0, return it.
+    
+    > All the above 3 functions convert `pd_upper` and `pd_lower` to `int` before
+    > doing the subtraction because `pd_lower` can be greater than `pd_upper`, 
+    > using `uint16` will give a number that is pretty big.
+    
+13. `Size PageGetHeapFreeSpace(Page page)`
+
+14. `void PageIndexTupleDelete(Page page, OffsetNumber offnum)`
+
+15. `void PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems)`
+
+16. `void PageIndexTupleDeleteNoCompact(Page page, OffsetNumber offnum)`
+
+17. `bool PageIndexTupleOverwrite(Page page, OffsetNumber offnum,`
+
+18. `char * PageSetChecksumCopy(Page page, BlockNumber blkno)`
+
+19. `void PageSetChecksumInplace(Page page, BlockNumber blkno)`
+
+# `src/include/storage/off.h`
+
+1. `OffsetNumber` starts from 1, 0 is considered invalid:
+
+   ```c
+   #define InvalidOffsetNumber		((OffsetNumber) 0)
+   #define FirstOffsetNumber		((OffsetNumber) 1)
+   #define MaxOffsetNumber			((OffsetNumber) (BLCKSZ / sizeof(ItemIdData)))
+   ```
+
+2. Checking if a `OffsetNumber` is invalid is simple:
+
+   ```c
+   /*
+   * OffsetNumberIsValid
+   *		True iff the offset number is valid.
+   */
+   #define OffsetNumberIsValid(offsetNumber) \
+      ((bool) ((offsetNumber != InvalidOffsetNumber) && \
+            (offsetNumber <= MaxOffsetNumber)))
+   ```
+
+   

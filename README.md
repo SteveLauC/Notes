@@ -7,11 +7,17 @@ Steve's notes
 ```md
 > This chapter is about:
 >
-> ...
+> * Before I read it
+>   * ...
+> * After I read it
+>   * ...
 
-> Questions I have about this chapter:
+> What do you expect to learn from it (fill in this before reading it, or adjust
+> the listed stuff during reading process)
 >
-> 1. ...
+> * If you are new to it, ...
+> * If you already knew something about it, ... 
+>   > tip: think more and read less in this case
 
 
 > * Section x
@@ -29,3 +35,8 @@ Steve's notes
 2. note
 3. xxx
 ```
+
+
+# Unresolved Questions
+
+For unresolved question, search the mark `QUES:`.
