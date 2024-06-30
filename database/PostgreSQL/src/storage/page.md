@@ -85,7 +85,7 @@
   * `src/include/storage/checksum.h`: expose the function needed by Postgres
   * `src/backend/storage/page/checksum.c`: includes above 2 files
   
-  > The implementation is put in a C file so that users can include it.
+  > The implementation is put in a header file so that users can include it.
 
 * `src/include/storage/off.h` defines `OffsetNumber`, the index type for `ItemIdData`,
   note that this index starts with 1
@@ -438,9 +438,9 @@ extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
    2. Put the data in the free space
 
    `Item` is simply a pointer, so we need another `size` argument to provide
-   the tuple length, **this `size` argument will also be max aligned** so that
-   we can adjust `pd_upper` accordingly, but the tuple size stored in `ItemIdData`.
-   is not aligned.
+   the tuple length, **this `size` argument will also be max aligned**(padding
+   added after item) so that we can adjust `pd_upper` accordingly, but the tuple
+   size stored in `ItemIdData` is not aligned.
 
    The `OffsetNumber` argument has to be:
 
@@ -581,11 +581,15 @@ extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
    
 10. `Size PageGetFreeSpace(Page page)`
     
+    For index page only. (heap page should use `PageHeapGetFreeSpace()`)
+
     If the free space calculated through `size = pd_upper - pd_lower` is bigger than
     `sizeof(ItemIdData)`, then return `size - sizeof(ItemIdData)`. Otherwise, 0 is
     returned.
     
 11. `Size PageGetFreeSpaceForMultipleTuples(Page page, int ntups)`
+
+    For index page only. (heap page should use `PageHeapGetFreeSpace()`)
     
     Similar to `PageGetFreeSpace()`, but for multiple tuples. 
     
@@ -595,6 +599,8 @@ extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
 
 12. `Size PageGetExactFreeSpace(Page page)`
 
+    For index page only. (heap page should use `PageHeapGetFreeSpace()`)
+    
     If the free space calculated through `pd_upper - pd_lower` is greater than
     0, return it.
     
@@ -603,6 +609,10 @@ extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
     > using `uint16` will give a number that is pretty big.
     
 13. `Size PageGetHeapFreeSpace(Page page)`
+    
+    This is kinda similar to `PageGetFreeSpace()`,except it is for heap pages only,
+    so we need to enfore the hard limit that a heap page's line pointer count
+    cannot exceed `MaxHeapTuplePerPage`.
 
 14. `void PageIndexTupleDelete(Page page, OffsetNumber offnum)`
 
@@ -614,7 +624,13 @@ extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
 
 18. `char * PageSetChecksumCopy(Page page, BlockNumber blkno)`
 
+    If checksum is disabled, return `page`. Otherwise, copy `page` to a new temp
+    page, compute the checksum, then return the temp page.
+
 19. `void PageSetChecksumInplace(Page page, BlockNumber blkno)`
+
+    If checksum is disabled, return `page`. Otherwise, compute the checksum of 
+    `page`, set it in-place.
 
 # `src/include/storage/off.h`
 
