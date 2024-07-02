@@ -368,21 +368,6 @@
 
 # `src/backend/storage/page/bufpage.c`
 
-```
-extern void PageTruncateLinePointerArray(Page page);
-extern Size PageGetFreeSpace(Page page);
-extern Size PageGetFreeSpaceForMultipleTuples(Page page, int ntups);
-extern Size PageGetExactFreeSpace(Page page);
-extern Size PageGetHeapFreeSpace(Page page);
-extern void PageIndexTupleDelete(Page page, OffsetNumber offnum);
-extern void PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems);
-extern void PageIndexTupleDeleteNoCompact(Page page, OffsetNumber offnum);
-extern bool PageIndexTupleOverwrite(Page page, OffsetNumber offnum,
-									Item newtup, Size newsize);
-extern char *PageSetChecksumCopy(Page page, BlockNumber blkno);
-extern void PageSetChecksumInplace(Page page, BlockNumber blkno);
-```
-
 1. `void PageInit(Page page, Size pageSize, Size specialSize)`
 
    Initialize the page by:

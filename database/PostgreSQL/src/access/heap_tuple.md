@@ -2,7 +2,7 @@
 >
 > * Before I read it
 >
->   * How Postgres stores heap tuples (data)
+>   * How Postgres stores **heap** tuples (data)
 >
 > * After I read it
 >   * ...
@@ -26,6 +26,8 @@
 
 * `src/include/access/htup_details.h` heap tuple header definition (includes `htup.h`)
 * `src/include/access/htup.h` heap tuple definition
+* `src/include/access/heapam.h`: defines heap access methods (CRUD)
+* `src/backend/access/heapam.c`: implements heap access methods (CRUD)
 
 # `src/include/access/htup_details.h`   
 
