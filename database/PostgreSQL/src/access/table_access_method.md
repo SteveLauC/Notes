@@ -1,14 +1,9 @@
-Steve's notes
-
-> All rights of the posts here are reserved to their authors.
-
-# Format
-
-```md
 > This chapter is about:
 >
 > * Before I read it
->   * ...
+>
+>   * How Postgres does table CRUD
+>
 > * After I read it
 >   * ...
 
@@ -24,24 +19,7 @@ Steve's notes
 > *
 > *
 
+# Navigation
 
-> * Section x
->   * Section x.y
-
-# Section x
-
-1. note
-2. note
-3. xxx
-
-## Section x.y 
-
-1. note
-2. note
-3. xxx
-```
-
-
-# Unresolved Questions
-
-For unresolved question, search the mark `QUES:`.
+* `src/include/access/tableam.h`
+* `src/backend/access/table/tableam.c`

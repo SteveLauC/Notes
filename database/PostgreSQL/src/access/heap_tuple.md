@@ -21,6 +21,13 @@
 >   * How NULL is represented
 >   * Alignment requirements for different types
 >   * Is padding added before data or after data
+>   * Postgres will access the metadata first, then read the data, I guess it 
+>     will read the `TupleDesc`
+
+> What have you learned from it
+>
+> *
+> *
 
 # Navigation
 

@@ -171,8 +171,11 @@
 9. Start the server
 
    ```sh
-   pg_ctl -D ~/Documents/pg_data -l logfile start
+   pg_ctl -D ~/Documents/pg_data -l ~/Documents/pg_data/logfile start
    ```
+
+   > `logfile` is only needed to store the log during start, after that, it won't
+   > be used.
 
 9. Create a database named with `$USER`
 
@@ -183,5 +186,5 @@
 10. Connect with client
 
    ```sh
-   $ pgcli
+   $ pgcli # or psql
    ```
