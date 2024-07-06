@@ -138,12 +138,17 @@
    $ mkdir pg_data
    ```
 
-6. PostgreSQL will create a lock file and a UNIX socket file under 
+6. ~~PostgreSQL will create a lock file and a UNIX socket file under 
    `/var/run/postgresql`, change the owner and group of this directory 
-   to `$USER` so that it is writable.
+   to `$USER` so that it is writable~~.
+
+   Well, this only happen if you install Postgres through RPM, Postgres
+   installed from src creates these 2 files under `/tmp`.
+   
 
    ```sh
-   $ chown steve:steve /var/run/postgresql
+   $ sudo mkdir /var/run/postgresql
+   $ sudo chown steve:steve /var/run/postgresql
    ```
 
    ```sh
