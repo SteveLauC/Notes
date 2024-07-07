@@ -11,7 +11,9 @@
 >     defined in `src/include/access/tupdesc.h` is NOT data, but metadata of a
 >     tuple, AND, I would say it is more like relation metadata (`RelationData.rd_att`).
 >     The reason why it is called `TupleDescData` is probably it will be used
->     when processing tuples,
+>     when processing tuples.
+>
+>     Yeah, it is widely used in file `src/backend/access/common/heaptuple.c`.
 
 > What do you expect to learn from it (fill in this before reading it, or adjust
 > the listed stuff during reading process)
