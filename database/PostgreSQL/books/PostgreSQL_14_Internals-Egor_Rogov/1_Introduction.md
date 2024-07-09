@@ -147,12 +147,151 @@
     1663 | pg_default |       10 |        | 
     1664 | pg_global  |       10 |        | 
     (2 rows)
+
+   steve=# \db
+         List of tablespaces
+       Name    | Owner | Location 
+    -----------+-------+----------
+    pg_default | steve | 
+    pg_global  | steve | 
+    (2 rows)
    ```
 
 4. Predefined tablespaces
 
    * pg_default
+
+     Located at `$PGDATA/base`, it is the default tablespace used for all the
+     operations unless another tablespace is explicitly specified.
+
    * pg_global
+     
+     Located at `$PGDATA/global`, this is used for stuff that is shared across
+     the cluster, e.g., the `pg_database/pg_tablespace` system catalog.
+
+     > Question: the file layout under `$PGDATA/base` is that the first layer
+     > of directories are databases:
+     >
+     > ```
+     > steve=# SELECT
+     >         oid,
+     >         datname
+     > FROM
+     >         pg_database
+     > ORDER BY
+     >         oid;
+     > oid  |  datname  
+     > -------+-----------
+     >     1 | template1
+     >     4 | template0
+     >     5 | postgres
+     > 16384 | steve
+     > (4 rows)
+     > ```
+     >
+     > ```sh
+     > $ l base
+     > Permissions Links Size User  Group Date Modified Name
+     > drwx------@     1    - steve steve  4 Jul 09:54  1
+     > drwx------@     1    - steve steve  3 Jul 08:13  4
+     > drwx------@     1    - steve steve  4 Jul 09:54  5
+     > drwx------@     1    - steve steve  8 Jul 13:46  16384
+     > ```
+     >
+     > Currently, there is no `database` directory that is under tablespace `pg_global` in
+     > my environment:
+     >
+     > Future steve: true, all the tablespaces except for `pg_global` has database
+     > dirs.
+     >
+     > ```sql
+     > SELECT
+     >     count(*)
+     > FROM
+     >     pg_class
+     > WHERE
+     >     reltablespace = (
+     >         SELECT
+     >             oid
+     >         FROM
+     >             pg_tablespace
+     >         WHERE
+     >             spcname = 'pg_global');
+     >  count
+     >  -------
+     >  50
+     >  (1 row)
+     > ```
+     > And there is exactly 50 main fork files under my `global` directory.
+
+5. To create a tablespace, do this:
+
+   ```sql
+   CREATE TABLESPACE test_tablespace OWNER steve LOCATION '/home/steve/Desktop/pg_tablespace';
+   ```
+
+   > Location must be a absolute path.
+   >
+   > ```sql
+   > steve=# CREATE TABLESPACE test_tablespace2 OWNER steve LOCATION 'foo';
+   > ERROR:  tablespace location must be an absolute path
+   > ```
+
+   Postgres will create a file under the specified location:
+   
+   ```sh
+   $ l /home/steve/Desktop/pg_tablespace
+   Permissions Links Size User  Group Date Modified Name
+   drwx------@     1    - steve steve  9 Jul 12:50  PG_17_202406171
+   ```
+
+   And, a symlink will be created under `$PGDATA/pg_tblspc`:
+
+   ```sql
+   steve=# select * from pg_tablespace;
+   oid  |     spcname     | spcowner | spcacl | spcoptions 
+   -----+-----------------+----------+--------+------------
+   1663 | pg_default      |       10 |        | 
+   1664 | pg_global       |       10 |        | 
+   24680| test_tablespace |       10 |        | 
+   (3 rows)
+   ```
+
+   ```sh
+   $ l pg_tblspc                        
+   Permissions Links Size User  Group Date Modified Name
+   lrwxrwxrwx@     1   33 steve steve  9 Jul 12:50  24680 -> /home/steve/Desktop/pg_tablespace
+   ```
+
+## Relations
+
+1. Postgres sees everything that has columnar structure as Relations:
+
+   * table
+   * index
+   * materialized view
+   * sequences (one row table)
+
+   > This is affected by the original author Michael Stonebraker.
+
+   All these things are stored in table `pg_class`, which was originally called
+   `pg_relation`, but the column names still have prefix `rel`.
+
+## Files and Forks
+
+1. As we already know, a fork is a file, whose name is an `OID` followed by an
+   optional suffix indicating the fork type:
+
+   * None: main fork
+   * Some(fsm): free space map fork
+   * Some(vm): visibility map fork
+
+   When the file exceed maximum size limit (1B by default, decided by `BLCKSZ`
+   and `RELSEG_SIZE`), a new file (called segment) will be created, the segment
+   number (starting from 1, number 0 will not be shown) will be added to the 
+   end of the file name (x_fsm.1)
+
+2. 
 
 # 1.2 Processes and Memory
 # 1.3 Clients and server protocol
