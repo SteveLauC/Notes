@@ -74,15 +74,14 @@
    `pg_class` contains the tables/indexes of the current database, so every 
    database has it.
 
-   `pg_database` is shared across all the databases, so system catalogs like this 
-   does not belong to any specific database. A dummy database with OID 0 is used
-   internally. 
+   `pg_database` and `pg_tablespace` are shared across all the databases 
+   (cluster-level metadata), so system catalogs like this does not belong to 
+   any specific database. A dummy database with OID 0 is used internally. 
 
 3. All the system catalogs use an `OID` as the primary key. And `OID` with the same
    value can appear in different system catalogs, Postgres ensures that the OIDs
    used in a system catalog won't be duplicate by maintaining an unique index, if
    an OID already exists in the table, increment it by 1 and check again...
-
 
    The OID counter will be reset when it reaches it maximum value.
 
@@ -135,8 +134,20 @@
    A tablespace is basically a directory in the file system, which defines the 
    data's physical layout.
 
-2. A tablespace can be used by multiple databases, and a database's data can be
-   stored in multiple tablespaces.
+2. A tablespace can be used by multiple databases, e.g., the default tablespace
+   `pg_default` (if not changed), is used by database `template1`, and when 
+   creating a new database, if not explicitly specified, it uses the tablespace
+   used by `template1`, so you can say that most databases will use `pg_default`.
+
+   And a database's data can be stored in multiple tablespaces, true, even though
+   a database have only 1 tablespace attribute, we can specify tablespaces for its
+   every table.
+
+   > QUES(Solved): then what is the point of setting tablespace for database.
+   >
+   > ANSWER: the tablespace set for a database will be the default tablespace for
+   > its objects. And when an object uses its database's tablespace, it 
+   > `reltablespace` will be 0 in `pg_class`.
 
 3. List all tablespaces
 
@@ -168,6 +179,74 @@
      
      Located at `$PGDATA/global`, this is used for stuff that is shared across
      the cluster, e.g., the `pg_database/pg_tablespace` system catalog.
+
+     ```sql
+     SELECT
+        oid,
+        relname
+     FROM
+        pg_class
+     WHERE
+        reltablespace = (
+           SELECT
+              oid
+           FROM
+              pg_tablespace
+           WHERE
+              spcname = 'pg_global')
+        ORDER BY
+           oid;
+     1213	pg_tablespace
+     1214	pg_shdepend
+     1232	pg_shdepend_depender_index
+     1233	pg_shdepend_reference_index
+     1260	pg_authid
+     1261	pg_auth_members
+     1262	pg_database
+     2396	pg_shdescription
+     2397	pg_shdescription_o_c_index
+     2671	pg_database_datname_index
+     2672	pg_database_oid_index
+     2676	pg_authid_rolname_index
+     2677	pg_authid_oid_index
+     2694	pg_auth_members_role_member_index
+     2695	pg_auth_members_member_role_index
+     2697	pg_tablespace_oid_index
+     2698	pg_tablespace_spcname_index
+     2846	pg_toast_2396
+     2847	pg_toast_2396_index
+     2964	pg_db_role_setting
+     2965	pg_db_role_setting_databaseid_rol_index
+     2966	pg_toast_2964
+     2967	pg_toast_2964_index
+     3592	pg_shseclabel
+     3593	pg_shseclabel_object_index
+     4060	pg_toast_3592
+     4061	pg_toast_3592_index
+     4175	pg_toast_1260
+     4176	pg_toast_1260_index
+     4177	pg_toast_1262
+     4178	pg_toast_1262_index
+     4181	pg_toast_6000
+     4182	pg_toast_6000_index
+     4183	pg_toast_6100
+     4184	pg_toast_6100_index
+     4185	pg_toast_1213
+     4186	pg_toast_1213_index
+     6000	pg_replication_origin
+     6001	pg_replication_origin_roiident_index
+     6002	pg_replication_origin_roname_index
+     6100	pg_subscription
+     6114	pg_subscription_oid_index
+     6115	pg_subscription_subname_index
+     6243	pg_parameter_acl
+     6244	pg_toast_6243
+     6245	pg_toast_6243_index
+     6246	pg_parameter_acl_parname_index
+     6247	pg_parameter_acl_oid_index
+     6302	pg_auth_members_grantor_index
+     6303	pg_auth_members_oid_index
+     ```
 
      > Question: the file layout under `$PGDATA/base` is that the first layer
      > of directories are databases:
