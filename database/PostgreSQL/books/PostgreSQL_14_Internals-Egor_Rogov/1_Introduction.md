@@ -118,7 +118,7 @@
    * public: the default schema for users
    * pg_catalog: for system catalogs
    * information_schema: provides an alternative view to system catalogs in the SQL standard way
-   * pg_toast: related to TOAST
+   * pg_toast: TOAST tables reside under this schema
    * pg_temp: create temporary stuff
 
      > QUES: As you can see, schema `pg_temp` does not appear in the above 
@@ -370,7 +370,354 @@
    number (starting from 1, number 0 will not be shown) will be added to the 
    end of the file name (x_fsm.1)
 
-2. 
+2. Various Postgres forks
+
+   1. The main fork
+   
+      the actual data, this fork is available for every relations:
+
+      * table
+      * index
+      * materialized view
+      * sequences
+
+      except for views, they contain no data.
+
+   2. The initialization fork
+
+      > With suffix `_init`
+
+      It is a dummy/empty file that is used to "restore" unlogged tables after crash.
+
+      ```sh
+      $ l *_init
+      Permissions Links Size User  Group Date Modified Name
+      .rw-------@     1    0 steve steve 11 Jul 10:43  24692_init
+      ```
+
+      > QUES: I don't quite understand what is the point of keeping an empty file,
+      > if we are clear that it is empty, why not just truncate the main fork after
+      > crash.
+
+   3. The free space map
+
+      Used to record the free space availability for each page, available for
+      table and index.
+
+      It makes sense to maintain a fsm fork for table since Postgres uses heap
+      tables. When inserting a new tuple, we can blindly put it in any page that
+      has available space.
+
+      But for index, B+Tree is sorted, you have to maintain the state, you cannot
+      find a page, and insert the entry there. So Postgres only uses fsm to keep
+      track of allocated (allocated file) pages that are totally empty, so that
+      when adding new page, it can reuse the existing empty page rather than 
+      allocating a new one.
+
+      Free space map is created lazily (when needed), the easily way to create it
+      is to invoke the `VACUUM` on the table:
+
+      ```sh
+      $ l 16389*
+      Permissions Links Size User  Group Date Modified Name
+      .rw-------@     1 8.2k steve steve  7 Jul 18:02  16389
+
+      $ psql -c 'vacuum students'
+      VACUUM
+
+      $ l 16389*
+      Permissions Links Size User  Group Date Modified Name
+      .rw-------@     1 8.2k steve steve  7 Jul 18:02  16389
+      .rw-------@     1  25k steve steve 11 Jul 11:15  16389_fsm
+      .rw-------@     1 8.2k steve steve 11 Jul 11:15  16389_vm
+      ```
+
+   4. The visibility map
+
+      This fork is used to speed up the `VACUUM` process, skip the pages that do
+      not need `VACUUM` at all. Provided for table only.
+
+      This map stores 2 bits for every page in the table main fork, the first bit
+      is set if this page only contain up-to-date tuples. The second bit is set
+      if all the tuples in this page are dead.
+
+      If the first bit of a page is set, the `VACUUM` does not need to clean it.
+
+## Pages
+
+## Toast
+
+1. If a table has columns that can potentially use TOAST, then a TOAST table will
+   be created for it. No matter if it is needed or not.
+   
+   > QUES: Is this true?
+   >
+   > Future steve: yes
+   
+   ```sql
+   steve=# CREATE TABLE could_need_toast (
+           bin text
+   )
+   
+   steve=# WITH table_oid AS (
+           SELECT
+                   'pg_toast_' || cast(oid AS text) || '%' AS condition
+           FROM
+                   pg_class
+           WHERE
+                   relname = 'could_need_toast'
+   )
+   SELECT
+           relname
+   FROM
+           pg_class,
+           table_oid
+   WHERE
+           relname LIKE condition
+           AND relnamespace = (
+                   SELECT
+                           oid
+                   FROM
+                           pg_namespace
+                   WHERE
+                           nspname = 'pg_toast');
+          relname        
+   ----------------------
+    pg_toast_24695
+    pg_toast_24695_index
+   (2 rows)
+   ```
+
+2. TOAST for index only supports compression.
+
+3. The TOAST strategy used for a column depends on its type, use `\d+ <table>`
+   to see the details. 
+
+   Or you can take a look at the `attstorage` field from the `pg_attribute` table:
+
+   ```sql
+   steve=# SELECT
+         attname,
+         attstorage
+   FROM
+         pg_attribute
+   WHERE
+         attrelid = (
+                  SELECT
+                           oid
+                  FROM
+                           pg_class
+                  WHERE
+                           relname = 'students')
+                  AND attnum > 0;
+   attname | attstorage 
+   --------+------------
+   it      | p
+   name    | x
+   (2 rows)
+
+   steve=# \d+ students;
+                                                   Table "public.students"
+   Column |         Type          | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
+   -------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+   it     | integer               |           |          |         | plain    |             |              | 
+   name   | character varying(10) |           |          |         | extended |             |              | 
+   Access method: heap
+   ```
+
+   TOAST strategies listed below:
+
+   > QUES: How Postgres decides the strategy?
+
+   * plain 
+   
+     means that TOAST is not used (this strategy is applied to data types that 
+     are known to be “short,” such as the integer type).
+
+   * extended 
+   
+     allows both compressing attributes and storing them in a separate TOAST 
+     table. 
+   
+   * external 
+   
+     implies that long attributes are stored in the TOAST table in an uncompressed
+     state.
+
+   * main 
+      
+     Requires that long attributes to be compressed first, they will be moved to
+     TOAST table if compression does not help.
+
+4. Postgres TOAST algorithm
+
+   > source code: `src/backend/access/heap/heaptoast.c` `heap_toast_insert_or_update()`
+
+   > How postgres decides if an attribute should be compressed and moved to a 
+   > separate TOAST table.
+
+   > The threshold that triggers this algorithm is that a row's length exceeds
+   > `toast_tuple_target`, which by default is 2000 bytes.
+   >
+   > Postgres wants to have at least 4 tuples in a page (default 819)
+
+   If a row's length is bigger than `toast_tuple_target`, do the following steps,
+   every step is a while loop, whose condition is to check if this row is smaller
+   than `toast_tuple_target`, after running a loop procedure, check if the loop 
+   condition is satisfied, if yes, stop. So this algorithm stops as soon as possible.
+
+   1. Take a look at attributes whose strategy is `extended` or `external`, starting
+      from the largest var-len one, if its strategy is `extended`, compress it, 
+      if its strategy is `external`, do nothing. Then check this attribute's size,
+      if itself (the attribute rather than the row) is bigger than `toast_tuple_target`, 
+      move it to TOAST table.
+      
+      > 先抓大头儿
+      
+      This loop exits either because:
+      
+      1. There is no extended or external attributes to handle
+      2. Row size is smaller than `toast_tuple_target`
+      
+   2. If row size is still bigger than  `toast_tuple_target`, try step 2.
+   
+      Iterate over the var-len attributes (they should all be smaller than 
+      `toast_tuple_target`), blindly move it to TOAST table.
+      
+      > 既然 extended 和 external 的大头儿抓完没用，那就全抓!
+      
+      This loop exits either because:
+      
+      1. Extened and external attribute have all been removed from the row
+      2. Row size is smaller than `toast_tuple_target`
+      
+   3. If row size is still bigger than  `toast_tuple_target`, try step 3.
+   
+      > 变长字段里，extended 和 external 都杀光了，接下来搞 main 的，先压缩它们 
+      
+      Iterate over the attributes with the main strategy, compress them.
+      
+      This loop exits either because:
+      
+      1. All the main attributes have been compressed
+      2. Row size is smaller than `toast_tuple_target`
+      
+   4. If row size is still bigger than  `toast_tuple_target`, try step 4.
+   
+      > 压缩不够了，杀！
+   
+      Iterate over the attributes with the main strategy, move them to TOAST 
+      table.
+      
+      This loop exits either because:
+      
+      1. All the main attributes have been moved
+      2. Row size is smaller than `toast_tuple_target`
+      
+   After running all the 4 steps, it is still possible that the row size is bigger
+   than `toast_tuple_target`, if so, accept it.
+   
+5. The TOAST threshold `toast_tuple_target` is 2000, which can be changed at the
+   table level.
+   
+   Get it:
+   
+   ```sql
+   steve=# SELECT
+           pg_options_to_table(reloptions)
+   FROM
+           pg_class
+   WHERE
+           relname = 'students';
+    pg_options_to_table 
+   ---------------------
+   (0 rows)
+   ```
+   
+   0 rows because all the options are using the default value.
+   
+6. The storage strategy for an attribute can be changed via `alter table alter column`,
+   e.g., when you don't want an attribute to be compressed, you should change the
+   storage strategy to `external`:
+   
+   ```sql
+   steve=# ALTER TABLE students ALTER COLUMN name SET STORAGE EXTERNAL;
+   
+   steve=# SELECT
+           attname,
+           attstorage
+   FROM
+           pg_attribute
+   WHERE
+           attrelid = (
+                   SELECT
+                           oid
+                   FROM
+                           pg_class
+                   WHERE
+                           relname = 'students')
+                   AND attnum > 0;
+    attname | attstorage 
+   ---------+------------
+    it      | p
+    name    | e
+   (2 rows)
+   ```
+   
+7. TOAST tables are under schema/namespace `pg_toast`, they are named under 
+   `pg_toast_{tableoid}` or `pg_toast_{tableoid}_index`
+
+   ```sql
+   steve=# SELECT
+           relname
+   FROM
+           pg_class
+   WHERE
+           relnamespace = (
+                   SELECT
+                           oid
+                   FROM
+                           pg_namespace
+                   WHERE
+                           nspname = 'pg_toast')
+           LIMIT 10;
+          relname       
+   ---------------------
+    pg_toast_1255
+    pg_toast_1255_index
+    pg_toast_1247
+    pg_toast_1247_index
+    pg_toast_2604
+    pg_toast_2604_index
+    pg_toast_2606
+    pg_toast_2606_index
+    pg_toast_2612
+    pg_toast_2612_index
+   (10 rows)
+   ```
+   
+   Schema `pg_toast` is not included in search path, so TOAST tables are usually 
+   hidden:
+   
+   ```sql
+   steve=# SELECT
+           *       
+   FROM
+           pg_toast_1255;
+   ERROR:  relation "pg_toast_1255" does not exist
+   LINE 4:  pg_toast_1255;
+            ^
+   steve=# SELECT
+           COUNT(*)
+   FROM
+           pg_toast.pg_toast_1255;
+    count 
+   -------
+        3
+   (1 row)
+   ```
+   
+   
 
 # 1.2 Processes and Memory
 # 1.3 Clients and server protocol
