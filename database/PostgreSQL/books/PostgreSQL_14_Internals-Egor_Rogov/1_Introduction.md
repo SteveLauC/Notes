@@ -15,16 +15,17 @@
 >   * I am not quite familiar with the free space map and visibility map, perhaps
 >     this chapter can give me more insights
 >     * their functionality
->     * general format
+>     * general format (Not covered)
 >
->   * Perhaps the format of TOAST
+>   * Perhaps the format of TOAST (Not covered)
 >
->   * Postgres process architecture
+>   * Postgres process architecture (Not covered)
 
 > What have you learned from it
 >
-> *
-> *
+> * What is the global tablespace
+> * The rough structure of visibility map, and its functionality
+> * How Postgres stores a row in TOAST
 
 
 > * 1.1 Data Organization
@@ -75,8 +76,12 @@
    database has it.
 
    `pg_database` and `pg_tablespace` are shared across all the databases 
-   (cluster-level metadata), so system catalogs like this does not belong to 
+   (cluster-level metadata), so system catalogs like them does not belong to 
    any specific database. A dummy database with OID 0 is used internally. 
+
+   > QUES: where to check this dummy database with OID 0?
+
+   > `pg_database` and `pg_tablespace` are stored in the global tablespace.
 
 3. All the system catalogs use an `OID` as the primary key. And `OID` with the same
    value can appear in different system catalogs, Postgres ensures that the OIDs
@@ -281,7 +286,8 @@
      > my environment:
      >
      > Future steve: true, all the tablespaces except for `pg_global` has database
-     > dirs.
+     > dirs. The tables in `pg_global` are for the global cluster, they do not 
+     > belong to a specific database.
      >
      > ```sql
      > SELECT
@@ -316,7 +322,7 @@
    > ERROR:  tablespace location must be an absolute path
    > ```
 
-   Postgres will create a file under the specified location:
+   Postgres will create a directory under the specified location:
    
    ```sh
    $ l /home/steve/Desktop/pg_tablespace
@@ -354,7 +360,17 @@
    > This is affected by the original author Michael Stonebraker.
 
    All these things are stored in table `pg_class`, which was originally called
-   `pg_relation`, but the column names still have prefix `rel`.
+   `pg_relation`, authors at Berkeley renamed `pg_relation` to `pg_class`, but 
+   the column names still have prefix `rel`.
+
+   And take a look at Postgres's functions, `pg_relation_filenode()`, it is not
+   called `pg_class_filenode()`.
+
+   > `pg_relation` is being replaced by `pg_class`. currently we are only changing 
+   > the name in the catalogs but someday the code will be changed too. 
+   > -cim 2/26/90
+   >
+   > it finally happens.  -ay 11/5/94
 
 ## Files and Forks
 
@@ -414,7 +430,7 @@
       when adding new page, it can reuse the existing empty page rather than 
       allocating a new one.
 
-      Free space map is created lazily (when needed), the easily way to create it
+      Free space map is created lazily (when needed), the easiest way to create it
       is to invoke the `VACUUM` on the table:
 
       ```sh
@@ -450,7 +466,7 @@
 1. If a table has columns that can potentially use TOAST, then a TOAST table will
    be created for it. No matter if it is needed or not.
    
-   > QUES: Is this true?
+   > QUES(Solved): Is this true?
    >
    > Future steve: yes
    
@@ -527,7 +543,9 @@
 
    TOAST strategies listed below:
 
-   > QUES: How Postgres decides the strategy?
+   > QUES(Solved): How Postgres decides the strategy?
+   >
+   > Future steve: see the algorithm below.
 
    * plain 
    
@@ -559,7 +577,7 @@
    > The threshold that triggers this algorithm is that a row's length exceeds
    > `toast_tuple_target`, which by default is 2000 bytes.
    >
-   > Postgres wants to have at least 4 tuples in a page (default 819)
+   > Postgres wants to have at least 4 tuples in a page (default 8192)
 
    If a row's length is bigger than `toast_tuple_target`, do the following steps,
    every step is a while loop, whose condition is to check if this row is smaller
@@ -573,6 +591,9 @@
       move it to TOAST table.
       
       > 先抓大头儿
+
+      > NOTE: extended attributes will be compressed, but only in this step, i.e.,
+      > only if itself is bigger than `toast_tuple_target`.
       
       This loop exits either because:
       
@@ -581,10 +602,12 @@
       
    2. If row size is still bigger than  `toast_tuple_target`, try step 2.
    
-      Iterate over the var-len attributes (they should all be smaller than 
-      `toast_tuple_target`), blindly move it to TOAST table.
+      Iterate over the remaining `extended` and `external` attributes (they should
+      all be smaller than `toast_tuple_target`), blindly move it to TOAST table.
       
       > 既然 extended 和 external 的大头儿抓完没用，那就全抓!
+
+      > NOTE: extended attributes won't be compressed in this step.
       
       This loop exits either because:
       
@@ -635,10 +658,13 @@
    ```
    
    0 rows because all the options are using the default value.
+
+   When creating new tables, it can be specified with `WITH toast_tuple_target`, 
+   see [Storage Parameters](https://www.postgresql.org/docs/current/sql-createtable.html)
    
 6. The storage strategy for an attribute can be changed via `alter table alter column`,
-   e.g., when you don't want an attribute to be compressed, you should change the
-   storage strategy to `external`:
+   e.g., when you don't want an attribute could be possibly compressed, you should 
+   change the storage strategy to `external`:
    
    ```sql
    steve=# ALTER TABLE students ALTER COLUMN name SET STORAGE EXTERNAL;
@@ -706,7 +732,15 @@
            pg_toast_1255;
    ERROR:  relation "pg_toast_1255" does not exist
    LINE 4:  pg_toast_1255;
-            ^
+
+   steve=# SELECT
+           COUNT(*)
+   FROM
+           pg_toast.pg_toast_1255;
+    chunk_id | chunk_seq |
+   ------ 
+   [binary data]
+
    steve=# SELECT
            COUNT(*)
    FROM
@@ -717,9 +751,39 @@
    (1 row)
    ```
    
-   
 
 # 1.2 Processes and Memory
+
+1. Shard memory is allocated by the postmaster process, and will be used by all
+   the processes.
+
+2. Postgres (almost) never bypasses the operating system mechanisms to use 
+   direct I/O, so it results in double caching.
+
+3. Postgres memory architecture
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot_2024-07-18_Postgres_memory_arch.png)
+
 # 1.3 Clients and server protocol
 
+1. The postmaster process is also responsible for establishing connections. Once
+   a new connection occurs, postmaster spawns a backend process for it.
 
+   Child process inherit parent process's file descriptor.
+
+   > Isn't this a fork bomb?
+   >
+   > That's why we have auth and `max_connections`
+   >
+   > [doc](https://www.postgresql.org/docs/current/runtime-config-connection.html#RUNTIME-CONFIG-CONNECTION-SETTINGS)
+
+2. Short and large number of connections can harm performance
+
+   1. postmaster spawn a process for every connection, if a connection is short,
+      then this process will be created and destroyed soon.
+
+   2. The more connections you have, the more process the postmaster process needs
+      to monitor, postmaster scans the process list and restarts the dead ones,
+      this process is quite frequent.
+
+3. It is recommended to use a connection pool with Postgres, like PgBouncer.
