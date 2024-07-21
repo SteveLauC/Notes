@@ -3,7 +3,8 @@
 > * Before I read it
 >   * A general introduction to various aspects of Postgres
 > * After I read it
->   * ...
+>   * A general introduction to various aspects of Postgres, mostly from a user's
+>     perspective
 
 > What do you expect to learn from it (fill in this before reading it, or adjust
 > the listed stuff during reading process)

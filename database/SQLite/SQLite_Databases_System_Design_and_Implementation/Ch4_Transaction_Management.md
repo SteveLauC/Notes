@@ -13,7 +13,11 @@
 >     or errors in your data do not create unintended consequences for the 
 >     integrity of your table.
 >
->     > QUES: I don't think I really understand what does this C mean
+>     > QUES(Solved): I don't think I really understand what does this C mean
+>     >
+>     > Future steve: read [`this`][link]
+>     >
+>     > [link]: ../../PostgreSQL/books/PostgreSQL_14_Internals-Egor_Rogov/2_Isolation.md
 >
 >   * I (Isolation): when multiple users are reading and writing from the same 
 >     table all at once, isolation of their transactions ensures that the concurrent

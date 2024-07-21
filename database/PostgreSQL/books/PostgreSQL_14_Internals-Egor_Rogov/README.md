@@ -1,0 +1,5 @@
+* Part I Isolation and MVCC (Ch2 - Ch8)
+* Part II Buffer Cache and WAL (Ch9 - Ch11)
+* Part III Locks (Ch12 - Ch15)
+* Part IV Query Execution (Ch16 - Ch23)
+* Part V Type of Indexes (Ch24 - Ch29)
