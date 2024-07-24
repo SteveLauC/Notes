@@ -31,5 +31,7 @@
    Once a transaction is committed, it can survive system failures (guaranteed
    by WAL).
 
-2. Properties ACD are very basics for Databases, and should be implemented well.
+2. Properties ACD are very basics for databases, and should be implemented well.
    I is hard to do, so we have different Isolation levels.
+
+# 2.2 Isolation Levels and Anomalies in SQL Standard
