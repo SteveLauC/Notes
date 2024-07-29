@@ -47,14 +47,12 @@
 
 2. Some heuristic rules
 
-   1. Split conjunctive rules
-   2. Predicate pushdown
-   3. Projection pushdown
-   4. Replace cartesian product with join
-   5. Reorder predicates so that the DBMS applies the most selective one first
-   6. de-correlate correlated sub-queries
-   7. Expression rewriting
-   8. Elide predicates that won't change the query result 
+   1. Predicate pushdown
+   2. Projection pushdown
+   3. Replace cartesian product with join
+   4. Reorder predicates so that the DBMS applies the most selective one first
+   5. de-correlate correlated sub-queries
+   6. Elide predicates that won't change the query result 
       
       For instance, query `SELECT * FROM t WHERE 1 = 0` will return nothing 
       because of predicate `1 = 0`, Postgres uses [One-time filter][link] to return
@@ -81,6 +79,63 @@
       (1 row)
       ```
 
+   7. Join elimination
+
+      ```sql
+      SELECT a1.* 
+      FROM a AS a1 JOIN a AS a2 
+      ON a1.id = a2.id;
+      ```
+
+      QUES: Well, this example from the class seems like only work if field `id`
+      is key:
+
+      ```sql
+      steve=# create table A (id int, text varchar(10));
+      CREATE TABLE
+      steve=# insert into A values (0, '0');
+      INSERT 0 1
+      steve=# insert into A values (0, '0');
+      INSERT 0 1
+
+
+      steve=#       SELECT a1.*
+            FROM a AS a1 JOIN a AS a2
+            ON a1.id = a2.id;
+       id | text
+      ----+------
+        0 | 0
+        0 | 0
+        0 | 0
+        0 | 0
+      (4 rows)
+
+      steve=# select * from A;
+       id | text
+      ----+------
+        0 | 0
+        0 | 0
+      (2 rows)
+      ```
+
+
+   8. Merge predicates with redundancy
+
+      > QUES: will this make expression evaluation faster?
+      >
+      > You don't need to access `val` twice?
+
+      ```sql
+      SELECT * FROM t WHERE a BETWEEN 1 AND 100 OR a BETWEEN 50 AND 150;
+      ```
+
+      ```sql
+      SELECT * FROM t WHERE a BETWEEN 1 AND 150;
+      ```
+
+   9. Split conjunctive rules
+
+      > QUES: will this make expression evaluation faster?
 
 3. Expression rewriting
 
