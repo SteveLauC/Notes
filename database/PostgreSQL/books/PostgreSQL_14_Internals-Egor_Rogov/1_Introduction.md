@@ -26,7 +26,8 @@
 >
 > * What is the global tablespace
 > * The rough structure of visibility map, and its functionality
-> * How Postgres stores a row in TOAST
+> * How Postgres stores a row in TOAST, the algorithm used to decide if a field is
+>   compressed and moved to TOAST tables.
 
 
 > * 1.1 Data Organization
@@ -77,7 +78,7 @@
    database has it.
 
    `pg_database` and `pg_tablespace` are shared across all the databases 
-   (cluster-level metadata), so system catalogs like them does not belong to 
+   (cluster-level metadata), so system catalogs like them do not belong to 
    any specific database. A dummy database with OID 0 is used internally. 
 
    > QUES: where to check this dummy database with OID 0?
@@ -375,14 +376,14 @@
 
 ## Files and Forks
 
-1. As we already know, a fork is a file, whose name is an `OID` followed by an
-   optional suffix indicating the fork type:
+1. As we already know, a fork is a file, whose name is an ~~OID~~ `relfilenode`
+   followed by an optional suffix indicating the fork type:
 
    * None: main fork
    * Some(fsm): free space map fork
    * Some(vm): visibility map fork
 
-   When the file exceed maximum size limit (1B by default, decided by `BLCKSZ`
+   When the file exceed maximum size limit (1GiB by default, decided by `BLCKSZ`
    and `RELSEG_SIZE`), a new file (called segment) will be created, the segment
    number (starting from 1, number 0 will not be shown) will be added to the 
    end of the file name (x_fsm.1)
@@ -405,6 +406,8 @@
       > With suffix `_init`
 
       It is a dummy/empty file that is used to "restore" unlogged tables after crash.
+      
+      > unlogged tables means they don't have WAL.
 
       ```sh
       $ l *_init
@@ -415,6 +418,14 @@
       > QUES: I don't quite understand what is the point of keeping an empty file,
       > if we are clear that it is empty, why not just truncate the main fork after
       > crash.
+      
+      > QUES: How Postgres detects crash?
+      >
+      > My current thought is that on every start, check the WAL and if there is
+      > a `checkpoint` log in the tail, if not, then re-do (re-apply) the logs 
+      > since the last `checkpoint` log.
+      >
+      > If the above procedure is right, then Postgres 
 
    3. The free space map
 
@@ -459,6 +470,8 @@
       if all the tuples in this page are dead.
 
       If the first bit of a page is set, the `VACUUM` does not need to clean it.
+      
+      > QUES: What is the second bit for then?
 
 ## Pages
 
@@ -593,7 +606,7 @@
       
       > 先抓大头儿
 
-      > NOTE: extended attributes will be compressed, but only in this step, i.e.,
+      > NOTE: an extended attribute will be compressed, but only in this step, i.e.,
       > only if itself is bigger than `toast_tuple_target`.
       
       This loop exits either because:
@@ -603,13 +616,12 @@
       
    2. If row size is still bigger than  `toast_tuple_target`, try step 2.
    
-      Iterate over the remaining `extended` and `external` attributes (they should
-      all be smaller than `toast_tuple_target`), blindly move it to TOAST table.
+      Iterate over the remaining `extended`(compressed) and `external` attributes 
+      (they should all be smaller than `toast_tuple_target`), blindly move it to 
+      TOAST table.
       
       > 既然 extended 和 external 的大头儿抓完没用，那就全抓!
 
-      > NOTE: extended attributes won't be compressed in this step.
-      
       This loop exits either because:
       
       1. Extened and external attribute have all been removed from the row
@@ -693,6 +705,8 @@
    
 7. TOAST tables are under schema/namespace `pg_toast`, they are named under 
    `pg_toast_{tableoid}` or `pg_toast_{tableoid}_index`
+   
+   > QUES: does it use `tableoid` 
 
    ```sql
    steve=# SELECT
