@@ -82,8 +82,9 @@
    any specific database. A dummy database with OID 0 is used internally. 
 
    > QUES: where to check this dummy database with OID 0?
-
-   > `pg_database` and `pg_tablespace` are stored in the global tablespace.
+   >
+   > `pg_database` and `pg_tablespace` are stored in the global tablespace, and
+   > tables under the global tablespace do not belong to any database.
 
 3. All the system catalogs use an `OID` as the primary key. And `OID` with the same
    value can appear in different system catalogs, Postgres ensures that the OIDs
@@ -255,7 +256,7 @@
      6303	pg_auth_members_oid_index
      ```
 
-     > Question: the file layout under `$PGDATA/base` is that the first layer
+     > QUES(Solved): the file layout under `$PGDATA/base` is that the first layer
      > of directories are databases:
      >
      > ```
@@ -317,7 +318,7 @@
    CREATE TABLESPACE test_tablespace OWNER steve LOCATION '/home/steve/Desktop/pg_tablespace';
    ```
 
-   > Location must be a absolute path.
+   > Location must be an absolute path.
    >
    > ```sql
    > steve=# CREATE TABLESPACE test_tablespace2 OWNER steve LOCATION 'foo';
@@ -358,6 +359,7 @@
    * index
    * materialized view
    * sequences (one row table)
+   * view
 
    > This is affected by the original author Michael Stonebraker.
 
@@ -410,6 +412,8 @@
       > unlogged tables means they don't have WAL.
 
       ```sh
+      $ psql -c 'CREATE UNLOGGED TABLE bar (id INT)'
+      $ cd $PGDATA/base
       $ l *_init
       Permissions Links Size User  Group Date Modified Name
       .rw-------@     1    0 steve steve 11 Jul 10:43  24692_init
@@ -466,7 +470,7 @@
       not need `VACUUM` at all. Provided for table only.
 
       This map stores 2 bits for every page in the table main fork, the first bit
-      is set if this page only contain up-to-date tuples. The second bit is set
+      is set if this page only contains up-to-date tuples. The second bit is set
       if all the tuples in this page are dead.
 
       If the first bit of a page is set, the `VACUUM` does not need to clean it.
@@ -519,6 +523,9 @@
    ```
 
 2. TOAST for index only supports compression.
+
+   > So there won't be any TOAST tables for index. But I can barely image that
+   > one can have an index entry that is 2KiB big.
 
 3. The TOAST strategy used for a column depends on its type, use `\d+ <table>`
    to see the details. 
@@ -589,7 +596,7 @@
    > separate TOAST table.
 
    > The threshold that triggers this algorithm is that a row's length exceeds
-   > `toast_tuple_target`, which by default is 2000 bytes.
+   > `toast_tuple_target`, which, by default, is 2000 bytes.
    >
    > Postgres wants to have at least 4 tuples in a page (default 8192)
 
@@ -606,8 +613,8 @@
       
       > 先抓大头儿
 
-      > NOTE: an extended attribute will be compressed, but only in this step, i.e.,
-      > only if itself is bigger than `toast_tuple_target`.
+      > NOTE: All extended attribute will be compressed (but only in this step), 
+      > if its row is bigger than `toast_tuple_target`.
       
       This loop exits either because:
       
