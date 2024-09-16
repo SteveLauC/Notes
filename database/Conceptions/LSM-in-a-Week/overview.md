@@ -16,7 +16,7 @@
 4. MemTable can be seen as some kind of buffer for buffered I/O. (write to the
    disk in batches)
 
-# Conponents
+# Components
 
 1. Write-ahead log (WAL) to persist temporary data for recovery.
 2. SSTs on the disk for maintaining a **tree** structure.
@@ -40,9 +40,26 @@
    > After (1) and (2) completes, we can notify the user that the write operation
    > is completed.
 
-3. When a memtable is full, flush it to the disk as an SST file **in the 
+3. When a mem-table is full, flush it to the disk as an SST file **in the 
    background**
+
+   > QUES: How many mem-tables will be used? 
+   >
+   > At least 2, I guess.
+   >
+   > In the structure used by this tutorial, only one mem-table is mutable.
+
+   > QUES(Solved): what is the structure used in the mem-table.
+   >
+   > Skip list used in tutorial.
+
+   > QUES(Solved): Will freezing the mutable mem-table block write? also read?
+   >
+   > In this tutorial, yes.
+
 4. Compaction **in the background**
+
+   > QUES: Will compaction block read?
 
 # Read Flow
 
