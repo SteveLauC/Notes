@@ -43,8 +43,8 @@
 * `src/include/access/htup_details.h` heap tuple header definition (includes `htup.h`)
    Header for `src/backend/access/common/heaptuple.c`
 * `src/include/access/htup.h` heap tuple definition
-* `src/include/access/heapam.h`: defines heap access methods (CRUD)
-* `src/backend/access/heap/heapam.c`: implements heap access methods (CRUD)
+* `src/include/access/heapam.h`: defines heap Table Access Methods (CRUD)
+* `src/backend/access/heap/heapam.c`: implements heap table Access Methods (CRUD)
 * `src/backend/access/common/heaptuple.c`: This file contains heap tuple accessor
   and mutator routines, as well as various tuple utilities.
   The prototypes of these functions are defined in `src/include/access/htup_details.h`
