@@ -12,8 +12,7 @@ Steve's notes
 > * After I read it
 >   * ...
 
-> What do you expect to learn from it (fill in this before reading it, or adjust
-> the listed stuff during reading process)
+> What do you expect to learn from it (fill in this before reading it)
 >
 > * If you are new to it, ...
 > * If you already knew something about it, ... 
