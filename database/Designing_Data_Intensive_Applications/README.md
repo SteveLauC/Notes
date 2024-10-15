@@ -5,8 +5,9 @@
    
    Data-intensive means that the application's bottlenecks are usually:
    
-   * How data is stored
-   * How data is processed
+   * The amount of data 
+   * The complexity of data
+   * The speed at which it is changing
    
    > We are having more and more cores, we need something like "Building multi-core
    > applications".
