@@ -69,10 +69,44 @@
 
 1. Hareware faults will be pretty common if you have a lot of machines.
 
-2. How to cure
+2. How to cure hardware faults - redunancy
+
+   * disk - RAID
+   * CPU - make it plugable
+   * Power - have backup or dual power
+   
+   
+   And, having redundancy for hardware **components** will be sufficient for most
+   applications. Multi-machine redundancy was only required by a small number
+   of applications for which high availability was essential.
+   
+3. Hardware faults are often independent from each other. Though sometimes they
+   can be correlated, e.g., overheat in temperature makes everything dead, but
+   under most cases, they are not related.
+   
+   As a contrast, software fautls are usually related, and can have chain reaction.
 
 ## Software faults
+
+
+Software faults are usually correlated, for instance,
+
+1. A bug in a low-level software can cause everything to crash, e.g., bugs in 
+   the Linux kernel.
+   
+2. If a process uses up all the resources on a machine, then everything else 
+   on the machine will likely be unavailable.
+
+3. An error in one component can trigger a fault in another component, which in
+   turn triggers further faults.
+   
+There is no general, good way to prevent software faults, be careful and do more
+tests!
+
 ## Human errors
+
+TIL that the term telemetry (遥测) comes from rocket engineering.
+
 ## How important is reliability
 # Scalability
 ## Describing Load
