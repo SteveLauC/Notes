@@ -24,6 +24,25 @@
 > * tail latency is hard to optimize because they are often affected by things 
 >   that are not in control
 
+> TOC
+>
+> * Thinking About Data Systems
+> * Reliability
+>   * Hardware faults
+>   * Software faults
+>   * Human errors
+>   * How important is reliability
+> * Scalability
+>   * Describing Load
+>   * Describing Performance
+> * Approaches for Coping with load
+> * Maintainability
+>   * Operability(可运维性): Making Life Easy for Operations
+>   * Simplicity: **Managing Complexity**
+>   * Evolvability(extensibility): Making Change Easy
+> * Summary
+
+
 # Thinking About Data Systems
 
 1. What are data systems

@@ -24,6 +24,8 @@ Steve's notes
 > *
 
 
+> TOC
+>
 > * Section x
 >   * Section x.y
 
