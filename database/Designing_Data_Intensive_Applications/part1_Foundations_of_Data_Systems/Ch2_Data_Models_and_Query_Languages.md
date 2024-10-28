@@ -4,7 +4,18 @@
 >   * Introduction to verious data models, their pros and cons.
 >   * Introduction to verious query languages, their pros and cons.
 > * After I read it
->   * ...
+>   * Basic introduction to verious data models, qls, their pros and cons.
+>     * Relational model
+>     * Document model
+>       * MongoDB's pipeline 
+>     * hierarchical model
+>     * network model
+>     * graph model
+>       * Cypher
+>       * SPARQL
+> * One-to-many relationships 
+> * Many-to-one relationships 
+> * Many-to-many relationships 
 
 > What do you expect to learn from it (fill in this before reading it)
 >
@@ -16,8 +27,9 @@
 
 > What have you learned from it
 >
-> *
-> *
+> * The history of NoSQL
+> * The definitions of one-to-many, many-to-one, many-to-many relationships
+> * A general intro to graph databases 
 
 
 > TOC
@@ -172,13 +184,26 @@
    their company. And it can express many-to-many relationship, e.g., student B1
    takes courses C1, C2, C3 and C4, and course C3 has students D1, D2, D3, D4.
    
-   > QUES: Difference between network model and graph model
+   > QUES(Solved): Difference between network model and graph model
    >
    > [SO: What is the difference between a Graph Database and a Network Database?][link]
    >
    > [link]: https://stackoverflow.com/q/5040617/14092446
    >
-   > Revisit this when you read page 60
+   >
+   > 1. CODASYL (the ql of network model) is imperative, but the qls for graph
+   >    databases are often declarative.
+   > 2. In the netwrok model, to reach a record, you have to traverse its access 
+   >    path, while in graph model, you can access any vertex by a unique ID.
+   > 3. In the network model, the database had a schema that specified which record 
+   >    type could be nested within which other record type. In a graph database, 
+   >    there is no such restriction: any vertex can have an edge to any other vertex. 
+   >    This gives much greater flexibility for applications to adapt to changing 
+   >    requirements.
+   > 4. In the network model, the children of a record were ordered, in graph 
+   >    databases, vertices and edges are not ordered.
+   >
+   > In conclusion, graph database is more easy to use and flexible.
    
 3. Access Path
 
@@ -218,13 +243,138 @@ Rockset, as a SQL database, is "schema-on-write".
 3. And vector database is also joining the convergence party (in 2024)
 
 # Query Languages for Data
+
+1. SQL is a declarative language, a declarative language does not only make 
+   application code easier to write, but also allows the database system to 
+   optimize the performance **without breaking application code**.
+   
+   It is a layer of abstraction that hides the implementation details of database
+   system.
+   
 ## Declarative Queries on the Web
+
+1. CSS is also a declarative language
+
 ## MapReduce Querying
+
+> The book says: "MapReduce is niehter a declarative query language nor a fully
+> imperative query API, but somewhere in between"
+>
+> It is indeed surprising to see MapReduce here
+
+1. MapReduce is a programming model popularized by Google, many NoSQL databases
+   that shard data into many partitions also adopt limited form of MapReduce.
+   
+   > Elasticsearch's distributed query execution is basically MapReduce.
+
 # Graph-Like Data Models
+
+> Postgres has an extension that turns it into a graph database: Apache AGE
+
+1. Relational model can hanlde many-to-many relationships, but the support is
+   limited, when the connection between entries get much more complicated, graph
+   model should be used instead.
+   
+
 ## Property Graphs
+   
+1. For graph model, there are 2 types of graph data model:
+
+   1. Property graph model
+      * Neo4j
+      * Titan
+      * InfiniteGraph
+   2. triple-store model
+      * Datomic
+      * AllegroGraph
+
+2. In the property graph model
+
+   each vertex consists of:
+   
+   1. A unique identifier
+   2. A set of incoming edges
+   3. A set of outgoing edges
+   4. A collection of properties (key-value pairs)
+   
+   Each edge consists of:
+   
+   * A unique identifier
+   * The vertex at which this edge starts
+   * The vertex at which this edge ends
+   * A label to describe the kind of relation between 2 vertices it connects
+   * A collection of properties (key-value pairs)
+   
+   Considering this, you can think of a graph store as 2 relational tables, one
+   for vertices, one for edges:
+   
+   ```sql
+   create table vertices (
+       vertex_id integer primary key,
+       properties json
+   );
+   
+   create table edges (
+       edge_id integer primary key,
+       start_vertex integer references vertices (vertex_id),
+       end_vertex integer references vertices (vertex_id),
+       label text,
+       properties json,
+   );
+   
+   -- To be able to locate of incoming and outgoing edges for a given vertex quickly
+   -- incoming edges: select edge_id from edges where end_vertex = {GIVEN VERTEX}
+   -- outgoing edges: select edge_id from edges where start_vertex = {GIVEN VERTEX}
+   crate index edges_start on edges (start_vertex);
+   crate index edges_end on edges (end_vertex);
+   ```
+   
+   Some important aspects of this model are:
+   
+   1. Any vertex can have an edge connecting it with other vertices. There is 
+      no schema that restricts which kinds of vertices can or cannot be associated.
+      
+      > QUES: Could triggers be used for this?
+      
+   2. Given any vertex, you can efficiently find both its incoming and its outcoming
+      edges, and thus traverse the graph.
+   
+
 ## The Cypher Query Language
+
+1. The cypher query language is a declarative query language created for property
+   graphs, created by Neo4j.
+   
+   > It is named aftere a character in the movie The Metrix
+   
 ## Graph Queries in SQL
+
+1. For our SQL tables defined above, we can do graph queries in SQL, but it would
+   be quite clumsy. Postgres AGE provides a `cypher()` function, which allows you
+   to write Cyper query language in SQL.
+
 ## Triple-Stores and SPARQL
+
+1. Triple-stores is another type of graph model, it stores every thing in aa 
+   triple (subject, predicate, object), e.g., `(foo, lives_with_in, U.S.)`
+   
+   The "subject" is equivalent to a vertex in a graph, what the "predicate" and
+   "object" are depends on what the "object" is:
+  
+   1. If "object" is a primitive type literal, then "predicate" and "object" behave
+      like an property of "subject".  
+      
+   2. If "object" is another vertex in the graph, then "predicate" will be an edge
+      in the graph.
+      
+2. SPARQL predates Cypher, and Cyper's pattern matching was borrowed from SPARQL, 
+   so they are quite similar.
+   
+   I kinda like the syntax of SPARQL.
+
 ## THe foundation: Datalog
+
+Datadog is a query language, not that company.
+
 # Summary
 
