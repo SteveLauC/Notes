@@ -7,7 +7,7 @@ Steve's notes
 ```md
 > This chapter is about:
 >
-> * Before I read it
+> * Before I read it (Look at the TOC)
 >   * ...
 > * After I read it
 >   * ...
