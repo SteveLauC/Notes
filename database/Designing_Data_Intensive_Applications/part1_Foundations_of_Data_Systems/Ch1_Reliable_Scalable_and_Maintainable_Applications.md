@@ -96,6 +96,7 @@
    * disk - RAID
    * CPU - make it plugable
    * Power - have backup or dual power
+   * Software - distributed software with replicas
    
    
    And, having redundancy for hardware **components** will be sufficient for most

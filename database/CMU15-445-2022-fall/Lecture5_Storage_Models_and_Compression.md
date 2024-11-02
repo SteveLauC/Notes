@@ -306,6 +306,15 @@ can fit the workloads most.
      >
      > 320000000 / 430001376000 = 0.000744184
 
+     Queries can be sped up if it can be evaluated using bits, e.g.:
+     
+     ```
+     SELECT * FROM people WHERE sex = 'M';
+     
+     -- can be rewritten as
+     
+     SELECT * FROM people WHERE sex & 0b10 != 0;
+     ```
 
    * Delta Encoding
 
