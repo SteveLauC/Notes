@@ -40,6 +40,7 @@
 >   Another benefit of doing so is field tags take less space so that your encoding
 >   is more compact.
 > * ASN.1 looks cool
+> * REST vs SOAP
 
 
  TOC
@@ -276,4 +277,9 @@ process in cases they don't share memory:
 
 ## Dataflow Through Databases
 ## Dataflow Through Services: REST and RPC
+
+1. Difference between REST and SOAP
+   
+   [SO question](https://stackoverflow.com/a/19884975/14092446)
+
 ## Messsage-Parsing Dataflow
