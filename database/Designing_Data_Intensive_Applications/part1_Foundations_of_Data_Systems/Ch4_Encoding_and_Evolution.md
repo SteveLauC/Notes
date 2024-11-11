@@ -7,6 +7,7 @@
 >   * Introduces some textual formats: XML/JSON/CSV
 >   * Introduces some binary formats: Thrift/Protobuf/Avro
 >   * How these binary formats handle backward and forward compatibility
+>   * Dataflow: this section is boring, so I skipped most parts
 
 > What do you expect to learn from it (fill in this before reading it)
 >
@@ -283,3 +284,7 @@ process in cases they don't share memory:
    [SO question](https://stackoverflow.com/a/19884975/14092446)
 
 ## Messsage-Parsing Dataflow
+
+> Message Queue, asynchronous message passing
+
+1. QUES: I have no idea what the actor model is...
