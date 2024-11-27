@@ -35,9 +35,13 @@
    
    For heap storage, A tuple is referred by `(PageID, ItemId)`, the actual
    tuples can be moved within the page, e.g., in the vacuum process, dead
-   tuples will be removed, and the tuples within this page will defragmented,
+   tuples will be removed or sorted, and the tuples within this page will defragmented,
    meaning that tuples will be moved. With another layer of indirection `ItemId`,
    such a move won't break the tuple identifier.
+   
+   > See https://github.com/SteveLauC/Notes/blob/main/database/Postgres/src/storage/page.md
+   >
+   > `void PageRepairFragmentation(Page page)`
 
 # pgvector HNSW index page layout
 

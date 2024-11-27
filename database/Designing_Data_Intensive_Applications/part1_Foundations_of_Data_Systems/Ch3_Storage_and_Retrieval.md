@@ -24,7 +24,7 @@
 
 > What have you learned from it
 >
-> * log file + hash index => bitcast, this is really cool
+> * log file + hash index => bitcask, this is really cool
 > * Why compaction in LSM could potentially harm performance
 > * C-store (Vertica)'s replicas have different sort order, interesting
 > * The way C-store (Vertica) writes data into column-based format becomes pretty
