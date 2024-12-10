@@ -122,10 +122,14 @@
 
 ## Partitioning Secondary Indexes by Document
 
+Build indexes for each partition separately, ES uses this approach. This is also
+called local index. For queries over the index, you need to query all the partitions
+and merge the results (MapReduce)
 
 ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202024-11-28%20at%201.41.46%E2%80%AFPM.png)
 
-ES uses this approach
+The book says that this approach suffers from tail latency amplification due to
+its query mode.
 
 ## Partitioning Secondary Indexes by Term
 # Rebalancing Partitions
