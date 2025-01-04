@@ -1277,12 +1277,14 @@ section 16.2.4, we should:
    1. Non-correlated subquery (非关联子查询)
       
       This means that the subquery does not involve anything from the outer 
-      relation, i.e., they are totally indepedent.
+      relation, i.e., they are totally independent.
 
-      This kinda of subquery needs no special optimization, just execute the
-      subquery, materialize it and pass it to the upper executors.
+      This kinda of subquery needs no special optimization, we decompose it, 
+      execute the subquery, materialize it and pass it to the upper executors.
 
-      We care more obout correlated subquery.
+      If we don't decompose it, if it is in the `WHERE` clause, we would run
+      it once for every tuple in the outer table. MySQL does this stupid thing
+      for a long time.
      
    2. Correlated subquery (关联子查询)
 
@@ -1293,6 +1295,14 @@ section 16.2.4, we should:
       correlated field) from the outer relation.
 
       Let's see an example:
+
+      ```sql
+      D CREATE TABLE instructor (id INT, name STRING);
+      D CREATE TABLE teaches (id INT, year INT, course TEXT);
+      D INSERT INTO instructor VALUES (0, 'steve');
+      D INSERT INTO instructor VALUES (1, 'mike');
+      D INSERT INTO teaches VALUES (0, 2019, 'math'), (0, 2019, 'english');
+      ```
 
       ```sql
       D SHOW TABLES;
@@ -1373,7 +1383,7 @@ section 16.2.4, we should:
       └─────────┘
       ```
 
-      As you can see, it returns 2 "steve" since instructor steve has teached 
+      As you can see, it returns 2 "steve" since instructor steve has taught 
       2 courses. Then, how can I optimize this correctly, using semi join.
 
       ```sql
@@ -1401,12 +1411,18 @@ section 16.2.4, we should:
    * left semi join
    * right semi join
 
-   Different from other join we have seen before, semi join only return the half
+   Different from other join we have seen before, semi join only returns the half
    part data. Left semi join would return tuples from the left table, right semi
    join would return tuples from the right table.
 
+   > NOTE: DuckDB supports the `SEMI JOIN` or `ANTI JOIN` syntaxes, but Postgres
+   > does not, so they are possibly not standard SQL.
+   >
+   > And, DuckDB does not support `LEFT SEMI JOIN` or `RIGHT SEMI JOIN`, the 
+   > `SEMI JOIN` will return the tuple of the left table.
+
    Anti join is in the reverse direction of semi join, a tuple will be returned
-   only if it does satisfy the join condition.
+   only if it does not satisfy the join condition.
 
 3. Decorrelation is hard, many optimizers do only a limited amount of decorrelation.
 

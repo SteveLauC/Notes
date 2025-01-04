@@ -63,6 +63,10 @@
    too many tuples at once, and we have fewer function calls compared to the 
    iterator model.
 
+   > Future steve: I think it is also better to reduce the cost of virtual
+   > function call, so, if materialization model is usable, then it would be
+   > better than the iterator model.
+
    And I think this model makes a lot of sense for in-memory databases, like 
    VoltDB. When things are in memory, the cost of the virtual functions calls
    can be dominant.
@@ -71,6 +75,13 @@
    tuples at once, we typically want something in the middle.
 
 6. Push-based model gives you more control over the execution.
+
+7. Difference between materialization model and vectorized model
+   
+   In materialization model, an operator only returns until it receives all the 
+   output from its child operator. While in the vectorized model, it returns as
+   long as the accumulated output reaches a specific threshold.
+
 
 # Access Methods
 
@@ -131,13 +142,38 @@
 
 4. Multiple index scan
 
-   > Elasticsearch does this by default.
+   > Elasticsearch does this by default, if your query accesses multiple fields, 
+   > e.g., a boolean query:
+   >
+   > ```json
+   > {
+   >   "query": {
+   >     "bool": {
+   >       "should": [
+   >         {"term": { "int": 1 } },
+   >         {"term": { "str": "foo" } }
+   >       ]
+   >     } 
+   >   }
+   > }
+   > ```
+   >
+   > The above query accesses 2 index structures, the BKD-tree used for the `int` 
+   > field, and the full-text index for `str`.
 
    Advanced DBMSs can use multiple indexes for a single query.
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%20from%202024-04-12%2011-22-39.png)
 
    * [PostgreSQL Indexes Bitmap Scan](https://www.postgresql.org/docs/current/indexes-bitmap-scans.html)
+     
+      To combine multiple indexes, the system scans each needed index and prepares 
+      a bitmap in memory giving the locations of table rows that are reported as 
+      matching that index's conditions. The bitmaps are then ANDed and ORed together 
+      as needed by the query. Finally, the actual table rows are visited and returned.
+
+      > This is exactly how Lucene employs multiple indexes.
+
    * [MySQL Indexes Merge](https://dev.mysql.com/doc/refman/8.0/en/index-merge-optimization.html)
 
 # Modification Queries

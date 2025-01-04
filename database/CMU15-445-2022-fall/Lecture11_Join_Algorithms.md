@@ -40,7 +40,7 @@
    materialization).
 
 
-4. What are materialization and late materialization
+4. What are materialization and late materialization (defer column read)
 
    > FYI, materialization is called "物化" in chinese, and late materialization
    > is "延迟物化".

@@ -99,12 +99,14 @@
 ## Skewed Workloads and Relieving Hot Spots
 # Partitioning and Secondary Indexes
 
-> The previous section introduces how to partition data, this section is about 
-> partitioning index, secondary index especially, because primary index identifies
-> records through the unique key, you partition data via the key, you can partition
-> the primary index in the same way. Secondary index does not usually involve
-> key fields, so partitioning it is more complicated.
-
+> The previous section introduces how to partition data, specifically, how to
+> partition key-value data, if we apply this strategy to relational model
+> or document model, the key we choose for partitioning, is usually the primary
+> key or document ID.
+>
+> Partitioning by primary key or document ID makes partitioning secondary indexes
+> hard, because secondary index does not usually involve primary key or document
+> ID.
 
 1. Search engines like Elasticsearch or Solr are full of secondary indexes, they
    build index for all the fields.
