@@ -6,11 +6,10 @@
 
 > Agenda in my opinion:
 >
-> 1. Optimization
+> 1. Query Optimization
 >    * Heuristic/Rule-based optimization
->    * Query cost model: a model to estimate query cost
->    * Cost-based optimization
-> 2. How to construct the plan (query planning)
+>    * Cost-based optimization (for physical plans, the metrics are all physical stuff)
+> 2. Query planning
 
 # Query optimization
 
@@ -290,6 +289,13 @@
    2. Estimate their cost
    3. Pick the plan with the lowest cost
 
+5. In most cases, a CBO pursues the plan that takes the least time. However, it
+   could also favor other behaviors, e.g.,:
+
+   1. Pick the plan with lowest latency, i.e., return the first row faster
+   2. Pick the plan with lowest memory usage
+
+   depending on your cost model.
 
 # Query Planning
 
