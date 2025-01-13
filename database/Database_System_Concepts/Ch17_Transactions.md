@@ -141,7 +141,7 @@
 
          > We cannot swap the order of 2 operations that belong to the same tx.
 
-      2. They do not conflict
+      2. They do not conflict (they conflict if one of them is write)
 
       Then we can swap their order to produce a new schedule, which is equivalent
       to the original schedule.
@@ -151,6 +151,21 @@
       into the other one.
    7. Conflict serializable schedule: A schedule that is conflict-equivalent to
        a serial schedule
+
+
+2. DBMS needs to ensure that with concurrency, the schedule is still **serializable**,
+   i.e., will produce a consistent database state.
+
+   So, we want to be able to determine if a schedule is serializable, but doing 
+   this is hard as it requires us to analyze all the operations a transaction 
+   does and how transactions interact with each other.
+
+   For this reason, we shall not consider the various types of operations that a 
+   transaction can perform on a data item, but instead consider only two operations
+   read and write.
+
+   > TODO: commit operation will be considered until Section 17.7
+
 
 2. How to determine if a schedule is conflict serializable?
 
@@ -180,10 +195,10 @@
    > of $T_{i}$ has to be before $T_{j}$'s operations, which is $T_{i}$ has to be 
    > before $T_{j}$.
 
-   If there is an edge from $T_{i}$ to $T_{j}$, and also an edge from $T_{j}$ to 
-   $T_{i}$, then $T_{i}$ must be executed before $T_{j}$, and $T_{j}$ must be 
-   executed before $T_{i}$, which is impossible, then we know that this schedule
-   is not conflict serializable.
+   If there is a path (not edge) from $T_{i}$ to $T_{j}$, and also a path from 
+   $T_{j}$ to $T_{i}$, i.e., there is a circle, then $T_{i}$ must be executed 
+   before $T_{j}$, and $T_{j}$ must be executed before $T_{i}$, which is 
+   impossible, then we know that this schedule is not conflict serializable.
 
 3. Even though a non-conflict serializable schedule can produce the same result
    as a serial schedule, e.g., the above schedule is not conflict serializable, 
@@ -215,11 +230,121 @@
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-01-05%20at%209.29.50%E2%80%AFPM.png)
    
-
 # 17.7 Transaction Isolation and Atomicity
+
+In this section, we cover what to do with tx failure.
+
+For a failed tx, we have to abort it and undo all its effects, to guard the
+atomicity property. In a system that allows concurrent execution, the atomicity 
+property requires that any transaction that is dependent on the failed tx
+should be also aborted.
+
+To achieve this, we need to **place restrictions** on the types of schedules 
+permitted in the system.
+
+In the following two subsections, we address the issue of what schedules are 
+acceptable from the viewpoint of recovery from transaction failure. 
+
 ## 17.7.1 Recoverable Schedules
+
+1. A recoverable schedule is one where, for each pair of transactions $T_{i}$ and 
+   $T_{j}$ such that $T_{j}$ reads a data item previously written by $T_{i}$ (dirty 
+   read!!!), the commit operation of $T_{i}$ appears before the commit operation 
+   of $T_{j}$.
+
+2. Here is an example schedule that is not recoverable:
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-01-06%20at%2012.27.25%E2%80%AFPM.png) 
+
+   But it is a conflict serializable schedule, it is conflict-equivalent to serial
+   schedule `T6, T7`.
+   
+3. Serial schedules are recoverable schedules.
+
 ## 17.7.2 Cascadeless Schedules
+
+1. First, let's define "Cascading aborts"
+
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-01-06%20at%2012.46.03%E2%80%AFPM.png) 
+
+   In the above schedule, $T_{9}$ reads A written by $T_{8}$, so $T_{9}$ depends 
+   on $T_{8}$, and $T_{10}$ reads A written by $T_{9}$, so $T_{10}$ relies on $T_{9}$. 
+   The abort of $T_{8}$ will cause $T_{9}$ to abort, the abort of $T_{9}$ will 
+   cause $T_{10}$ to abort, this chained aborting action is called Cascading aborts.
+
+   Cascading aborts is NOT something we want as we need to undo a lot of stuff.
+
+2. A schedule that **would NOT** have Cascading aborts is called a "Cascadeless 
+   schedule", or Avoiding Cascading Aborts (ACA) schedule. 
+   
+   But how can we avoid Cascading aborts: by disallowing *dirty read*! i.e., a 
+   transaction won't read other transactions' write until they commit it.
+
+   "commit before read" also means "commit before commit", so a Cascadeless schedule
+   is a recoverable schedule.
+
+![diagram](https://github.com/SteveLauC/pic/blob/main/2025-01-06-8_27_venn_diagram_serializability.png)
+
 # 17.8 Transaction Isolation Levels
+
+1. QUES: From the previous sections, we know that a serializable schedule could 
+   have dirty read, but the SQL serializable isolation level does not allow this,
+   what is the relationship between them?
+
+2. All the isolation levels inhibits dirty writes: Once a tx modifies 
+   a data item, until this tx commits or aborts, other transactions cannot
+   modify it.
+
+   > Postgres blocks in this case.
+
+
 # 17.9 Implementation of Isolation Levels
+
+1. The schedules we want has to be:
+
+   1. Conflict or view serializable 
+   2. recoverable
+   3. cascadeless
+
+      > A Cascadeless  schedule is recoverable, so no need to include request 2 here.
+
+   > I doubt this
+
+2. There are various concurrency-control policies that we can use to ensure 
+   that, even when multiple transactions are executed concurrently, **only 
+   acceptable schedules** are generated, regardless of how the operating system 
+   time-shares resources (such as CPU time) among the transactions.
+
+   > TODO: once you learned about impl details, prove that they can provide
+   > good schedules.
+
+3. How you implement a concurrency mechanism
+
+   > TODO: You should give this a re-check to see if the approaches mentioned here 
+   > implement the Isolation property after finishing Ch18.
+
+   1. Locking: 2-phrase locking
+   2. Timestamp
+
+      > QUES: No idea how this works
+
+   3. MVCC
+
+      Among which, snapshot isolation is the mostly wide used approach
+
+      Snapshot isolation ensures that:
+
+      1. read operations never need to wait (they can read their snapshot)
+      2. read-only tx cannot be aborted (guaranteed to succeed)
+      3. read operations won't block future writes
+
+      However, snapshot isolation provides too much isolation, which can cause
+      problems. 
+
+      > TODO: try to reproduce the issues
+
 # 17.10 Transactions as SQL Statements
+
+
+
 # 17.11 Summary
