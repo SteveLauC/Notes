@@ -3,7 +3,10 @@
 > * Before I read it (Look at the TOC)
 >   * Looks like this chapter is more like an introduction to tx
 > * After I read it
->   * ...
+>   * This chapter introduces some basic theories of concurrency control, including
+>     1. What is a schedule
+>     2. Serializable schedule and its variants: conflict/view serializable schedule
+>     3. The schedule what we want has to be serializable and cascadeless
 
 > What do you expect to learn from it (fill in this before reading it)
 >
@@ -19,6 +22,7 @@
 >   recovery system (WAL), and isolation is another important property, consistency
 >   is a high-level, abstract property.
 > * Isolation and serializable schedule
+> * Basic concepts of concurrency control theory
 
 
 > TOC
@@ -128,12 +132,11 @@
 
    4. Serializable schedule: If a schedule is equivalent to a serial schedule,
       then it is a serializable schedule  
-   5. Conflicting operations: 2 **consecutive** operations conflict with each 
-      other if:
+   5. Conflicting operations: 2 operations conflict with each other if:
 
       1. They belong to different transactions
       2. They refer to the same data item 
-      2. At least one of them is a write operation
+      3. At least one of them is a write operation
 
       If 2 consecutive operations that:
 
@@ -146,11 +149,24 @@
       Then we can swap their order to produce a new schedule, which is equivalent
       to the original schedule.
 
-   6. Conflict-equivalent schedules: We say 2 schedules are conflict equivalent
-      if, by swapping non-conflicting operations, one schedule can be transformed
-      into the other one.
+   6. Conflict-equivalent schedules: 2 schedules are conflict-equivalent iff:
+
+      1. They invoke the same operations
+      2. For every pair of conflicting operations have the same order in both
+         schedules
+   
+      By **swapping(reverse the order)** **consecutive** non-conflicting 
+      operations, one schedule can be transformed into the other one.
+
    7. Conflict serializable schedule: A schedule that is conflict-equivalent to
-       a serial schedule
+      a serial schedule
+
+      > QUES: does conflict serializable mean this schedule has no conflicts?
+      >
+      > No
+      >
+      > But the conflicts in a conflict-serializable scheudle won't lead to 
+      > anomalies.
 
 
 2. DBMS needs to ensure that with concurrency, the schedule is still **serializable**,

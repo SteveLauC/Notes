@@ -600,4 +600,10 @@ succeed, at the cost of bigger possibility of reading stale data.
    
    QUES: when do you need to use version vector?
 
+4. The definition of "concurrency" is a bit different from the "concurrency"
+   that we are aware of, concurrency here does not need the operations to 
+   happen at the same time or are quite close in time.
+
+   TODO: re-read this chapter
+
 # Summary
