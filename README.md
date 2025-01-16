@@ -17,6 +17,10 @@ Steve's notes
 > * If you are new to it, ...
 > * If you already knew something about it, ... 
 >   > tip: think more and read less in this case
+>   >
+>   > 1. If you design the thing from scratch, how would you do this?
+>   > 2. If several solutions/approaches/implementations are introduced for the 
+>   >    same issue/problem, compare them and list their pros and cons.
 
 > What have you learned from it
 >

@@ -1,9 +1,11 @@
+Take a look at https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2022-fall/Lecture15_Concurrency_Control_Theory.md as well, and fix the notes there if you can.
+
 > This chapter is about:
 >
 > * Before I read it (Look at the TOC)
 >   * Looks like this chapter is more like an introduction to tx
 > * After I read it
->   * This chapter introduces some basic theories of concurrency control, including
+>   * This chapter introduces the basic theories of concurrency control, including
 >     1. What is a schedule
 >     2. Serializable schedule and its variants: conflict/view serializable schedule
 >     3. The schedule what we want has to be serializable and cascadeless
@@ -15,13 +17,16 @@
 >   > tip: think more and read less in this case
 >
 >   * Let's see if my understanding to ACID is correct or not
+>
+>     > I do have a better understanding of I after reading this chapter, and 
+>     > realized that C is not a concrete property
 
 > What have you learned from it
 >
 > * ACID should be rewritten as ADI-C, atomicity and durability are done by the
 >   recovery system (WAL), and isolation is another important property, consistency
 >   is a high-level, abstract property.
-> * Isolation and serializable schedule
+> * Isolation and ~~~serializable schedule~~~
 > * Basic concepts of concurrency control theory
 
 
