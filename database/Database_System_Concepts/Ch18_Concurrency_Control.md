@@ -47,7 +47,7 @@
 >     * 18.2.2.1 Deadlock Detection
 >     * 18.2.2.2 Recovery from deadlock
 > * 18.3 Multiple Granularity
-> * 18.4 Insert Operations, Delete Operations, and Predcate Reads
+> * 18.4 Insert Operations, Delete Operations, and Predicate Reads
 > * 18.5 Timestamp-Based Protocols
 > * 18.6 Validation-Based Protocols
 > * 18.7 Multiversion Schemas
@@ -291,14 +291,71 @@ So I skipped this section.
       The third approach allows transaction to wait for the lock acquisition, but
       only for a specific period of time, once timeout reaches, it aborts itself.
 
-      Generally, it is hard to choose the right timeout value.
+      Generally, it is hard to choose the right timeout value. Too large timeout will
+      lead to unnecessary delay, too small timeout lead to unnecessary rollback.
+
+      > Same hard as picking a timeout to decide if a node is down in a distributed
+      > cluster.
 
 ## 18.2.2 Deadlock Detection and Recovery
 ### 18.2.2.1 Deadlock Detection
+
+To detect deadlock, we first need to know some transaction waiting information, 
+which can be collected by the lock manager when receiving lock grant requests. 
+This information is described using a directed graph, where the vertices 
+represent transactions, edges represent wait-for relationship, an edge from Transaction Ti to Transaction 
+Tj means that Ti is waiting for a data item locked by Tj. 
+
+Cycle in the graph means deadlock, the involved transactions are deadlocked. So
+to detect the deadlock, we scan the wait-for graph and look for cycles.
+
+![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-01-20%20at%2010.28.23%E2%80%AFPM.png)
+
+The above diagram contains a deadlock, cycle `T18 -> T20 -> T19` means these 3
+transactions are deadlocked.
+
+How often should we do deadlock detection? If deadlock occur frequently, then 
+the detection can be invoked more frequently. The worst case, we could do the
+detection upon every lock allocation request.
+
 ### 18.2.2.2 Recovery from deadlock
 
+Once we find a deadlock, we need to recover from it, i.e., break the deadlock,
+by rolling back a deadlocked transaction in the wait-for cycle.
+
+Three actions need to be taken:
+
+1. Choose the transaction to rollback
+
+   Rolling back transactions means undo, which has cost. After the rollback, wen
+   need to restart it, which also has cost. We want to pick the transaction with 
+   the minimum cost. However, cost eatimation is hard.
+
+2. Rollback the transaction
+
+   * Roll back the whole transaction
+   
+     This is easy to implement, but has higher cost.
+   
+   * Partial Rollback
+   
+     It is more efficitive to do the partial rollback, i.e., only roll back the
+     part that cause the deadlock. To do this, the **deadlock detection mechanism**
+     should tell us the locks that the selected transaction needs to release in
+     order to break the deadlock.
+
+3. Avoid starvation
+
+   It is possible that restarted transaction will run into deadlock and be selected
+   as the transaction to rollback again. We need to ensure it won't be startved, i.e.,
+   will always run into deadlock and be rolled back.
+   
+   The simplest solution is to consider the number of rollback when choosing
+   the transaction to roll back.
+
+
 # 18.3 Multiple Granularity
-# 18.4 Insert Operations, Delete Operations, and Predcate Reads
+# 18.4 Insert Operations, Delete Operations, and Predicate Reads
 # 18.5 Timestamp-Based Protocols
 # 18.6 Validation-Based Protocols
 # 18.7 Multiversion Schemas

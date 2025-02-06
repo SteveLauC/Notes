@@ -17,3 +17,4 @@
 17. Controlling terminal
 18. Signal dispositions, user-installed hanlders will be reset to default 
     ones after calling `exec()`, ignored ones won't be changed.
+19. CPU affinity mask, preserved across `exec()`.
