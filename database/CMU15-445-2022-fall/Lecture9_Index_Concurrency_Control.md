@@ -257,7 +257,7 @@ These are two modes you can use when implementing Hash Table Latching:
    (one or multiple read latches and one write latch), abort the current operation
    and fall back to latch crabbing.
 
-   > This better algorithm is more like a gamble. 
+   > This better algorithm is more like a gamble. (optimistic concurrency control)
 
 # Leaf Node Scans
 

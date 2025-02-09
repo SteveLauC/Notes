@@ -65,8 +65,8 @@
 
 2. Terms
 
-   * Locking protocol: A set of rules that a transaction has to follow when locking and 
-     unlocking a data item.
+   * Locking protocol: A set of rules that a transaction has to follow when 
+     locking and unlocking a data item (acquiring and releasing a lock).
      
    * Precede: We say that a transaction Ti precedes Tj if:
 
@@ -75,7 +75,7 @@
      3. mode A and mode B are not compatible, one of them is an exclusive lock (write lock)
 
      > This is quite similar to how to determine if a schedule is conflict-serializable
-     > using dependency graph.
+     > using dependency graph (precedence graph).
     
    * Legal schedule: We say a schedule S is legal schedule under a locking protocol 
      if S is a *possible schedule* for its transactions that follow the locking protocol
@@ -92,7 +92,7 @@
 ## 18.1.2 Granting of Locks
 ## 18.1.3 The Two-Phase Locking Protocol
 
-> Two-phase locking protocol is a locking protocol, i.e., a set of rules.
+> Two-phase locking protocol is a *locking protocol*, i.e., a set of rules.
      
 1. What is the Two-Phase Locking Protocol
 
@@ -290,6 +290,7 @@ So I skipped this section.
 
       The third approach allows transaction to wait for the lock acquisition, but
       only for a specific period of time, once timeout reaches, it aborts itself.
+      (This can be seen as a variant of `wait-die`)
 
       Generally, it is hard to choose the right timeout value. Too large timeout will
       lead to unnecessary delay, too small timeout lead to unnecessary rollback.
@@ -314,18 +315,19 @@ to detect the deadlock, we scan the wait-for graph and look for cycles.
 The above diagram contains a deadlock, cycle `T18 -> T20 -> T19` means these 3
 transactions are deadlocked.
 
-How often should we do deadlock detection? If deadlock occur frequently, then 
+How often should we run deadlock detection? If deadlock occur frequently, then 
 the detection can be invoked more frequently. The worst case, we could do the
 detection upon every lock allocation request.
 
 ### 18.2.2.2 Recovery from deadlock
 
 Once we find a deadlock, we need to recover from it, i.e., break the deadlock,
-by rolling back a deadlocked transaction in the wait-for cycle.
+break the wait-for graph cycle, by rolling back a deadlocked transaction in the 
+wait-for cycle.
 
 Three actions need to be taken:
 
-1. Choose the transaction to rollback
+1. More than 1 transaction is deadlocked, which one should we rollback
 
    Rolling back transactions means undo, which has cost. After the rollback, wen
    need to restart it, which also has cost. We want to pick the transaction with 
@@ -355,6 +357,96 @@ Three actions need to be taken:
 
 
 # 18.3 Multiple Granularity
+
+1. In the previous sections, we were assuming that locks are performed on data
+   items, i.e., tuples. However, if we want to lock a table, then it is unlikely
+   that this can be implemented by locking tuples because:
+   
+   1. If we lock a table by locking all its tuples, when tuples get inserted/deleted,
+      we need to acquire/releae locks.
+      
+      > QUES: When you lock a table, is insertion/deletion allowed?
+      >
+      > Will this be answered in section 18.4?
+      
+   2. A table may not fit in memory so that locking them is impossible if we put
+      latches (the locks in the programming language) on them.
+   3. Locking many tuples is costly
+   
+   What we want instead is a single lock call that locks the table. To do this, we
+   need multi-granularity locking mechanisms.
+   
+2. With this multi-granularity locking mechanism, the whole hierarchy is a tree,
+   every node in the tree can be individually locked (in either shared or 
+   exclusive mode, same as before). 
+   
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/multi-granularity-lock-from-2025-02-08-11-29.png)
+   
+   Locking a node means *implicitly* locks all its descendants in the same lock 
+   mode. If a transaction wants to lock a node that is **implicitly** locked, how
+   can this transaction knows if this lock will be granted or not (since the node
+   it tries to lock is implicitly locked)? 
+   
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-02-08%20at%205.55.23%E2%80%AFPM.png)
+   
+   It will traverse the hierarchy tree from root to the node it tries to lock, 
+   attempting to lock every node it traverses, if a lock cannot be acquired, 
+   then it cannot lock that node.
+   
+   > NOTE: 
+   >
+   > "attempting to lock the node it traverses along the way"
+   >
+   > If this tx wants to acquires a S lock on the target node, it won't acquire
+   > S locks on the nodes it traverses, instead, it will acquire IS locks, which
+   > we will cover later.
+   
+   ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-02-08%20at%205.59.50%E2%80%AFPM.png)
+   
+   Since locking a node implicitly locks all its decendants, when a transaction
+   tries to lock a node in mode `M` (locks the whole sub-tree in mode `M`), if
+   any node in sub-tree was already locked in a mode that is incompatible with
+   `M`, then this
+   
+   If you want to lock a node, then you need to ensure:
+   
+   1. It is not locked in incompatible mode (obviously)
+   2. All of its ancestors are not locked in incompatible mode (since locking a 
+      node means locking its descendants)
+   3. Non of its descendants are locked in incompatible mode (since locking a
+      node means locking its descendants, which cannot be done if any descendants
+      is locked in incompatible mode)
+      
+   If we want to lock a node, how can I know if the requirements are satisfied? 
+   For requirement 1 and 2, it is easy to verify, we can traverse the tree to
+   the target node and check every node traversed. For requirement 3, how can we
+   verify it? 
+   
+   One possible way is to search all the descendants, which is costly. We introduce
+   a new type of locking modes call *intention locking modes*. When you lock a node,
+   all its ancestors should be locked in this mode.
+   
+   > Explain what "intention" means here
+   > 
+   > When 
+   
+   There are 3 *intention locking modes*:
+   
+   1. intention-shared mode
+   
+      Indicates explicit locking at a lower level with shared locks.
+      
+   2. intention-exclusive mode
+   
+      Indicates explicit locking at a lower level with exclusive or shared locks.
+   
+   3. shared and intention-exclusive mode
+   
+      The *sub-tree* rooted at that node is locked explicitly in shared mode and 
+      explicit locking is **being** done at a lower level with exclusive-mode locks.
+      
+   
+
 # 18.4 Insert Operations, Delete Operations, and Predicate Reads
 # 18.5 Timestamp-Based Protocols
 # 18.6 Validation-Based Protocols
