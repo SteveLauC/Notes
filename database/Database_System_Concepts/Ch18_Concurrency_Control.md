@@ -108,6 +108,9 @@
 2. Two-phase locking protocol ensure conflict serializability
 
    QUES: figure out why
+   
+   The dependency graphs of the schedules that 2PL generates, have no cycles, 
+   so it will ensure conflict serializable.
 
 2. Two-phase locking protocol ensures conflict serializability, but a schedule that
    is legal under the two-phase locking protocol is not necessarily cascadeless.
@@ -136,14 +139,17 @@
                                             unlock(A);
    ```
 
-   There is a variant of Two-Phase locking protocol that prevents dirty read, with
-   a additional rule: all exclusive (write) locks should not be released until the
-   transaction ends (commit/abort), which effectively prevents other transactions
-   from reading uncommitted writes.
+   There is a variant (called "strict 2pl") of Two-Phase locking protocol that 
+   prevents dirty read, with a additional rule: all exclusive (write) locks 
+   should not be released until the transaction ends (commit/abort), which 
+   effectively prevents other transactions from reading uncommitted writes.
+   
+   By holding the exclusive lock until the transaction ends, strict 2PL does not
+   only prevent dirty read, but also dirty write.
 
    Another variant of Two-Phase locking protocol is rigorous two-phase locking 
-   protocol, which is more strict! It requires the transaction should not release
-   all the locks until the it ends.
+   protocol (or strong strict 2 PL), which is more strict! It requires the 
+   transaction should not release all the locks until the it ends.
 
 3. Lock conversion
 
@@ -408,6 +414,11 @@ Three actions need to be taken:
    any node in sub-tree was already locked in a mode that is incompatible with
    `M`, then this
    
+   TODO: finish this
+   
+   
+   -----
+   
    If you want to lock a node, then you need to ensure:
    
    1. It is not locked in incompatible mode (obviously)
@@ -445,6 +456,10 @@ Three actions need to be taken:
       The *sub-tree* rooted at that node is locked explicitly in shared mode and 
       explicit locking is **being** done at a lower level with exclusive-mode locks.
       
+      > QUES: 
+      >
+      > 1. What is this?
+      > 2. When will it be used?
    
 
 # 18.4 Insert Operations, Delete Operations, and Predicate Reads

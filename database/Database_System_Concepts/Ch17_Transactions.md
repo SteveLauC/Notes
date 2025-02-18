@@ -157,11 +157,19 @@ Take a look at https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2
    6. Conflict-equivalent schedules: 2 schedules are conflict-equivalent iff:
 
       1. They invoke the same operations
-      2. For every pair of conflicting operations have the same order in both
+      2. For every pair of **conflicting operations have the same order** in both
          schedules
    
       By **swapping(reverse the order)** **consecutive** non-conflicting 
       operations, one schedule can be transformed into the other one.
+      
+      > equivalent schedules produce same database state, conflict-equivalent
+      > schedules are equivalent, so they produce same state as well.
+      >
+      > QUES: why is conflict-equivalent equivalent? Why do 2 schedules generate
+      > same result even though we are allowed to swap their operations as long
+      > as the order of conflicting operations are reserved. Because read/write
+      > are not changed?
 
    7. Conflict serializable schedule: A schedule that is conflict-equivalent to
       a serial schedule
@@ -188,7 +196,7 @@ Take a look at https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2
    > TODO: commit operation will be considered until Section 17.7
 
 
-2. How to determine if a schedule is conflict serializable?
+3. How to determine if a schedule is conflict serializable?
 
    Draw a directed graph that contain vertexes and edges, where vertexes correspond
    to the transactions, for a vertex pair $(T_{i}, T_{j})$, if any of the following
@@ -221,8 +229,8 @@ Take a look at https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2
    before $T_{j}$, and $T_{j}$ must be executed before $T_{i}$, which is 
    impossible, then we know that this schedule is not conflict serializable.
 
-3. Even though a non-conflict serializable schedule can produce the same result
-   as a serial schedule, e.g., the above schedule is not conflict serializable, 
+4. Even though a non-conflict serializable schedule can produce the same result
+   as a serial schedule, e.g., the following schedule is not conflict serializable, 
    but it would produce the same result as serial schedule `T1, T5`, so it is 
    actually serializable but not conflict serializable:
 
@@ -248,6 +256,12 @@ Take a look at https://github.com/SteveLauC/Notes/blob/main/database/CMU15-445-2
    We are being lazy to use a **more strict** definition, so that we could do 
    less analyzing work, as a result, we only know if a schedule is conflict 
    serializable, but ideally, we should know if it is serializable.
+   
+   Another point is that when we try to convert a interleaving schedule to a 
+   serial schedule, by following conflict equivalence, we are ONLY allowed to
+   swap non-conflicting operations, i.e., we retain the order of conflicting
+   operations. I *guess* this is the reason why "conflict-equivalence is more
+   strict than equivalence".
 
    ![diagram](https://github.com/SteveLauC/pic/blob/main/Screenshot%202025-01-05%20at%209.29.50%E2%80%AFPM.png)
    

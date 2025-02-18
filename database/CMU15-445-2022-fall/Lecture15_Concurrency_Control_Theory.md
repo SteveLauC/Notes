@@ -56,6 +56,8 @@ whether an interleaving is valid.
       Whenever a txn modifies a page, you copy the old page to a new one and do
       the update there, a pointer is used to track the page location, when the
       txn commits, you update this pointer (this has to be done atomically).
+      
+      > SQLite3 uses this approach
 
    Most DBs use the first approach. However, the second approach does have its
    advantages. Aborting a txn is easy as you only need to drop the changes made

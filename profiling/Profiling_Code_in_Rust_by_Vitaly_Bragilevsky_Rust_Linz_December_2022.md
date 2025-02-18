@@ -17,6 +17,9 @@ Valgrind has a lot of tools that serve different purposes,
 
 * helgrind – deadlock/livelock detection.
 
+* DHAT: a dynamic heap analysis tool (pretty good for detecting temp object that can be omitted, according to a [tweet][tweet_url] from Sled's author.)
+
+  [tweet_url]: https://x.com/sadisticsystems/status/1230402417856073729
 
 the default one, memcheck, is used to check memory leaks
 
@@ -32,7 +35,7 @@ $ valgrind your_program
 Use it with the following command:
 
 ```sh
-$ sudo valgrindd --tool=massif your_program
+$ sudo valgrind --tool=massif your_program
 ```
 
 then you will get a sample file under the current working directory, to view it, you can either:
