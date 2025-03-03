@@ -1587,6 +1587,18 @@ The textbook says that:
       >
       > Data resides on disk, and they can be variable-length, so we cannot use
       > binary search.
+      >
+      > future steve: We can store an offset for every data entry, and offset
+      > should be fix-sized, which would allow us to do binary search
+      >
+      > ```
+      > ----------------------------------------------------------------------------------------------------
+      > |             Data Section             |              Offset Section             |      Extra      |
+      > ----------------------------------------------------------------------------------------------------
+      > | Entry #1 | Entry #2 | ... | Entry #N | Offset #1 | Offset #2 | ... | Offset #N | num_of_elements |
+      > ----------------------------------------------------------------------------------------------------
+      > ```
+
 
       ```rs
       /// `lhs` - `rhs`
