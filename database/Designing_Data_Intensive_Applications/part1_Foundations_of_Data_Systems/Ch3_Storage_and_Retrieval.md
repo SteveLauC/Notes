@@ -157,6 +157,10 @@
          write-in-place. And the file system should give you a guarantee that
          the file length will only be longer but not shorter (even with torn write),
          so the existing bytes are safe.
+
+         Future future steve: Regarding disk sectors, LSM/Bitcask could be write-in-place,
+         i.e., update existing sectors if the write spans multiple sectors. And "torn write",
+         this term is **specifically** for page-oriented database
          
          If it is write-in-place, then appending a new record to WAL would harm
          previous records, which is not acceptable.
