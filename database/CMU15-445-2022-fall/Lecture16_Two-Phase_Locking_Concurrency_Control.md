@@ -1,2 +1,2 @@
-1. 2LP is a pessimistic concurrency control protocol
+1. 2PL is a pessimistic concurrency control protocol
 

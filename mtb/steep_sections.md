@@ -7,3 +7,5 @@ Getting back on the bike does two things you don't want. One, it unweights the f
 Front heel dropped to brace against the slope.
 
 Use more front brake. In steep loose terrain, your rear brake is virtually useless. It skids and breaks traction much easier. It is much harder to skid your front. You can use both, but use the rear more sparingly. If you begin to skid, release your brake.
+
+Note that when you are braking on steep sections, then you should shift your weight back a little bit.
