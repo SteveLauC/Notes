@@ -2,69 +2,9 @@
 > **Preallocating files is critical for performance, as overwriting existing bytes in general is 
 > less expensive than allocating new bytes on disk**.
 
-The above paragraph comes from the documnentation of the OkayWAL. The point here is if you want
+The above paragraph comes from the documentation of the OkayWAL. The point here is if you want
 to write a sequence of bytes to file, you should let the file system allocate it once, then 
 overwrite the allocated/existing bytes.
-
-# Verify it
-
-This can be verified using the following code:
-
-```rust
-use std::fs::OpenOptions;
-use std::os::unix::fs::FileExt;
-
-fn without_pre_allocation() {
-    let now = std::time::SystemTime::now();
-
-    let file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open("wal")
-        .unwrap();
-    for i in 0..100_i32 {
-        file.write_at(&i.to_le_bytes(), i as u64 * 4).unwrap();
-    }
-
-    println!("{:?}", now.elapsed());
-}
-
-fn with_pre_allocation() {
-    let now = std::time::SystemTime::now();
-
-    let file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open("wal")
-        .unwrap();
-
-    file.set_len(100 * 4).unwrap();
-
-    for i in 0..100_i32 {
-        file.write_at(&i.to_le_bytes(), i as u64 * 4).unwrap();
-    }
-
-    println!("{:?}", now.elapsed());
-}
-
-fn main() {
-    let _ = std::fs::remove_file("wal");
-    with_pre_allocation();
-    // without_pre_allocation();
-}
-```
-
-`with_pre_allocation()` typically takes 200us on my Mac, while without pre-allocation,
-the number will be 300us.
-
-QUES: the workload here only allocates 400 bytes, if minimal allocation of your file system
-is more than 400 bytes, then these 2 functions should output the same number. I think we
-should write more bytes.
-
-Time needed to write 8k bytes: 
-
-* with pre-allocation: 2 ms
-* without pre-allocation: 2.9 ms
 
 # Analysis (by Gemini)
 
@@ -82,41 +22,11 @@ Writing without pre-allocation is slow for two critical reasons:
   has to physically seek all over the platter, or the SSD has to handle many small, 
   disjointed read commands.
 
-
-# Flamegraph
-
-Flamegraph won't tell you what's going on under the hood, all the CPU time is consumed
-by the `pwrite(2)` syscall, and the detailed things (file system chanages) done the syscall
-is invisible either.
-
-```
-pwrite [libsystem_kernel.dylib]
-std::sys::pal::unix::fd::FileDesc::write_at [library/std/src/sys/pal/unix/fd.rs]
-std::sys::fs::unix::File::write_at [library/std/src/sys/fs/unix.rs]
-<std::fs::File as std::os::unix::fs::FileExt>::write_at [library/std/src/os/unix/fs.rs]
-rust::without_pre_allocation [/Users/steve/Documents/workspace/rust/src/main.rs]
-rust::main [/Users/steve/Documents/workspace/rust/src/main.rs]
-core::ops::function::FnOnce::call_once [/Users/steve/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs]
-std::sys::backtrace::__rust_begin_short_backtrace [/Users/steve/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/sys/backtrace.rs]
-std::rt::lang_start::{{closure}} [/Users/steve/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/rt.rs]
-core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once [library/core/src/ops/function.rs]
-std::panicking::try::do_call [library/std/src/panicking.rs]
-std::panicking::try [library/std/src/panicking.rs]
-std::panic::catch_unwind [library/std/src/panic.rs]
-std::rt::lang_start_internal::{{closure}} [library/std/src/rt.rs]
-std::panicking::try::do_call [library/std/src/panicking.rs]
-std::panicking::try [library/std/src/panicking.rs]
-std::panic::catch_unwind [library/std/src/panic.rs]
-std::rt::lang_start_internal [library/std/src/rt.rs]
-main [rust]
-start [dyld]
-```
-
 # File system metrics
 
 # Okway benchmark
 
-## With pre-allocation (BTRFS)
+## With pre-allocation (Linux, BTRFS)
 
 commit-1KB
 
@@ -156,7 +66,7 @@ commit-4KB
 | okaywal-16t | 3.715ms | 1.390ms | 8.275ms | 988.4us | 0.015% |
 
 
-## Without pre-allocation (BTRFS)
+## Without pre-allocation (Linux, BTRFS)
 
 commit-1KB
 | Label       | avg     | min     | max     | stddev  | out%   |
@@ -195,7 +105,7 @@ commit-4KB
 | okaywal-16t | 3.654ms | 1.142ms | 9.220ms | 963.9us | 0.009% |
 
 
-## Without pre-alloc (Ext4)
+## Without pre-alloc (Linux, Ext4)
 
 commit-1KB
 | Label       | avg     | min     | max     | stddev  | out%   |
@@ -233,7 +143,7 @@ commit-4KB
 | okaywal-08t | 5.843ms | 1.510ms | 61.75ms | 7.133ms | 0.028% |
 | okaywal-16t | 8.022ms | 1.470ms | 62.68ms | 8.951ms | 0.027% |
 
-## With pre-alloc (Ext4)
+## With pre-alloc (Linux, Ext4)
 
 commit-1KB
 | Label       | avg     | min     | max     | stddev  | out%   |
@@ -270,3 +180,79 @@ commit-4KB
 | okaywal-04t | 3.659ms | 1.270ms | 50.09ms | 5.459ms | 0.030% |
 | okaywal-08t | 4.198ms | 1.294ms | 50.74ms | 4.934ms | 0.016% |
 | okaywal-16t | 6.484ms | 1.748ms | 46.54ms | 5.948ms | 0.044% |
+
+## Without pre-allocation (macOS, APFS)
+
+commit-1KB
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 3.875ms | 1.435ms | 7.645ms | 487.2us | 0.012% |
+| okaywal-02t | 7.957ms | 4.512ms | 17.01ms | 877.1us | 0.020% |
+| okaywal-04t | 7.965ms | 3.003ms | 19.80ms | 1.398ms | 0.016% |
+| okaywal-08t | 7.949ms | 3.013ms | 20.89ms | 1.202ms | 0.018% |
+| okaywal-16t | 8.400ms | 2.957ms | 20.83ms | 1.717ms | 0.022% |
+
+commit-1MB
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 8.409ms | 5.432ms | 14.15ms | 1.442ms | 0.013% |
+| okaywal-02t | 13.97ms | 8.939ms | 19.89ms | 2.388ms | 0.000% |
+| okaywal-04t | 25.55ms | 8.951ms | 276.1ms | 30.67ms | 0.027% |
+| okaywal-08t | 48.57ms | 7.261ms | 1.087s  | 92.71ms | 0.020% |
+| okaywal-16t | 99.49ms | 7.000ms | 1.669s  | 185.6ms | 0.027% |
+
+commit-256B
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 4.075ms | 1.226ms | 11.93ms | 903.0us | 0.026% |
+| okaywal-02t | 7.904ms | 5.565ms | 19.92ms | 859.5us | 0.014% |
+| okaywal-04t | 7.789ms | 2.796ms | 12.72ms | 852.6us | 0.037% |
+| okaywal-08t | 7.884ms | 2.880ms | 20.88ms | 927.5us | 0.027% |
+| okaywal-16t | 7.979ms | 2.883ms | 18.15ms | 949.2us | 0.018% |
+
+commit-4KB
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 3.954ms | 2.851ms | 9.238ms | 718.6us | 0.016% |
+| okaywal-02t | 7.956ms | 4.980ms | 15.92ms | 1.059ms | 0.024% |
+| okaywal-04t | 7.824ms | 3.049ms | 17.77ms | 1.219ms | 0.052% |
+| okaywal-08t | 9.017ms | 3.929ms | 26.01ms | 2.406ms | 0.016% |
+| okaywal-16t | 10.82ms | 2.613ms | 27.88ms | 2.965ms | 0.014% |
+
+## With pre-allocation (macOS, APFS)
+
+commit-1KB
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 3.950ms | 2.856ms | 7.513ms | 381.4us | 0.008% |
+| okaywal-02t | 7.866ms | 3.950ms | 12.00ms | 560.3us | 0.020% |
+| okaywal-04t | 7.838ms | 2.987ms | 18.93ms | 948.0us | 0.030% |
+| okaywal-08t | 7.919ms | 2.966ms | 18.05ms | 1.055ms | 0.037% |
+| okaywal-16t | 8.090ms | 2.869ms | 17.06ms | 1.299ms | 0.036% |
+
+commit-1MB
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 8.448ms | 5.990ms | 13.93ms | 1.278ms | 0.013% |
+| okaywal-02t | 12.84ms | 7.910ms | 26.17ms | 2.255ms | 0.013% |
+| okaywal-04t | 22.73ms | 7.343ms | 178.7ms | 22.48ms | 0.027% |
+| okaywal-08t | 45.42ms | 5.000ms | 588.6ms | 72.29ms | 0.028% |
+| okaywal-16t | 88.64ms | 7.071ms | 1.693s  | 169.4ms | 0.028% |
+
+commit-256B
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 3.991ms | 2.825ms | 14.99ms | 686.8us | 0.010% |
+| okaywal-02t | 7.952ms | 5.963ms | 15.47ms | 623.1us | 0.017% |
+| okaywal-04t | 7.846ms | 2.884ms | 17.91ms | 834.2us | 0.029% |
+| okaywal-08t | 7.905ms | 2.936ms | 19.14ms | 1.001ms | 0.029% |
+| okaywal-16t | 8.013ms | 2.810ms | 19.13ms | 1.056ms | 0.030% |
+
+commit-4KB
+| Label       | avg     | min     | max     | stddev  | out%   |
+|-------------|---------|---------|---------|---------|--------|
+| okaywal-01t | 3.930ms | 2.861ms | 7.635ms | 461.7us | 0.008% |
+| okaywal-02t | 7.934ms | 4.518ms | 11.97ms | 644.1us | 0.028% |
+| okaywal-04t | 7.999ms | 3.985ms | 19.49ms | 1.489ms | 0.022% |
+| okaywal-08t | 8.917ms | 3.091ms | 24.08ms | 2.289ms | 0.019% |
+| okaywal-16t | 10.18ms | 3.024ms | 32.06ms | 3.085ms | 0.013% |
