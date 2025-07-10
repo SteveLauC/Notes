@@ -1,6 +1,15 @@
 # Query processing stages
 
-1. Parser 
+1. Traffic Cop
+
+   Traffic cop, dispatches request to proper module This contains the postgres 
+   backend main handler, as well as the code that makes calls to the parser, 
+   optimizer, executor, and commands functions.
+
+   * `src/backend/tcop`
+   * `src/include/tcop`
+
+2. Parser 
 
    * Lex: text -> tokens
    * parsing: tokens -> AST
@@ -10,14 +19,16 @@
    Does basic SQL syntax check, produces a raw parsetree (a linked-list of 
    parsenodes, defined in `include/nodes/parsenodes.h`)
    
-2. Semantic Analysis (Binder)
+3. Semantic Analysis (Binder)
 
    Resolve column references, metadata (schema/table/column) check, produces
    query (AST with additional annotations)
    
    code: `parser/analyze.c`
 
-3. Rewriter 
+4. Rewriter 
+
+   Rule and view support.
 
    Rewriter rewrites the query using [rules](https://www.postgresql.org/docs/current/sql-createrule.html) 
    and expands views if used. (Views are implemented using the rules mechanism.)
@@ -26,14 +37,14 @@
    
    code: `src/backend/rewrite`
    
-4. Planner/Optimizer
+5. Planner/Optimizer
 
    Planner takes a query and generates a plan (Physical plan), Postgres does CBO
    in this stage.
    
    file: `src/backend/optimizer`
    
-5. Executor
+6. Executor
 
 # Postgres object systems
 
