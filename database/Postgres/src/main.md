@@ -33,33 +33,33 @@
 
    then call the corresponding role's main function:
 
-```text
-	switch (dispatch_option)
-	{
-		case DISPATCH_CHECK:
-			BootstrapModeMain(argc, argv, true);
-			break;
-		case DISPATCH_BOOT:
-			BootstrapModeMain(argc, argv, false);
-			break;
-		case DISPATCH_FORKCHILD:
-#ifdef EXEC_BACKEND
-			SubPostmasterMain(argc, argv);
-#else
-			Assert(false);		/* should never happen */
-#endif
-			break;
-		case DISPATCH_DESCRIBE_CONFIG:
-			GucInfoMain();
-			break;
-		case DISPATCH_SINGLE:
-			PostgresSingleUserMain(argc, argv,
-								   strdup(get_user_name_or_exit(progname)));
-			break;
-		case DISPATCH_POSTMASTER:
-			PostmasterMain(argc, argv);
-			break;
-	}
-   ```
+   ```c
+       switch (dispatch_option)
+       {
+           case DISPATCH_CHECK:
+               BootstrapModeMain(argc, argv, true);
+               break;
+           case DISPATCH_BOOT:
+               BootstrapModeMain(argc, argv, false);
+               break;
+           case DISPATCH_FORKCHILD:
+   #ifdef EXEC_BACKEND
+               SubPostmasterMain(argc, argv);
+   #else
+               Assert(false);		/* should never happen */
+   #endif
+               break;
+           case DISPATCH_DESCRIBE_CONFIG:
+               GucInfoMain();
+               break;
+           case DISPATCH_SINGLE:
+               PostgresSingleUserMain(argc, argv,
+                                   strdup(get_user_name_or_exit(progname)));
+               break;
+           case DISPATCH_POSTMASTER:
+               PostmasterMain(argc, argv);
+               break;
+       }
+    ```
 
 

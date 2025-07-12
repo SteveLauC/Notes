@@ -62,3 +62,46 @@
    ```
 
    > BackendMain() is defined in `src/backend/tcop/backend_startup.c`
+
+   It calls `ReadCommand()` in a for loop:
+
+   ```c
+   for (;;)
+   {
+        // ...
+
+		/*
+		 * (3) read a command (loop blocks here)
+		 */
+		firstchar = ReadCommand(&input_message);
+
+        // ...
+   }
+   ```
+
+4. `PostgresSingleUserMain()` calls `process_shared_preload_libraries()` to load shared 
+   objects that need to be loaded when process start up.
+
+   ```c
+   /*
+   * process any libraries that should be preloaded at postmaster start
+   */
+   void
+   process_shared_preload_libraries(void)
+   {
+       process_shared_preload_libraries_in_progress = true;
+       load_libraries(shared_preload_libraries_string,
+                   "shared_preload_libraries",
+                   false);
+       process_shared_preload_libraries_in_progress = false;
+       process_shared_preload_libraries_done = true;
+   }
+   ```
+
+   Users can specify the objects they wanna load in `postgresql.conf`:
+
+   ```text
+   #shared_preload_libraries = ''		# (change requires restart)
+   ```
+
+5. Every backend process will store a `struct PGPROC` in the shared memory

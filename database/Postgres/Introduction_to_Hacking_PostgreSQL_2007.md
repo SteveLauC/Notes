@@ -2,7 +2,7 @@
 
 1. Traffic Cop
 
-   Traffic cop, dispatches request to proper module This contains the postgres 
+   Traffic cop, dispatches request to proper module. This contains the postgres 
    backend main handler, as well as the code that makes calls to the parser, 
    optimizer, executor, and commands functions.
 
