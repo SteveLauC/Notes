@@ -33,7 +33,7 @@ Here is the full list of the auxiliary functions:
   * `ERRCODE_WARNING` if the severity code is `WARNING`
   * `ERRCODE_SUCCESSFUL_COMPLETION` for `NOTICE` and below
   
-* `errmsg(const char * msg, ...)`
+* `errmsg(const char * msg, ...)`: provides primary message
 
   `errmsg()` accepts runtime parameters: 
 
@@ -63,5 +63,56 @@ Here is the full list of the auxiliary functions:
   This should be used for “cannot happen” cases that are probably not worth 
   expending translation effort on.
 
-* ``
+* `errmsg_plural(const char * msg_singular, const char * msg_plural, unsigned long n, ...)`
+
+  is equivalent to:
+  
+  ```c
+  if (n % 2 == 1) {
+      errmsg(msg_singular, ...);
+  } else {
+      errmsg(msg_plural, ...);
+  }
+  ```
+  
+  Example:
+  
+  ```c
+  errmsg_plural("processed %lu row",   // Singular form
+                "processed %lu rows",  // Plural form
+                num_rows,              // The 'n' that determines the form
+                (unsigned long) num_rows
+  );
+  ```
+
+* `errdetail(const char *msg, ...)`: provides detailed message
    
+* `errhint(const char * msg, ...)`
+
+  supplies an optional “hint” message; this is to be used when offering suggestions
+  about how to fix the problem
+  
+# 54.3. Error Message Style Guide
+
+1. What Goes Where
+
+   * Primary message: short (fit in 1 line), should not mention impl details
+   * Details: impl details should go there
+   * Hint: suggestions on how to fix the issue
+   
+   > Reference to implementation details is best avoided since users aren't expected to know the details.
+   
+   Hmm, I think impl details would be great for debugging purposes:D
+   
+2. Grammar and Punctuation
+
+   * Primary messasge
+     
+     1. Use lowercase, except for SQL commands and keywords
+     2. Should end with word, not a period or an exclamation point
+     
+   * Details/hint:
+   
+     1. Use uppercase for the first letter
+     2. Should be a complete sentence and end with a period. Put two spaces after 
+        the period if another sentence follows.
