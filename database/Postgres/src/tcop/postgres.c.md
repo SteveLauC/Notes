@@ -105,3 +105,6 @@
    ```
 
 5. Every backend process will store a `struct PGPROC` in the shared memory
+
+6. `exec_simple_query(const char *query_string)` is the function that both `psql`
+   and the standalone `postgres` backend use to execute queries.

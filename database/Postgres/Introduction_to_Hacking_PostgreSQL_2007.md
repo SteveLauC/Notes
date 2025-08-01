@@ -1,5 +1,7 @@
 # Query processing stages
 
+> [The Path of a Query](https://www.postgresql.org/docs/17/query-path.html)
+
 1. Traffic Cop
 
    Traffic cop, dispatches request to proper module. This contains the postgres 
@@ -9,24 +11,24 @@
    * `src/backend/tcop`
    * `src/include/tcop`
 
-2. Parser 
+2. Parser (String -> Parse Tree)
 
    * Lex: text -> tokens
-   * parsing: tokens -> AST
+   * parsing: tokens -> Parse Tree (a.k.a., AST)
    
      > Every node in the AST is called parse node in Postgres's term.
 
-   Does basic SQL syntax check, produces a raw parsetree (a linked-list of 
+   Does basic SQL syntax check, produces a raw Parse Tree (a linked-list of 
    parsenodes, defined in `include/nodes/parsenodes.h`)
    
-3. Semantic Analysis (Binder)
+3. Analyzer (aka, Binder, Parse Tree -> Query Tree)
 
    Resolve column references, metadata (schema/table/column) check, produces
-   query (AST with additional annotations)
+   query 
    
    code: `parser/analyze.c`
 
-4. Rewriter 
+4. Rewriter (Query Tree -> Query Tree)
 
    Rule and view support.
 
@@ -37,14 +39,14 @@
    
    code: `src/backend/rewrite`
    
-5. Planner/Optimizer
+5. Planner/Optimizer (Query Tree -> Plan Tree)
 
    Planner takes a query and generates a plan (Physical plan), Postgres does CBO
    in this stage.
    
    file: `src/backend/optimizer`
    
-6. Executor
+6. Executor (execute the plan)
 
 # Postgres object systems
 
