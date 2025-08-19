@@ -104,7 +104,56 @@
    #shared_preload_libraries = ''		# (change requires restart)
    ```
 
-5. Every backend process will store a `struct PGPROC` in the shared memory
+5. Most backend processes will store a `struct PGPROC` in the shared memory
+
+   ```c
+   /*
+    * MyBackendType indicates what kind of a backend this is.
+    *
+    * If you add entries, please also update the child_process_kinds array in
+    * launch_backend.c.
+    */
+    typedef enum BackendType
+    {
+    	B_INVALID = 0,
+    
+    	/* Backends and other backend-like processes */
+    	B_BACKEND,
+    	B_DEAD_END_BACKEND,
+    	B_AUTOVAC_LAUNCHER,
+    	B_AUTOVAC_WORKER,
+    	B_BG_WORKER,
+    	B_WAL_SENDER,
+    	B_SLOTSYNC_WORKER,
+    
+        // backend type for single-user mode
+    	B_STANDALONE_BACKEND,
+    
+    	/*
+    	 * Auxiliary processes. These have PGPROC entries, but they are not
+    	 * attached to any particular database, and cannot run transactions or
+    	 * even take heavyweight locks. There can be only one of each of these
+    	 * running at a time, except for IO workers.
+    	 *
+    	 * If you modify these, make sure to update NUM_AUXILIARY_PROCS and the
+    	 * glossary in the docs.
+    	 */
+    	B_ARCHIVER,
+    	B_BG_WRITER,
+    	B_CHECKPOINTER,
+    	B_IO_WORKER,
+    	B_STARTUP,
+    	B_WAL_RECEIVER,
+    	B_WAL_SUMMARIZER,
+    	B_WAL_WRITER,
+    
+    	/*
+    	 * Logger is not connected to shared memory and does not have a PGPROC
+    	 * entry.
+    	 */
+    	B_LOGGER,
+    } BackendType;
+    ```
 
 6. `exec_simple_query(const char *query_string)` is the function that both `psql`
    and the standalone `postgres` backend use to execute queries.
