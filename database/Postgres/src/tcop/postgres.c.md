@@ -157,3 +157,90 @@
 
 6. `exec_simple_query(const char *query_string)` is the function that both `psql`
    and the standalone `postgres` backend use to execute queries.
+   
+   # Stages
+   
+   1. Parser
+   
+      `List * pg_parse_query(const char *query_string)`, which invokes 
+      `List * raw_parser(const char *str, RawParseMode mode)` from `src/backend/parser/parser.c`
+   
+   2. Analyzer & Rewriter
+      
+      `pg_parse_query()` returns a list of raw statement as the input `query_string`
+      may contain multiple SQL statements.  
+      
+      ```c
+      parsetree_list = pg_parse_query(query_string);
+	  printf("DBG: %d statements\n", list_length(parsetree_list));
+      ```
+      
+      Each statement will be analyzed and rewritten separately.  A list of `querytree`
+      is returned because analyzer and rewriter could expand the query:
+      
+      ```c
+      querytree_list = pg_analyze_and_rewrite_fixedparams(parsetree, query_string,
+															NULL, 0, NULL);
+      ```
+      
+      * Analyzer
+      
+        ```c
+        // src/backend/parser/analyze.c
+        
+        /*
+         * parse_analyze_varparams
+         *
+         * This variant is used when it's okay to deduce information about $n
+         * symbol datatypes from context.  The passed-in paramTypes[] array can
+         * be modified or enlarged (via repalloc).
+         */
+        Query *
+        parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
+						Oid **paramTypes, int *numParams,
+						QueryEnvironment *queryEnv)
+        
+        /*
+         * transformTopLevelStmt -
+         *	  transform a Parse tree into a Query tree.
+         *
+         * This function is just responsible for transferring statement location data
+         * from the RawStmt into the finished Query.
+         */
+        Query *
+        transformTopLevelStmt(ParseState *pstate, RawStmt *parseTree)
+        
+        /*
+         * transformOptionalSelectInto -
+         *	  If SELECT has INTO, convert it to CREATE TABLE AS.
+         *
+         * The only thing we do here that we don't do in transformStmt() is to
+         * convert SELECT ... INTO into CREATE TABLE AS.  Since utility statements
+         * aren't allowed within larger statements, this is only allowed at the top
+         * of the parse tree, and so we only try it before entering the recursive
+         * transformStmt() processing.
+         */
+        static Query *
+        transformOptionalSelectInto(ParseState *pstate, Node *parseTree)
+        
+        /*
+         * transformStmt -
+         *	  recursively transform a Parse tree into a Query tree.
+         */
+        Query *
+        transformStmt(ParseState *pstate, Node *parseTree)
+        ```
+      
+      * Rewriter
+      
+        `List * pg_rewrite_query(Query *query)` invokes `List * QueryRewrite(Query *parsetree)`
+        from `src/backend/rewrite/rewriteHandler.c`.
+      
+   3. Plan
+      
+      ```c
+      plantree_list = pg_plan_queries(querytree_list, query_string,
+										CURSOR_OPT_PARALLEL_OK, NULL);
+      ```
+    
+   

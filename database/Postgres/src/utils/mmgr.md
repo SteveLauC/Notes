@@ -83,6 +83,9 @@
      
      Avoid making `CurrentMemoryContext` point to this since it should have a
      short lifespan.
+     
+     Memory chunks `malloc()`ed therein are never `free()`ed, they will be cleaned
+     up by the OS.
    
    * ErrorContext: Permanent context, used for error recovery, will be reset at
      the end of the recovery.  It is a child of the `TopMemoryContext`:
@@ -140,7 +143,25 @@
      
    
    * MessageContext: store the message passed from the frontend. It has the same
-     lifetime of a iteration in `PostgresMain()`
+     lifetime of an iteration in `PostgresMain()`
+     
+     ```c
+     // Within `PostgresMain()`
+     
+     /*
+	  * Create the memory context we will use in the main loop.
+	  *
+	  * MessageContext is reset once per iteration of the main loop, ie, upon
+	  * completion of processing of each command message from the client.
+	 */
+	 MessageContext = AllocSetContextCreate(TopMemoryContext,
+										   "MessageContext",
+										   ALLOCSET_DEFAULT_SIZES);
+		
+	 // PostgresMain outer loop
+     ```
+     
+     I guess it is primarily used in `exec_simple_query()`.
    
 
    

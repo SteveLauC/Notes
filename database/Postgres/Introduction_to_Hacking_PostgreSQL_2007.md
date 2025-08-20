@@ -11,24 +11,20 @@
    * `src/backend/tcop`
    * `src/include/tcop`
 
-2. Parser (String -> Parse Tree)
+2. Parser (SQL String -> parsetree list)
 
-   * Lex: text -> tokens
-   * parsing: tokens -> Parse Tree (a.k.a., AST)
-   
-     > Every node in the AST is called parse node in Postgres's term.
+   A SQL string could contain multiple statements: `SELECT 1; SELECT 2; SELECT 3`.
+   Every statement is parsed into a `struct RawStmt`(called parsetree).  So the parser converts a SQL query
+   string to a list of parsetree.
 
-   Does basic SQL syntax check, produces a raw Parse Tree (a linked-list of 
-   parsenodes, defined in `include/nodes/parsenodes.h`)
-   
-3. Analyzer (aka, Binder, Parse Tree -> Query Tree)
+3. Analyzer (aka, Binder, a parsetree -> a `struct Query`(called a Query tree))
 
    Resolve column references, metadata (schema/table/column) check, produces
    query 
    
    code: `parser/analyze.c`
 
-4. Rewriter (Query Tree -> Query Tree)
+4. Rewriter (`struct Query` -> `[struct Query]`, a Query Tree -> a Query Tree list)
 
    Rule and view support.
 
