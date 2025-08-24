@@ -1,0 +1,1 @@
+relcache and syscache/catcache are initialized in `PostgresMain()`

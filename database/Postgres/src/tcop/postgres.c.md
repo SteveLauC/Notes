@@ -244,3 +244,50 @@
       ```
     
    
+7. In `exec_simple_query()`, before entering the execution loop, some variable
+   are marked "volatile", why?
+   
+   ```c
+   void
+   PostgresMain(const char *dbname, const char *username)
+   {
+       sigjmp_buf	local_sigjmp_buf;
+   
+       /* these must be volatile to ensure state is preserved across longjmp: */
+       volatile bool send_ready_for_query = true;
+       volatile bool idle_in_transaction_timeout_enabled = false;
+       volatile bool idle_session_timeout_enabled = false;
+       
+       // ...
+   }
+   ```
+   
+   1. Postgres uses `sigsetjmp()` and `siglongjmp()` in error handling, `siglongjmp()`
+      restores the register values.  
+   2. When we modify a non-volatile C variable (it is stored in stack), compiler could 
+      be lazy and just update the values stored in  the registers.  
+      
+   That is, lost updates could happen to non-volatile variables.  Marking a variable 
+   volatile forces the compiler to not cache the value in register and read/write it
+   from/to the stack.
+   
+8. QUES: Why does the planner need a snapshot if the query contains a UDF
+
+   ```c
+   /*
+    * Generate a plan for a single already-rewritten query.
+    * This is a thin wrapper around planner() and takes the same parameters.
+    */
+   PlannedStmt *
+   pg_plan_query(Query *querytree, const char *query_string, int cursorOptions,
+    			  ParamListInfo boundParams)
+   {
+    	PlannedStmt *plan;
+    
+    	/* Utility commands have no plans. */
+    	if (querytree->commandType == CMD_UTILITY)
+    		return NULL;
+    
+    	/* Planner must have a snapshot in case it calls user-defined functions. */
+    	Assert(ActiveSnapshotSet());
+   ```

@@ -61,7 +61,14 @@
 
       Serves as a template for all the databases users can create.
 
-      Whenever you create a database, it is copied from `template1`.
+      Whenever you create a database, it is copied from `template1`.  And, `template0`
+      and `postgres` are also copied from `template1`:
+      
+      > Doc from `initdb.c`
+      >
+      > For largely-historical reasons, the template1 database is the one built
+      > by the basic bootstrap process.  After it is complete, template0 and
+      > the default database, postgres, are made just by copying template1.
 
    3. `postgres` 
        
