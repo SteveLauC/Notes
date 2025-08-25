@@ -2,7 +2,7 @@
 >
 > 1. Full file scan
 > 2. Selections with equality condition
-> 3. Selections with comparsion
+> 3. Selections with comparison
 > 4. Selections with complex conditions (conjunction/disjunction)
 > 5. Sort
 
@@ -16,13 +16,13 @@
 >   * 15.4.1 External Sort-Merge Algorithm
 >   * 15.4.2 Cost Analysis of External Sort-Merge
 > * 15.5 Join Operation
->   * 15.5.1 Netsted-Loop Join 
->   * 15.5.2 Block Netsted-Loop Join 
+>   * 15.5.1 Nested-Loop Join 
+>   * 15.5.2 Block Nested-Loop Join 
 >   * 15.5.3 Indexed Nested-Loop Join
 >   * 15.5.4 Merge Join
 >     * 15.5.4.1 Merge Join Algorithm
 >     * 15.5.4.2 Cost Analysis
->     * 15.5.4.3 Hyprid Merge Join
+>     * 15.5.4.3 Hybrid Merge Join
 >   * 15.5.5 Hash Join
 >     * 15.5.5.1 Basics
 >     * 15.5.5.2 Recursive Partitioning
@@ -738,14 +738,14 @@ Cost:
 1. Remeber that for selection operations, linear file scan will work under whatever
    circumstances.
 
-   Like the linear file scan, this Nested-Loop Join alrogithm will work regardless
+   Like the linear file scan, this Nested-Loop Join algorithm will work regardless
    of what the join condition is. And it does not require an index, as if there is
    no index, we can do linear file-scan. (it can be speeded up if there is an index
-   appliable to the join condition).
+   applicable to the join condition).
 
 2. Algorithm procedure
 
-   > Algorithms will be expressed in Rust pseduo-code
+   > Algorithms will be expressed in Rust pseudo-code
    >
    > ```rs
    > /// Return true if `cond` is satisfied by `lhs` and `rhs`
@@ -759,16 +759,16 @@ Cost:
    let mut result: Vec<Tuple> = Vec::new();
 
    for outer_tuple in outer {
-       for inner_tuple in realtion inner {
+       for inner_tuple in relation inner {
            let satisfied: bool = condition(outer_tuple, inner_tuple, cond);
            if satisfied {
-               result.push(join(outer_tupel, inner_tuple))             
+               result.push(join(outer_tuple, inner_tuple))             
            } 
        }
    }
    ```
 
-   You can see that it is basicaly a nested-loop, the pseudo-code assumes there are
+   You can see that it is basically a nested-loop, the pseudo-code assumes there are
    2 relations to be operated on, increase the # of layers if more relations are
    added.
 
@@ -788,7 +788,7 @@ Cost:
    `n_tuple(outer) * n_block(inner) + n_block(outer)`, this is the worst case.
 
    You may find that the inner relation will be accessed multiple times, it will
-   be benefical if we make the smaller relation the inner one. And if the inner
+   be beneficial if we make the smaller relation the inner one. And if the inner
    relation can fit in the memory, then the algorithm will also need only 
    `n_block(outer) + n_block(inner)` block transfers, same as the case where both
    relations can fit in the memory.
@@ -802,7 +802,7 @@ Cost:
    handled at a time, then every block access of `outer` requires a seek, so 
    the # of seeks will be `n_tuple(outer) + n_block(outer)`.
 
-## 15.5.2 Block Netsted-Loop Join 
+## 15.5.2 Block Nested-Loop Join 
 
 1. The # of block accesses of nested-loop join is:
 
@@ -1003,7 +1003,7 @@ Cost:
 
 1. Merge Join Process
 
-   > NOTE: the following procedure assumes that the relatiosn are sorted in
+   > NOTE: the following procedure assumes that the relations are sorted in
    > ascending order.
 
    ```rs
@@ -1025,7 +1025,7 @@ Cost:
         inner_tuple.move_to_next();
         'a: while let Some(inner) = inner_tuple {
             if innner.columns_value(/*join column*/) == columns_value {
-                tuoles_of_inner_with_same_value.push(inner_tuple);
+                tuples_of_inner_with_same_value.push(inner_tuple);
 
                 inner_tuple.move_to_next();
             } else {

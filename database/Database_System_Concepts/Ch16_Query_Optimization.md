@@ -20,7 +20,7 @@
 >   * 16.2.4 Enumeration of Equivalent Expressions
 > * 16.3 Estimating Statistics of Expression Results
 >   * 16.3.1 Catalog information
->   * 16.3.2 Selection (relational algebra) Size Estimation
+>   * 16.3.2 Selection (the one in relational algebra, not SQL) Size Estimation
 >   * 16.3.3 Join Size Estimation
 >   * 16.3.4 Size Estimation for Other Operations
 >   * 16.3.5 Estimation of Number of Distinct Values 
@@ -380,7 +380,7 @@
        | name | order ID |
        |------|----------|
        |steve | 1        |
-       |mike | 3        |
+       |mike  | 3        |
 
        Table orde:
 

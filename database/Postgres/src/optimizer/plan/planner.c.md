@@ -117,3 +117,10 @@
      is used to estimate the size of the buffer needed by the blocking operator.
    * `lefttree` and `righttree`: input plans.  2 input plans for a join plan.
      Otherwise, we would have 1 input plan.
+     
+4. `struct Path`: a simplified form of `struct Plan`, used as plan candidates
+
+   During planning, multiple paths will be created.  The one with the cheapest 
+   cost will be chosen and converted to the final Plan.
+   
+   `struct Path` and `struct Plan` share common fields.
