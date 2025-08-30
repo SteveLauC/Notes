@@ -1,9 +1,9 @@
 # src/backend/optimizer
 
-* geqo: GEQO join searchin
-* path: Path generation and cost estimation
-* plan: Main planning driver code
 * prep: Preprocessing
+* path: Path generation and cost estimation (mainly for join)
+* geqo: GEQO join searchin
+* plan: Main planning driver code
 * util: Miscellaneous
 
 And

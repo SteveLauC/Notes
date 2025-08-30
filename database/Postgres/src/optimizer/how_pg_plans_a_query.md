@@ -1,4 +1,11 @@
 1. Planning phases
+  
+   > Postgres planning has 4 stages:
+   >
+   > 1. Preprocessing
+   > 2. Plan "Scan" and "Join"
+   > 3. Query special features handling
+   > 4. Postprocessing
 
    1. Preprocessing: Simplify query if possible, and collect information such as 
       join order restriction.
@@ -12,10 +19,10 @@
         >
         > 1. If we simplify it, **we do computations only once**.  Otherwise, we 
         >    need to do it for every single row.
-        > 2. View expansion (by rewritter) and SQL function inlining can expose 
+        > 2. View expansion (by rewriter) and SQL function inlining can expose 
         >    constant-folding opportunities not visible in the original query
         >
-        >    > What is constant folding
+        >    > What is constant-folding
         >    >
         >    > An optimization from the compiler field.  Evaluate expression to 
         >    > its final result at compile-time.
@@ -24,8 +31,9 @@
         >    > planning phase.
         >
         > 3. Simplifying takes a lot of load off the estimation functions, which 
-        >    by and large can’t cope with anything more complex than Variable = 
-        >    Constant (QUES: I didn't get this)
+        >    by and large can’t cope with anything more complex than `Variable = 
+        >    Constant`. (cost estimation, e.g., evaluating selectivity, would 
+        >    be easier if the expression is simple)
 
         * function calls
           
@@ -136,10 +144,10 @@
       
    2. Plan "Scan" and "join"
    
-      deal with `FROM` and `WHERE` clauses, it also knows about `ORDER BY` 
+      Deal with `FROM` and `WHERE/ON` clauses.  It also knows about `ORDER BY` 
       information in order to generate merge-join paths.
 
-      > Why we will deal with `WHERE` here?
+      > Why will will deal with `WHERE/ON` here?
       >
       > The predicates, could be
       >
@@ -166,24 +174,32 @@
 
       Searching for the best join order is hard as there are too many possibilities,
       Postgres use a few heuristic rules to make the search simpler.  With too many 
-      relations, fall back to “GEQO” (genetic query optimizer) search, which is even 
-      more heuristic and tends to fail to find desirable plans.  Heuristic rules used
-      by Postgres:
+      relations (configuration entry `geqo_threshold`, defaults to 12), fall back to 
+      “GEQO” (genetic query optimizer) search, which is even more heuristic and tends 
+      to fail to find desirable plans.  Heuristic join rules used by Postgres:
 
       1. Don't join relations that are not connected by any join clause, unless 
          forced to by join-order restrictions 
+
+         We will create a Cartesian Product if we do it.
          
          > Implied equalities count as join clauses, so this rule seldom leads us 
          > astray
 
-      2. Break down large join problems into sub-problems according to the 
-         syntactic JOIN/sub-select structure
+
+      2. Break down large join problems into sub-problems by not flattening JOIN
+         clauses according to collapse limit `join_collapse_limit`
 
          > Actually, it's done by not merging sub-problems to make a big problem 
          > in the first place (see “collapse limits”)
          >
          > This frequently sucks; would be useful to look for smarter ways of 
          > subdividing large join trees
+
+         > QUES: I do not understand this.  What does this configuration entry do?
+         > Per the doc, looks like it also controls when Postgres will give up trying
+         > to reorder the joins, i.e., it executes joins using the order specified
+         > in SQL.
       
       GEQO: Treats join order searching as a Traveling Salesman Problem, i.e., 
       minimize the length of a “tour” visiting all “cities” (base relations).
@@ -195,16 +211,17 @@
    3. Query special feature handling
 
       * Deal with GROUP BY, DISTINCT, aggregate functions, window functions
-      * Deal with UNION/INTERSECT/EX
+      * Deal with UNION/INTERSECT/EXCEPT
       * Apply sort order if needed by ORDER BY
 
    4. Postprocessing
    
-      convert the plan to the form that the executor wants
-      * Convert to representation used by executor
       * Expand `Path`s to `Plan`s (Actually, this happens after scan/join 
         planning, and before query special feature handling. Because )
 
-      * Example task: renumber Var nodes to meet executor's requirements 
-        (Vars in join nodes must be labeled “OUTER” or “INNER”, not with 
-        original base relation’s number)
+      * Adjust Plan representation details
+        * Flatten subquery rangetables into a single list
+        * Label Vars in upper plan nodes as `OUTER_VAR` or `INNER_VAR` to refer
+          to the outputs of their subplans
+        * Remove unnecessary SubqueryScan, Append, and MergeAppend plan nodes
+        * etc
