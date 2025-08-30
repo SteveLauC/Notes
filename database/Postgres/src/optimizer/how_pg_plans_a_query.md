@@ -14,6 +14,15 @@
       > intermixed.
       
       * Simplify scalar expression
+
+        > `eval_const_expressions()` in `src/backend/optimizer/util/clauses.c`
+        >
+        > Call chain:
+        > 1. `planner()` in src/backend/optimizer/plan/planner.c
+        > 2. `standard_planner()` in src/backend/optimizer/plan/planner.c
+        > 3. `subquery_planner()` in src/backend/optimizer/plan/planner.c
+        > 4. `preprocess_expression()` in src/backend/optimizer/plan/planner.c
+        > 5. `eval_const_expressions()` in `src/backend/optimizer/util/clauses.c`
       
         > Why
         >
@@ -38,24 +47,33 @@
         * function calls
           
           * For a strict function: `int4eq(1, NULL)` can be simplified to `NULL`
-          * Immutable function: `2 + 2 >= 4`, we can pass `2+2` to the executor
+          * Immutable function: `2 + 2 >= 4` (), we can pass `2+2` to the executor
             so that we only compute it once. (This is more like constant-folding)
+
+            > `evaluate_expr()` (src/backend/optimizer/util/clauses.c), which in 
+            > turn calls executor's `ExecEvalExprSwitchContext()` function 
+            > (src/include/executor/executor.h)
 
         * Boolean expressions
 
           * `x OR true` -> `true`
           * `x AND false` -> `false`
         
-      * In-line simple SQL functions
+        * In-line simple SQL functions
+
+          > `inline_function()` in `src/backend/optimizer/util/clauses.c`
         
-        > QUES: why would this make the query faster
-        >
-        > Can expose constant-folding opportunities not visible in the original 
-        > query
+          > QUES: why would this make the query faster
+          >
+          > Can expose constant-folding opportunities not visible in the original 
+          > query
         
       * Simplify join tree
 
         * Flatten/Pull up sub-queries
+
+          > * subquery_planner() in src/backend/optimizer/plan/planner.c
+          > * pull_up_subqueries() in src/backend/optimizer/prep/prepjointree.c
 
           Sub-queries will be planned independently, it will be treated as a block box
           during planning of the outer query. By pulling it up, we could have better
@@ -63,6 +81,11 @@
 
         * Flatten UNION ALL, expand inheritance trees
         * Reduce join strength
+
+          > Call chain:
+          > 
+          > * `subquery_planner()` in `src/backend/optimizer/plan/planner.c` 
+          > * `reduce_outer_joins()` in `src/backend/optimizer/prep/prepjointree.c`
           
           * Reduce outer join to inner join
         
@@ -99,6 +122,10 @@
             ```
 
         * Convert IN, EXISTS sub-selects to semi-joins (Correlated subqueries)
+
+          > `convert_ANY_sublink_to_join()` and `convert_EXISTS_sublink_to_join()` 
+          > in `src/backend/optimizer/plan/subselect.c`
+
         * Identify anti-joins
 
           TODO: check if this is same as "Reduce outer join to anti joins"
@@ -108,6 +135,8 @@
         * Determine where `WHERE/ON` clauses (“quals”) should be evaluated (Predicate pushdown)
 
           > In general, we want to use each qual at the lowest possible join level
+
+          > `deconstruct_jointree()` and `distribute_qual_to_rels()` in `src/backend/optimizer/plan/initsplan.c`
 
         * Identify all referenced table columns (Vars), and find out how far up
           in the join tree their values are needed  (Projection pushdown)
@@ -122,6 +151,8 @@
           QUES: do not understand this
 
         * Remove useless joins (needs results of above steps)
+
+          > `remove_useless_joins()` in src/backend/optimizer/plan/analyzejoins.c
 
           * A left join can be omitted if:
 
@@ -143,6 +174,13 @@
             ```
       
    2. Plan "Scan" and "join"
+
+      > Call chain:
+      > 
+      > * `standard_planner()` in src/backend/optimizer/plan/planner.c
+      > * `subquery_planner()` in src/backend/optimizer/plan/planner.c
+      > * `grouping_planner()` in src/backend/optimizer/plan/planner.c
+      > * `query_planner()` in src/backend/optimizer/plan/planmain.c
    
       Deal with `FROM` and `WHERE/ON` clauses.  It also knows about `ORDER BY` 
       information in order to generate merge-join paths.
@@ -164,6 +202,14 @@
             Paths and join methods via straightforward cost comparisons
 
       Standard join search method (System R approach):
+
+      > Call chain
+      >
+      > * `query_planner` 
+      > * `make_one_rel()`
+      > * `add_paths_to_append_rel()`
+      > * `make_rel_from_joinlist()`
+      > * `standard_join_search()` in src/backend/optimizer/path/allpaths.c
 
       1. Generate paths for accessing base relations involved in the join (SeqScan, 
          IndexScan, TidScan)
