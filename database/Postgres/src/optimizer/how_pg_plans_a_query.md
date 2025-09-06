@@ -7,8 +7,8 @@
    > 3. Query special features handling
    > 4. Postprocessing
 
-   1. Preprocessing: Simplify query if possible, and collect information such as 
-      join order restriction.
+   1. Preprocessing: Simplify query (`struct Query`) if possible, and collect 
+      information such as join order restriction.
    
       > The preprocessing steps are not done in a specific order, they are 
       > intermixed.
@@ -123,14 +123,22 @@
 
         * Convert IN, EXISTS sub-selects to semi-joins (Correlated subqueries)
 
-          > `convert_ANY_sublink_to_join()` and `convert_EXISTS_sublink_to_join()` 
-          > in `src/backend/optimizer/plan/subselect.c`
+          > Call chain:
+          >
+          > 1. subquery_planner()
+          > 2. pull_up_sublinks()
+          > 3. pull_up_sublinks_jointree_recurse
+          > 4. pull_up_sublinks_qual_recurse
+          > 5. `convert_ANY_sublink_to_join()` and `convert_EXISTS_sublink_to_join()` 
+          >    in `src/backend/optimizer/plan/subselect.c`
 
         * Identify anti-joins
 
           TODO: check if this is same as "Reduce outer join to anti joins"
 
       * Later preprocessing
+
+        > `query_planner()`
 
         * Determine where `WHERE/ON` clauses (“quals”) should be evaluated (Predicate pushdown)
 

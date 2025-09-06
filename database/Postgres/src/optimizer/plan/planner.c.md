@@ -124,3 +124,8 @@
    cost will be chosen and converted to the final Plan.
    
    `struct Path` and `struct Plan` share common fields.
+
+5. GUC config `debug_parallel_query`
+
+   If it is not `DEBUG_PARALLEL_OFF`, you force Postgres to create a parallel plan
+   when it is safe to do so even though it is not necessary.

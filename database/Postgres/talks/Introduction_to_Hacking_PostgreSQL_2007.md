@@ -17,6 +17,9 @@
    Every statement is parsed into a `struct RawStmt`(called parsetree).  So the parser converts a SQL query
    string to a list of parsetree.
 
+   > Some code comments call `RawStmt` raw parse tree, and call `struct Query`
+   > parse tree.  I guess this is a history issue.
+
 3. Analyzer (aka, Binder, a parsetree -> a `struct Query`(called a Query tree))
 
    Resolve column references, metadata (schema/table/column) check, produces

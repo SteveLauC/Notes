@@ -172,7 +172,7 @@
       
       ```c
       parsetree_list = pg_parse_query(query_string);
-	  printf("DBG: %d statements\n", list_length(parsetree_list));
+	   printf("DBG: %d statements\n", list_length(parsetree_list));
       ```
       
       Each statement will be analyzed and rewritten separately.  A list of `querytree`
