@@ -1,9 +1,21 @@
 * initPlan (List<SubPlan>): List of uncorrelated, expr (return 1 row that has 
-  only 1 column) subquery. initPlans will be executed only once, which is
-  different from SubPlans (though they share the same data structure)
+  only 1 column) subquery. initPlans will be executed only once before executing
+  the main plan, then the query result will be stored in `EState.es_param_exec_vals[paramID]`
+  
+  > Difference between initPlan and SubPlans
+  > 
+  > 1. They are both subqueries, but different kinds of subqueries: initPlan 
+  >    is uncorrelated, subPlan could be correlated
+  > 2. initPlan will be executed only once, before the executor executes the 
+  >    main plan
+  > 3. They share the same data structure `struct SubPlan`
  
 
-* extParams (bitmap containing paramId (int)): 
+* extParams (bitmap containing paramId (int)): includes the paramIDs of all 
+  external PARAM_EXEC params affecting this plan node or its children.
+
+  > QUES: the code comment only explains what this field is, not what it is for.
+
 * allParams (bitmap containing paramId (int)): Dependency list
 
   Includes all the extParam paramIDs, plus the IDs of local params that affect 

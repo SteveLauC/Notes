@@ -19,7 +19,8 @@ be created in `standard_planner()`.
 
   * subroots: `struct PlannerInfo`s of sub-queries
   * subpaths: `struct Paths` of sub-queries
-  * subplans: plans of sub-queries, they are made from `subpaths`
+  * subplans: plans of sub-queries, they are made from `subpaths`. And will be 
+    copied to `PlannedStmt.subplans`.
 
   ```c
   // `build_subplan()` in backend/optimizer/plan/subselect.c
