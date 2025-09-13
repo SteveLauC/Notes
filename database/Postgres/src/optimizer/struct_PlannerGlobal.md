@@ -61,7 +61,7 @@ be created in `standard_planner()`.
 
   > Whenever a dependency changes, this plan no longer works
 
-* paramExecTypes: Type OIDs of the internal parameter
+* paramExecTypes (List<Oid>): Type OIDs of the internal parameter
 
   > PARAM_EXEC: internal executor parameter, used for passing values into and 
   > out of sub-queries or from nestloop joins to their inner scans.
@@ -84,7 +84,8 @@ be created in `standard_planner()`.
 
 * parallelModeOk: can we safely execute this query using more workers?
 
-* parallelModeNeeded: If it is safe to do parallel execution, is it required to do so?
+* parallelModeNeeded: If it is safe to do parallel execution, is it required to 
+  do so? i.e., will we have performance gains?
 
 * maxParallelHazard: worst proparallel value
   

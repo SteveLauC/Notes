@@ -63,3 +63,54 @@
 2. Folded join clauses
 
    The join clause may not be flattened
+
+# Post scan/join planning
+
+1. GROUP BY, aggregation and other high-level features are considered upper,
+   Postgres has to create a `RelOptInfo` as a container for the `pathlist`,
+   this kind of `RelOptInfo` is of type `RELOPT_UPPER_REL`, these `RelOptInfo`
+   are dummy, `pathlist` is probably the only field that will be useful?
+
+   > Hmm, this looks like a compromise :D
+
+   Currently, we have these types of upper `RelOptInfo` during upper-level
+   planning:
+
+   ```c
+   /*
+    * This enum identifies the different types of "upper" (post-scan/join)
+    * relations that we might deal with during planning.
+    */
+   typedef enum UpperRelationKind
+   {
+      /* result of UNION/INTERSECT/EXCEPT, if any */
+      UPPERREL_SETOP,
+      /* result of partial grouping/aggregation, if any */
+      UPPERREL_PARTIAL_GROUP_AGG,
+      /* result of grouping/aggregation, if any */
+      UPPERREL_GROUP_AGG,
+      /* result of window functions, if any */
+      UPPERREL_WINDOW,
+      /* result of partial "SELECT DISTINCT", if any */
+      UPPERREL_PARTIAL_DISTINCT,
+      /* result of "SELECT DISTINCT", if any */
+      UPPERREL_DISTINCT,
+      /* result of ORDER BY, if any */
+      UPPERREL_ORDERED,
+      /* 
+       * Result of any remaining top-level actions any final processing steps, currently:
+       *
+       * 1. LockRows (SELECT FOR UPDATE)
+       * 2. LIMIT/OFFSET 
+       * 3. ModifyTable.
+       *
+       * All these 3 operations share the same node UPPERREL_FINAL rather than having their 
+       * own UPPERREL_XXX nodes because the order of executing them is fixed, there is no
+       * flexibility:
+       *
+       * - LIMIT <- LockRows
+       * - ModifyTable
+       */
+      UPPERREL_FINAL,
+   } UpperRelationKind;
+   ```

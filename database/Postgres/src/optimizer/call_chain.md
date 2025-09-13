@@ -7,8 +7,8 @@
       * set_cheapest()
 
     * fetch_upper_rel()
-    * get_cheapest_fractional_path()
-    * create_plan()
+    * get_cheapest_fractional_path(RelOptInfo, tuple_fraction)
+    * create_plan(root, path)
     * set_plan_references()
 
 ------------------
@@ -43,7 +43,11 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
    A query can be executed in parallel if following conditions are satisfied:
 
-   * If the query comes from a cursor, it should be safe
+   * If `CURSOR_OPT_PARALLEL_OK` is contained in `cursorOptions`, it should be 
+     safe
+
+     > This is true if the planer is invoked from `exec_simple_query()`
+
    * We should have worker processes (we have them when we have postmaster)
    * This query won't modify/write anything
      * It is a SELECT statement
@@ -94,6 +98,12 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    range `(0, 1)`, handle (correct) the edge value separately.
 
    > QUES: when will this option be set?
+   >
+   > future steve: For `exec_simple_query()`, this parameter is hardcoded to `CURSOR_OPT_PARALLEL_OK`
+   >
+   > ```c
+   > plantree_list = pg_plan_queries(querytree_list, query_string, CURSOR_OPT_PARALLEL_OK, NULL);
+   > ```
 
    ```c
    /* Determine what fraction of the plan is likely to be scanned */
@@ -136,7 +146,133 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    >   to be retrieved (ie, a LIMIT specification).
 
 
-4. `subquery_planner()`
+4. Generating the plan
+
+   ```c
+   /* primary planning entry point (may recurse for subqueries) */
+   root = subquery_planner(PlannerGlobal*: glob, Query*: parse, PlannerInfo*: NULL, has_recursion: false, tuple_fraction /*0.0*/, SetOperationStmt*: NULL);
+
+   /* Select best Path and turn it into a Plan */
+   final_rel = fetch_upper_rel(root, UPPERREL_FINAL, NULL);
+   best_path = get_cheapest_fractional_path(final_rel, tuple_fraction);
+
+   top_plan = create_plan(root, best_path);
+   ```
+
+   `subquery_planner()` plans this query (`parse`) and returns the `PlannerInfo` 
+   structure created within it, `root->upper_rels[UPPERREL_FINAL]` is a list that
+   is guaranteed to contains 1 final upper relation where you can get the cheapest
+   path.
+
+   > NOTE: `root->upper_rels` is an array of List<RelOptInfo> (indexed by kind 
+   > `UpperRelationKind`), it is designed in such way because Postgres will have 
+   > multiple upper relations for the same kind.
+   >
+   > For now, there is only 1 upper relation for each kind.
+
+   Then you extract the cheapest path from the upper relation, and convert it to
+   the final plan.
+
+   > BTW, if you don't know what an upper relation is, check out the "Post scan/join planning"
+   > in "optimizer/README"
+
+5. Materialize the execution result if needed
+
+   ```c
+   /*
+      * If creating a plan for a scrollable cursor, make sure it can run
+      * backwards on demand.  Add a Material node at the top at need.
+      */
+   if (cursorOptions & CURSOR_OPT_SCROLL)
+   {
+      if (!ExecSupportsBackwardScan(top_plan))
+         top_plan = materialize_finished_plan(top_plan);
+   }
+   ```
+
+   Planner invoked from `exec_simple_query()` won't have this `CURSOR_OPT_SCROLL` 
+   option set.
+
+6. Artificially add a `Gather` node atop the generated plan, as a test. Note it
+   only uses 1 worker. You should note that the condition should be simply:
+
+   ```c
+   if (debug_parallel_query != DEBUG_PARALLEL_OFF && top_plan->parallel_safe)
+   ```
+
+   The below part is to avoid regression in tests
+
+   ```c
+   top_plan->initPlan == NIL || debug_parallel_query != DEBUG_PARALLEL_REGRESS
+   ```
+
+   > We can add Gather even when top_plan has parallel-safe initPlans, but
+   > then we have to move the initPlans to the Gather node because of
+   > SS_finalize_plan's limitations.  **That would cause cosmetic breakage of
+   > regression tests when debug_parallel_query = regress**, because initPlans
+   > that would normally appear on the top_plan move to the Gather, causing
+   > them to disappear from EXPLAIN output.  That doesn't seem worth kluging
+   > EXPLAIN to hide, so skip it when debug_parallel_query = regress.
+
+
+   ```c
+   if (debug_parallel_query != DEBUG_PARALLEL_OFF &&
+      top_plan->parallel_safe &&
+      (top_plan->initPlan == NIL ||
+         debug_parallel_query != DEBUG_PARALLEL_REGRESS))
+   {
+      Gather	   *gather = makeNode(Gather);
+      Cost		initplan_cost;
+      bool		unsafe_initplans;
+
+      gather->plan.targetlist = top_plan->targetlist;
+      gather->plan.qual = NIL;
+      gather->plan.lefttree = top_plan;
+      gather->plan.righttree = NULL;
+      gather->num_workers = 1;
+      gather->single_copy = true;
+      gather->invisible = (debug_parallel_query == DEBUG_PARALLEL_REGRESS);
+
+      /* Transfer any initPlans to the new top node */
+      gather->plan.initPlan = top_plan->initPlan;
+      top_plan->initPlan = NIL;
+
+      /*
+         * Since this Gather has no parallel-aware descendants to signal to,
+         * we don't need a rescan Param.
+         */
+      gather->rescan_param = -1;
+
+      /*
+         * Ideally we'd use cost_gather here, but setting up dummy path data
+         * to satisfy it doesn't seem much cleaner than knowing what it does.
+         */
+      gather->plan.startup_cost = top_plan->startup_cost +
+         parallel_setup_cost;
+      gather->plan.total_cost = top_plan->total_cost +
+         parallel_setup_cost + parallel_tuple_cost * top_plan->plan_rows;
+      gather->plan.plan_rows = top_plan->plan_rows;
+      gather->plan.plan_width = top_plan->plan_width;
+      gather->plan.parallel_aware = false;
+      gather->plan.parallel_safe = false;
+
+      /*
+         * Delete the initplans' cost from top_plan.  We needn't add it to the
+         * Gather node, since the above coding already included it there.
+         */
+      SS_compute_initplan_cost(gather->plan.initPlan,
+                           &initplan_cost, &unsafe_initplans);
+      top_plan->startup_cost -= initplan_cost;
+      top_plan->total_cost -= initplan_cost;
+
+      /* use parallel mode for parallel plans. */
+      root->glob->parallelModeNeeded = true;
+
+      top_plan = &gather->plan;
+   }
+   ```
+
+7. 
 
 
 ### subquery_planner()
@@ -225,6 +361,7 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
 ###### make_one_rel() (within query_planner())
 #### set_cheapest() (within subquery_planner)
+### fetch_upper_rel() (within standard_palner)
 ### get_cheapest_fractional_path() (within standard_planner())
 
 ### create_plan() (within standard_planner())

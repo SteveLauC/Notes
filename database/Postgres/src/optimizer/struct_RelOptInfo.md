@@ -5,14 +5,30 @@ is a unit in that tree.
 
 # Notes
 
-1. RelOptInfo could be different types:
+1. RelOptInfo could represent different types of relations:
 
-   * base relation (TODO: Check its RTEkind and update notes)
+   * base relation 
 
-     It can be a table/sub-select/function, it is identified by an RT index (range 
+     It can be a table/sub-select/function, it is identified by a RT index (range 
      table entry index)
 
      Stored in `PlannerInfo->simple_rel_array`
+
+     TODO: Gemini said that base relation can be other types as well, verify this 
+     and update notes accordingly.
+
+     | `RTEKind` (来源) | 是否可以成为 `base relation`? | 备注 |
+     | :--- | :--- | :--- |
+     | `RTE_RELATION` | **是** | 最常见的情况，一个物理表。 |
+     | `RTE_SUBQUERY` | **是** | `FROM (SELECT ...)` |
+     | `RTE_FUNCTION` | **是** | `FROM my_func(...)` |
+     | `RTE_VALUES` | **是** | `FROM (VALUES ...)` |
+     | `RTE_CTE` | **是** | `WITH ... SELECT ... FROM cte` |
+     | `RTE_TABLEFUNC` | **是** | `FROM XMLTABLE(...)` |
+     | `RTE_NAMEDTUPLESTORE` | 否 | 用于触发器中的 `NEW`/`OLD` 表，不参与主连接树。|
+     | `RTE_JOIN` | 否 | `JOIN` 本身是**连接的结果**，而不是连接的**基本单元**。它的 `RelOptInfo` 是 `RELOPT_JOINREL`。 |
+     | `RTE_RESULT` | 否 | 通常是为没有 `FROM` 子句的查询创建的占位符，不参与连接。 |
+
      
    * join relation
 
@@ -29,7 +45,7 @@ is a unit in that tree.
      Similar to base relations, each other relation is also identified by one RT index.
      But they do not appear in the jointree.
 
-     Currently, the only kind of other relation is member relation, which can be:
+     Currently, "the only kind of other relation is member relation", which can be:
 
      1. children tables when you scan a parent table. Parent table is a base relation, all
         the children tables are member relations
@@ -73,11 +89,10 @@ is a unit in that tree.
    	RELOPT_OTHER_MEMBER_REL,
     /* RelOptInfos that describe post-scan/join processing steps */
    	RELOPT_UPPER_REL,
-    
-    
-    /* no longer used */
+
+    /* QUES: ??? */
    	RELOPT_OTHER_JOINREL,
-    /* no longer used */
+    /* QUES: ??? */
    	RELOPT_OTHER_UPPER_REL,
   } RelOptKind;
   ```
@@ -104,7 +119,7 @@ is a unit in that tree.
   tells the planner that a path with low startup_cost has value and should be 
   kept even though its total_cost is high.
 
-* consider_param_paths (bool): same as consider_startup, but is for parameterized paths.
+* consider_param_startup (bool): same as consider_startup, but is for parameterized paths.
   while consider_startup is for unparameterized paths.
 
   > QUES: What are parameterized paths?
@@ -189,7 +204,7 @@ is a unit in that tree.
   attribute is needed;". QUES: I don't understand why it needs multiple bits
   to track "the highest join relation"
   
-* arrr_widths (Array<int32>)
+* attr_widths (Array<int32>)
  
   An array of average estimated column width (in bytes), 0 means it is not computed
   and cached.
