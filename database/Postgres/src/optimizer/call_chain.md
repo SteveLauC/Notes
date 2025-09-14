@@ -9,6 +9,7 @@
     * fetch_upper_rel()
     * get_cheapest_fractional_path(RelOptInfo, tuple_fraction)
     * create_plan(root, path)
+    * SS_finalize_plan(root, plan)
     * set_plan_references()
 
 ------------------
@@ -139,7 +140,7 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    >
    > tuple_fraction is interpreted as follows:
    >
-   > * 0: expect all tuples to be retrieved (normal case)
+   > * 0: expect all tuples to be retrieved (normal case, from psql)
    > * 0 < tuple_fraction < 1: expect the given fraction of tuples available
    >   from the plan to be retrieved
    > * tuple_fraction >= 1: tuple_fraction is the absolute number of tuples expected 
@@ -272,8 +273,22 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    }
    ```
 
-7. Walk through the Plan tree, init all the Plan's `extParams` and `allParams` 
-   fields
+7. Walk through the Plan tree, init all the Plans' `extParams` and `allParams` 
+   fields. It has to do this to the `subplans` because the values of these 2 fields 
+   in `top_plan` relies on the ones in `subplans`
+
+   > struct Plan:
+   >
+   > field `initPlans` stores the `SubPlan`s of those uncorrelated sub-queries
+   >
+   > extParam includes the paramIDs of all external PARAM_EXEC params
+	> affecting this plan node or its children. **setParam params from the
+	> node's initPlans are not included, but their extParams are**.
+   >
+   > allParam includes all the extParam paramIDs, plus the IDs of local
+   > params that affect the node (i.e., **the setParams of its initplans**).
+   > These are _all_ the PARAM_EXEC params that affect this node.
+
 
    ```c
    /*
@@ -296,8 +311,69 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    }
    ```
 
+8. Adjust some plan tree representation details:
+
+
+   ```c
+   top_plan = set_plan_references(root, top_plan);
+   /* ... and the subplans (both regular subplans and initplans) */
+   Assert(list_length(glob->subplans) == list_length(glob->subroots));
+   forboth(lp, glob->subplans, lr, glob->subroots)
+   {
+      Plan	   *subplan = (Plan *) lfirst(lp);
+      PlannerInfo *subroot = lfirst_node(PlannerInfo, lr);
+
+      lfirst(lp) = set_plan_references(subroot, subplan);
+   }
+   ```
+
+9. Query compilation option
+ 
+   > TODO: take a deeper look at this
+
+   ```c
+   result->jitFlags = PGJIT_NONE;
+   if (jit_enabled && jit_above_cost >= 0 &&
+      top_plan->total_cost > jit_above_cost)
+   {
+      result->jitFlags |= PGJIT_PERFORM;
+
+      /*
+         * Decide how much effort should be put into generating better code.
+         */
+      if (jit_optimize_above_cost >= 0 &&
+         top_plan->total_cost > jit_optimize_above_cost)
+         result->jitFlags |= PGJIT_OPT3;
+      if (jit_inline_above_cost >= 0 &&
+         top_plan->total_cost > jit_inline_above_cost)
+         result->jitFlags |= PGJIT_INLINE;
+
+      /*
+         * Decide which operations should be JITed.
+         */
+      if (jit_expressions)
+         result->jitFlags |= PGJIT_EXPR;
+      if (jit_tuple_deforming)
+         result->jitFlags |= PGJIT_DEFORM;
+   }
+   ```
+
 
 ### subquery_planner()
+
+1. It is guaranteed that `subquery_planner()` returns a `PlannerInfo` containing
+   the final path in its `PlannerInfo.upper_rels[UPPERREL_FINAL]`. Caller should 
+   invoke `fetch_upper_rel(root, UPPERREL_FINAL, NULL)` to extract the final upper 
+   relation, then extract the cheapest path.
+
+   Like what `standard_planner()` does:
+
+   ```c
+   root = subquery_planner(glob, parse, NULL, false, tuple_fraction, NULL);
+   final_rel = fetch_upper_rel(root, UPPERREL_FINAL, NULL);
+   best_path = get_cheapest_fractional_path(final_rel, tuple_fraction);
+   ```
+
 
 1. `replace_empty_jointree()` adds a dummy `RTE_RESULT` range table entry if
    the range table list is empty.
@@ -386,4 +462,10 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 ### fetch_upper_rel() (within standard_palner)
 ### get_cheapest_fractional_path() (within standard_planner())
 
+
 ### create_plan() (within standard_planner())
+
+### SS_finalize_plan(root, plan) (within standard_planner())
+### set_plan_references() (within standard_planner())
+
+TODO: document the changes in detail here

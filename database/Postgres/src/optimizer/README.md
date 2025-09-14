@@ -108,7 +108,7 @@
        * own UPPERREL_XXX nodes because the order of executing them is fixed, there is no
        * flexibility:
        *
-       * - LIMIT <- LockRows
+       * - LockRows -> Limit/Offset
        * - ModifyTable
        */
       UPPERREL_FINAL,

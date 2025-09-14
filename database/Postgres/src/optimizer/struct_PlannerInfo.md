@@ -98,5 +98,7 @@ This type contains information of planning a `Query`
 
 * cte_plan_ids:
 
-* upper_rels 
+* upper_rels (Fixed-size (UPPERREL_FINAL+1) array of List<RelOptInfo>): contains 
+  all the upper relations
 
+* upper_targets (Fixed-size (UPPERREL_FINAL+1) array of `PathTarget`): 
