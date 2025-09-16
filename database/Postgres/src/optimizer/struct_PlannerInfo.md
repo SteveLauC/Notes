@@ -17,12 +17,34 @@ This type contains information of planning a `Query`
   This field is a pointer to its parent `PlannerInfo`, if exists. Otherwise, it is
   NULL
 
-* plan_params (List<PlannerParamItem>): parameters that will be passed to sub-queries.
+* plan_params (List<PlannerParamItem>): Parameters that the current plan/query 
+  should prepare for the subquery.
+
+  When `subquery_planner()` plans the current plan and finds it references a 
+  variable from the parent query, it modifies its parent query's 
+  `PlannerInfo.plan_params`
+
+  ```c
+  typedef struct PlannerParamItem
+  {
+      pg_node_attr(no_copy_equal, no_read, no_query_jumble)
+
+      NodeTag		type;
+
+      Node	   *item;			/* the Var, PlaceHolderVar, or Aggref */
+      int			paramId;		/* its assigned PARAM_EXEC slot number */
+  } PlannerParamItem;
+  ```
+
+  `struct PlannerParamItem` contains the expression that should be provided and
+  the slot number that specifies where the value should be put in `EState.es_param_exec_vals`
 
 * outer_params (IDs): contains the paramIds of PARAM_EXEC Params that outer query 
   levels will make available to this query level.
 
-  > QUES: I do not understand this
+  See the notes of field `plan_params`, after the planner edits the parent 
+  PlannerInfo's `plan_params`, it stores the `EState.es_param_exec_vals` slot
+  number in the current PlannerInfo's `outer_params`.
 
 * simple_rel_array (RelOptInfo **): an array of `RelOptInfo`s that are either:
   
@@ -93,12 +115,136 @@ This type contains information of planning a `Query`
 
   > QUES: join_rel_level[0] 是所有基表，join_rel_level[1] 是所有两表连接。is this true?
 
-* initPlan: (could be wrong) Gemini said this is the list of non-correlated sub-query 
-  plans
+* init_plans (List<SubPlan>): This field contains the uncorrelated subqueries, they
+  will be transferred to `Plan.initPlans` in `SS_attach_initplans(root, plan)`.
 
-* cte_plan_ids:
+* cte_plan_ids: It is a List of Plan ID (index of the subplan made for this CTE 
+  in PlannedStmt.subplans), or -1 if Postgres decides to inline this CTE.
+
+  Postgres has 2 ways to plan a CTE:
+
+  1. Make it a subplan (initPlan)
+  2. Inline it to make it a part of the query
+
+* multiexpr_params (List<List<Param>>): Parameters of the return values of a 
+  `MULTIEXPR_SUBLINK`
+
+  ```sql
+  CREATE TABLE targets (
+      id int primary key,
+      val1 text,
+      val2 int
+  );
+
+  CREATE TABLE sources (
+      id int primary key,
+      s_val1 text,
+      s_val2 int
+  );
+
+  UPDATE targets
+  SET
+      (val1, val2) = (SELECT s_val1, s_val2 FROM sources WHERE sources.id = targets.id)
+  WHERE
+      targets.id = 1;
+  ```
+
+  that subselect is a multi-expr sublink subquery. PARAM_MULTIEXPR is a plan-time
+  thing, it will be replaced by `PARAM_EXEC` during execution.
+
+* join_domains
+
+* eq_classes;
+
+* ec_merging_done;
+
+* canon_pathkeys;
+
+* left_join_clauses;
+
+* right_join_clauses;
+
+* full_join_clauses;
+
+* join_info_list;
+
+* last_rinfo_serial;
+
+* all_result_relids;
+
+* leaf_result_relids;
+
+* append_rel_list;
+
+* row_identity_vars;
+
+* rowMarks;
+
+* placeholder_list;
+
+* placeholder_array
+
+* placeholder_array_size pg_node_attr(read_write_ignore);
+
+* placeholder_array_size
+
+* fkey_list
+
+* query_pathkeys
+
+* group_pathkeys
+
+* num_groupby_pathkeys
+
+* window_pathkeys
+
+* distinct_pathkeys
+
+* sort_pathkeys
+
+* setop_pathkeys;
+
+* part_schemes 
+
+* initial_rels
 
 * upper_rels (Fixed-size (UPPERREL_FINAL+1) array of List<RelOptInfo>): contains 
   all the upper relations
 
 * upper_targets (Fixed-size (UPPERREL_FINAL+1) array of `PathTarget`): 
+
+* processed_groupClause
+* processed_distinctClause
+* processed_tlist
+* update_colnos
+* grouping_map
+* minmax_aggs
+
+* planner_cxt (MemoryContext): Memory context holding this PlannerInfo 
+
+* total_table_pages
+* tuple_fraction
+* limit_tuples
+* qual_security_level
+* hasJoinRTEs
+* hasLateralRTEs
+* hasHavingQual
+* hasPseudoConstantQuals
+* hasAlternativeSubPlans
+* placeholdersFrozen
+* hasRecursion
+* group_rtindex
+* agginfos
+* aggtransinfos
+* numOrderedAggs
+* hasNonPartialAggs
+* hasNonSerialAggs
+* wt_param_id
+* non_recursive_path
+* curOuterRels
+* curOuterParams
+* isAltSubplan
+* isUsedSubplan
+* join_search_private
+* partColsUpdated
+* partPruneInfos

@@ -374,6 +374,48 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    best_path = get_cheapest_fractional_path(final_rel, tuple_fraction);
    ```
 
+2. Variable initialization
+
+   ```c
+   /* PlannerInfo that will be returned */
+   PlannerInfo *root;
+
+   /* 
+    * If the `Query.withCheckOptions` field is not NIL, call preprocess_expression() on 
+    * their `qual` field. Then we will have a list of NEW withCheckOptions.
+    *
+    * Do `Query->withCheckOptions = newWithCheckOptions`
+    */
+   List	   *newWithCheckOptions;
+   /*
+    * Similar to what we do with withCheckOptions, preprocess the havingClause 
+    * and append it to the newHaving list.
+    *
+    * QUES: this is more complex than the operations performed to withCheckOptions,
+    * I need to take a deeper look at it.
+    */
+   List	   *newHaving;
+   /* 
+    * If we have an outer join in RTEs, inspect every RTE and check its type.
+    *
+    * Why we care about outer joins:
+    * 1. We can potentially reduce it inner/anti join
+    * 2. Check if we can remove useless RTE_RESULT entries 
+    */
+   bool		hasOuterJoins;
+   /* 
+    * If we have RTE_RESULT RTEs in rtable, true. Used to check if we can remove
+    * some RTE_RESULT entries that are useless in remove_useless_result_rtes().
+    */
+   bool		hasResultRTEs;
+   /* The final upper relation, we extract paths from it */
+   RelOptInfo *final_rel;
+   /* You know, it is a list element */
+   ListCell   *l;
+   ```
+
+3. 
+
 
 1. `replace_empty_jointree()` adds a dummy `RTE_RESULT` range table entry if
    the range table list is empty.
@@ -397,6 +439,10 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    Result  (cost=0.00..0.01 rows=1 width=4)
    (1 row)
    ```
+
+   I think this is a workaround for the limitation that the volcano model behaves
+   like an iterator, to make the evaluator compute something, it has to yield an
+   element.
 
 2. `pull_up_sublinks()`
 
