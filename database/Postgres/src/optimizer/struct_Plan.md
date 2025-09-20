@@ -9,7 +9,8 @@
   > 2. initPlan will be executed only once, before the executor executes the 
   >    main plan
   > 3. They share the same data structure `struct SubPlan`
- 
+
+  `Plan.initPlans` will be transferred from `PlannerInfo.init_plans` in `SS_attach_initplans(root, plan)`
 
 * extParams (bitmap containing paramId (int)): includes the paramIDs of all 
   external PARAM_EXEC params affecting this plan node or its children.

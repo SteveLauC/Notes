@@ -473,17 +473,44 @@
 
    4. The visibility map
 
-      This fork is used to speed up the `VACUUM` process, skip the pages that do
-      not need `VACUUM` at all. Provided for table only.
-
-      This map stores 2 bits for every page in the table main fork, the first bit
-      is set if this page only contains up-to-date tuples. The second bit is set
-      if all the tuples in this page are dead.
-
-      If the first bit of a page is set, the `VACUUM` does not need to clean it.
+      This map stores 2 bits for every **heap** page in a separate fork: 
       
-      > QUES: What is the second bit for then?
+      1. the first bit is set if this page is all-visible, i.e., all the tuples
+         within this page can be seen the new transactions, i.e., all the tuples
+         within this page are old and haven't been modified for a while.
 
+         What is this for? Postgres stores MVCC information (xmin, xmax) in heap,
+         so even though Postgres supports index-only scan (assume the tuple would
+         also be stored in index, see `database/Postgres/pg17_docs/Ch11_Indexes/11.9_Index-Only_Scans_and_Covering_Indexes.md`)
+         it still needs to visit heap to filter out the dead tuples.
+
+         But if we know that a page is all-visible, i.e., its tuples are alive, we
+         do not need to visit the heap.
+
+      2. The second bit is set if all the tuples in this page are **frozen**.
+
+         What does frozen mean? Before we talk about tuple freezing, we need to 
+         talk about transaction ID and MVCC. Postgres versions its tuple using
+         transaction ID (int, 32-bit), whenever a new transaction starts, Postgres
+         assigns it an ID and does a wrapping addition to the ID counter, which
+         means the transaction ID can go back.
+
+         Bad things would happen in that case, deleted rows might show up, committed
+         rows might disappear. Postgres solved this by freezing old rows that is 
+         known to be visible to all transactions and kicking them out of its 
+         MVCC versioning essentially. 
+
+         ```c
+         #define HEAP_XMIN_COMMITTED  0x0100 /* t_xmin committed */
+         #define HEAP_XMIN_INVALID  0x0200 /* t_xmin invalid/aborted */
+         #define HEAP_XMIN_FROZEN  (HEAP_XMIN_COMMITTED|HEAP_XMIN_INVALID)
+         ```
+
+         Frozen tuples are immortal, so VACUUM process will never remove them.
+         As long as a page is marked frozen, VACUUM process skips this page.
+
+      > This is needed due to the limitation of Postgres's MVCC impl.
+      
 ## Pages
 
 ## Toast

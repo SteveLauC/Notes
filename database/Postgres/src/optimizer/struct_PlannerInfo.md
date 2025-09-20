@@ -119,12 +119,22 @@ This type contains information of planning a `Query`
   will be transferred to `Plan.initPlans` in `SS_attach_initplans(root, plan)`.
 
 * cte_plan_ids: It is a List of Plan ID (index of the subplan made for this CTE 
-  in PlannedStmt.subplans), or -1 if Postgres decides to inline this CTE.
+  in PlannedStmt.subplans), or -1 if Postgres decides to ignore or inline it.
 
-  Postgres has 2 ways to plan a CTE:
+  Postgres has 3 ways to plan a CTE:
 
-  1. Make it a subplan (initPlan)
-  2. Inline it to make it a part of the query
+  1. Ignore it, if it is a SELECT and not referenced anywhere (plan ID: -1)
+  2. Inline it to make it a part of the query (plan ID: -1)
+  3. Materialize it, make it a subplan (initPlan) (will have a positive plan ID)
+
+  ```c
+  /*
+   * If there is a WITH list, process each WITH query and either convert it
+   * to RTE_SUBQUERY RTE(s) or build an initplan SubPlan structure for it.
+   */
+  if (parse->cteList)
+      SS_process_ctes(root);
+  ```
 
 * multiexpr_params (List<List<Param>>): Parameters of the return values of a 
   `MULTIEXPR_SUBLINK`

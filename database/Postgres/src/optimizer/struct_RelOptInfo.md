@@ -9,7 +9,7 @@ is a unit in that tree.
 
    * base relation 
 
-     It can be a table/sub-select/function, it is identified by a RT index (range 
+     It can be a table/sub-select/function, it is identified by one RT index (range 
      table entry index)
 
      Stored in `PlannerInfo->simple_rel_array`
@@ -75,6 +75,7 @@ is a unit in that tree.
        
         > QUES: I don't get this
 
+   * Upper relation: Post scan/join relations
 
 # Fields
 
@@ -104,6 +105,7 @@ is a unit in that tree.
     involved in the join, as well as the indexes to the outer join range table 
     entries formed at or undre this `RelOptInfo`.
   * For other relation: It contains 1 rt index
+  * For upper relation: this field is empty
 
 * rows (double): estimiated number of rows that this "operator" will output
 
@@ -128,10 +130,10 @@ is a unit in that tree.
 
 * reltarget (PathTarget): default target list for this relation
 
-* pathlist (List<Path>): Serialized Paths will be stored in this field
+* pathlist (List<Path>): "Serialized" Paths will be stored in this field
 
-  serialized paths: will be executed sequentically by the backend process, no worker
-  processes needed.
+  serialized paths: will be executed completely by the backend process and backend 
+  process only, no worker processes needed.
 
 * ppilist (List<ParamPathInfo>): For the parameterized Paths in pathlist, their 
   ParamPathInfo nodes will be stored here
@@ -166,7 +168,7 @@ is a unit in that tree.
 
 -------------------------------------------------------------------------------
 
-> Information a base relation, not set for join relations
+> Information of a base relation, not set for join relations
 
 * relid (uint): range table entry index. For a base relation, field `relids` will
   only have 1 index, so it is equivalent to `relid`. `relid` is provided for 
@@ -194,8 +196,8 @@ is a unit in that tree.
 
 * attr_needed (Array<Relids>)
 
-  This is an array indexed by range `[min_attr, max_attr]`, each element is a 
-  Relids bitset.
+  This is an array indexed by range `[min_attr, max_attr]`, each element is 
+  a Relids bitset. I.e., one bitmapset for each attribute
   
   If bit 0 is set to 1, it means that this attribute is needed as a part of target 
   list. 

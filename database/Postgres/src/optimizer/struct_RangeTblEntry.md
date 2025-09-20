@@ -66,17 +66,23 @@
   > > dropped since the rule was created (and for that matter the colnames might 
   > > be out of date due to column renamings). 
   >
-  > This is because when a rule gets created, it cache the Query of the rule, which
-  > would contain a RangeTblEntry snapshot to the table used in it. This snapshot
+  > This is because when a rule gets created, it caches the Query of the rule, which
+  > will contain a `RangeTblEntry` snapshot to the table used in it. This snapshot
   > won't be updated so it could be outdated, thus can have non-empty string for
-  > dropped columns. You should `set debug_print_rewritten = true` to see tha snapshot
+  > dropped columns. You should `set debug_print_rewritten = true` to see the snapshot
   > query tree.
   >
   > ```sql
-  > set debug_print_rewritten = true;
   > create table users (id int, name text, email text);
+  > create table user_log (user_id int, old_name text);
   > CREATE RULE log_user_update AS ON UPDATE TO users DO ALSO INSERT INTO user_log (user_id, old_name) VALUES (OLD.id, OLD.name);
-  > ALTER TABLE users DROP COLUMN name;
+  > ALTER TABLE users DROP COLUMN email;
+  > insert into users values (1, '');
+  >
+  > set debug_print_rewritten = true;
+  >
+  > -- trigger that rule, search for field 'email'
+  > update users set name = 'new_name' where id = 1;
   > ```
   >
   > >The same comments apply to FUNCTION RTEs when a function's return type is 
@@ -146,4 +152,93 @@
 
 > Fields for RTE_JOIN
 
+* jointype (JoinType): type of this join
+
+* joinmergedcols (int): Number of "merged" columns. Merged columns are placed at
+  the beginning of `joinaliasvars`, so this field also tells you how many columns 
+  at the beginning of the join's output correspond to these merged columns.
+  
+  What does "merged columns" mean? Natural join's performs equi-join on tables with
+  **matching** columns (same name, compatible data type), since these columns have
+  the same name and value (as it is an equi-join), Postgres does not display both
+  these columns in the result, it "merge"s 2 columns into 1 column:
+
+  ```sql
+  postgres=# \d foo
+                    Table "public.foo"
+    Column    |  Type   | Collation | Nullable | Default 
+  -------------+---------+-----------+----------+---------
+  id          | integer |           |          | 
+  description | text    |           |          | 
+
+  postgres=# \d bar
+                    Table "public.bar"
+    Column    |  Type   | Collation | Nullable | Default 
+  -------------+---------+-----------+----------+---------
+  id          | integer |           |          | 
+  description | text    |           |          | 
+
+  -- This does an inner equi join on all matching columns (id, description)
+  -- joinmergedcols = 2
+  postgres=# select * from foo natural join bar;
+  -- This does an left outer equi join on all matching columns (id, description)
+  -- joinmergedcols = 2
+  postgres=# select * from foo natural left join bar;
+  -- This does an right outer equi join on all matching columns (id, description)
+  -- joinmergedcols = 2
+  postgres=# select * from foo natural right join bar;
+
+  -- This does an inner equi join on column id, see that we have only 1 id column shown
+  -- joinmergedcols = 1
+  postgres=# select * from foo join bar using (id);
+  id | description | description 
+  ----+-------------+-------------
+    1 | one         | 一
+  (1 row)
+
+  -- This does an inner equi join on column id and description
+  -- joinmergedcols = 2
+  postgres=# select * from foo join bar using (id, description)
+  ```
+
 * joinaliasvars (List<Var>)
+
+* joinleftcols 
+
+* joinrightcols 
+
+* join_using_alias 
+
+
+-------------------------------------------------------------------------------
+
+> Function RTE
+
+
+-------------------------------------------------------------------------------
+
+> Table function RTE
+
+
+-------------------------------------------------------------------------------
+
+> Values RTE
+
+
+-------------------------------------------------------------------------------
+
+> CTE RTE (RTE_CTE)
+>
+>
+> ```sql
+> with cte_foo as (select * from table)
+> select * from cte_foo;
+> ```
+>
+> `cte_foo` is a `RTE_CTE`
+
+* ctename (string) 
+
+* ctelevelsup (Index, uint): 
+
+* self_reference (bool)

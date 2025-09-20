@@ -462,7 +462,25 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
    QUES: I do not understand most of these fields.
 
-4. 
+4. Plan CTEs
+
+   ```c
+   /*
+   * If there is a WITH list, process each WITH query and either convert it
+   * to RTE_SUBQUERY RTE(s) or build an initplan SubPlan structure for it.
+   */
+   if (parse->cteList)
+      SS_process_ctes(root);
+   ```
+
+   Iterate over all the CTEs, and plan it, Postgres has 3 options:
+
+   1. Ignore it, if it is a select and not used anywhere
+   2. Inline it, convert `RTE_CTE` to `RTE_SUBQUERY`
+   3. Materialize it, plan it separately and add it to `Plan.initPlans`
+
+
+
 
 
 1. `replace_empty_jointree()` adds a dummy `RTE_RESULT` range table entry if
