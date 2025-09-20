@@ -414,7 +414,55 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    ListCell   *l;
    ```
 
-3. 
+3. PlannerInfo initial setup
+
+   ```c
+   /* Create a PlannerInfo data structure for this subquery */
+   root = makeNode(PlannerInfo);
+   root->parse = parse;
+   root->glob = glob;
+   root->query_level = parent_root ? parent_root->query_level + 1 : 1;
+   root->parent_root = parent_root;
+   root->plan_params = NIL;
+   root->outer_params = NULL;
+   root->planner_cxt = CurrentMemoryContext;
+   root->init_plans = NIL;
+   root->cte_plan_ids = NIL;
+   root->multiexpr_params = NIL;
+   root->join_domains = NIL;
+   root->eq_classes = NIL;
+   root->ec_merging_done = false;
+   root->last_rinfo_serial = 0;
+   root->all_result_relids =
+      parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+   root->leaf_result_relids = NULL;	/* we'll find out leaf-ness later */
+   root->append_rel_list = NIL;
+   root->row_identity_vars = NIL;
+   root->rowMarks = NIL;
+   memset(root->upper_rels, 0, sizeof(root->upper_rels));
+   memset(root->upper_targets, 0, sizeof(root->upper_targets));
+   root->processed_groupClause = NIL;
+   root->processed_distinctClause = NIL;
+   root->processed_tlist = NIL;
+   root->update_colnos = NIL;
+   root->grouping_map = NULL;
+   root->minmax_aggs = NIL;
+   root->qual_security_level = 0;
+   root->hasPseudoConstantQuals = false;
+   root->hasAlternativeSubPlans = false;
+   root->placeholdersFrozen = false;
+   root->hasRecursion = hasRecursion;
+   if (hasRecursion)
+      root->wt_param_id = assign_special_exec_param(root);
+   else
+      root->wt_param_id = -1;
+   root->non_recursive_path = NULL;
+   root->partColsUpdated = false;
+   ```
+
+   QUES: I do not understand most of these fields.
+
+4. 
 
 
 1. `replace_empty_jointree()` adds a dummy `RTE_RESULT` range table entry if
@@ -441,7 +489,7 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    ```
 
    I think this is a workaround for the limitation that the volcano model behaves
-   like an iterator, to make the evaluator compute something, it has to yield an
+   like an iterator. To make the evaluator compute something, it has to yield an
    element.
 
 2. `pull_up_sublinks()`

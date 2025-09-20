@@ -37,7 +37,7 @@ This type contains information of planning a `Query`
   ```
 
   `struct PlannerParamItem` contains the expression that should be provided and
-  the slot number that specifies where the value should be put in `EState.es_param_exec_vals`
+  a slot number that specifies where the value should be put in `EState.es_param_exec_vals`
 
 * outer_params (IDs): contains the paramIds of PARAM_EXEC Params that outer query 
   levels will make available to this query level.
@@ -152,11 +152,16 @@ This type contains information of planning a `Query`
   that subselect is a multi-expr sublink subquery. PARAM_MULTIEXPR is a plan-time
   thing, it will be replaced by `PARAM_EXEC` during execution.
 
-* join_domains
+* join_domains (List<JoinDomain>):
 
-* eq_classes;
+  TODO: revisit this 
 
-* ec_merging_done;
+* eq_classes (List<EquivalenceClasses>): 
+
+* ec_merging_done (bool): Its core purpose is to signal that the process of 
+  building and merging Equivalence Classes (ECs) is complete. Once this flag 
+  is set to true, the set of EquivalenceClass nodes stored in `PlannerInfo.eq_classes`
+  is considered stable and canonical.
 
 * canon_pathkeys;
 
@@ -168,15 +173,37 @@ This type contains information of planning a `Query`
 
 * join_info_list;
 
-* last_rinfo_serial;
+* last_rinfo_serial (int): Counter used to assign a unique ID (within a PlannerInfo 
+  context) for every `RestrictInfo` created during planning.
 
-* all_result_relids;
+  Postgres assigns a unique identifier to each `RestrictInfo` primarily for making 
+  checking if a `RestrictInfo` is in a set easier.
 
-* leaf_result_relids;
+-------------------------------------------------------------------------------
 
-* append_rel_list;
+* all_result_relids (Relids, aka Bitmapset of RT index): RT indexes of all the 
+  result relations (i.e., the relations this query will modify).
 
-* row_identity_vars;
+  It would contains `parse->resultRelation` if this is not a `SELECT` query, the 
+  primary relation that will be modified by the query.
+  
+  For `UPDATE/DELETE/MERGE` across an inheritance or partitioning tree, the result
+  rel's child relids are added (by `expand_single_inheritance_child()`)
+
+* leaf_result_relids (relids, aka bitmapset of RT index): A "leaf" relation is 
+  a table in the "hierarchy" that actually stores data.
+
+  * In a partitioning setup, these are the final **partitions** where rows are 
+    physically located.
+
+  * In a inheritance setup, every table can store physical data, the tables that
+    the executor will modify are the leaf tables.
+
+-------------------------------------------------------------------------------
+
+* append_rel_list (List<AppendRelInfo>): 
+
+* row_identity_vars (List<RowIdentityVarInfo>);
 
 * rowMarks;
 
