@@ -484,16 +484,16 @@
          also be stored in index, see `database/Postgres/pg17_docs/Ch11_Indexes/11.9_Index-Only_Scans_and_Covering_Indexes.md`)
          it still needs to visit heap to filter out the dead tuples.
 
-         But if we know that a page is all-visible, i.e., its tuples are alive, we
-         do not need to visit the heap.
+         But if Postgres knows that a page is all-visible, i.e., its tuples are 
+         alive, Postgres does not need to visit the heap.
 
       2. The second bit is set if all the tuples in this page are **frozen**.
 
          What does frozen mean? Before we talk about tuple freezing, we need to 
          talk about transaction ID and MVCC. Postgres versions its tuple using
-         transaction ID (int, 32-bit), whenever a new transaction starts, Postgres
-         assigns it an ID and does a wrapping addition to the ID counter, which
-         means the transaction ID can go back.
+         transaction ID (int, 32-bit). Whenever a new transaction starts, Postgres
+         assigns it an ID and does a wrapping addition to the ID counter. Wrapping
+         addition means transaction IDs can go back.
 
          Bad things would happen in that case, deleted rows might show up, committed
          rows might disappear. Postgres solved this by freezing old rows that is 
@@ -506,8 +506,8 @@
          #define HEAP_XMIN_FROZEN  (HEAP_XMIN_COMMITTED|HEAP_XMIN_INVALID)
          ```
 
-         Frozen tuples are immortal, so VACUUM process will never remove them.
-         As long as a page is marked frozen, VACUUM process skips this page.
+         Frozen tuples are immortal, so VACUUM processes will never remove them.
+         As long as a page is marked frozen, VACUUM processes skip this page.
 
       > This is needed due to the limitation of Postgres's MVCC impl.
       

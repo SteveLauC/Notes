@@ -5,6 +5,10 @@
 
 # Fields
 
+> Fields valid in all RTEs
+>
+> They are put here rather than the end of the struct to make dumping legible
+
 * alias (Alias *): relation alias, if any. Otherwise, NULL.
 
   ```sql
@@ -155,8 +159,8 @@
 * jointype (JoinType): type of this join
 
 * joinmergedcols (int): Number of "merged" columns. Merged columns are placed at
-  the beginning of `joinaliasvars`, so this field also tells you how many columns 
-  at the beginning of the join's output correspond to these merged columns.
+  the beginning of `joinaliasvars` (of type `struct CoalesceExpr`),  so this field
+  also tells you how many columns at the beginning of the join's output correspond to these merged columns.
   
   What does "merged columns" mean? Natural join's performs equi-join on tables with
   **matching** columns (same name, compatible data type), since these columns have
@@ -201,14 +205,52 @@
   postgres=# select * from foo join bar using (id, description)
   ```
 
-* joinaliasvars (List<Var>)
+* joinaliasvars (List<Node>): A list of nodes representing the output columns
+  of this join, where node can be of type:
+  
+  * Var: when it is a simple column
+  * Var with implicit type cast
+  * CoalesceExpr(Var): when it is a merged column
+  
+  The first `joinmergedcols` entries are `CoalesceExpr`s, the remaining are all
+  `Var`s.
+  
+  ```text
+  | Merged columns | remaining columns form left relation | remaining columns from right relation |
+  ```
+  
+* joinleftcols (List<int>): Physical column numbers of the columns that come 
+  from the left relation and are included in the output.
 
-* joinleftcols 
+* joinrightcols (List<int>): Same as `joinleftcols` except that this list contains
+  the columns from the right input relation.
 
-* joinrightcols 
-
-* join_using_alias 
-
+* join_using_alias (Alias): A niche feature introduced in SQL standard 2016 that
+  allows you to alias all the columns invoked in "using" as a whole:
+  
+  ```sql
+  postgres=# \d foo
+                  Table "public.foo"
+  Column    |  Type   | Collation | Nullable | Default 
+  -------------+---------+-----------+----------+---------
+   id          | integer |           |          | 
+   description | text    |           |          | 
+    
+  postgres=# \d bar
+                  Table "public.bar"
+  Column    |  Type   | Collation | Nullable | Default 
+  -------------+---------+-----------+----------+---------
+   id          | integer |           |          | 
+   description | text    |           |          | 
+    
+  postgres=# select using_alias.id from foo join bar using (id) as using_alias;
+  id 
+  ----
+   1
+  (1 row)
+  ```
+  
+  In the above example `using_alias` is equivalent to tuple `(id)`
 
 -------------------------------------------------------------------------------
 
@@ -242,3 +284,13 @@
 * ctelevelsup (Index, uint): 
 
 * self_reference (bool)
+
+
+-------------------------------------------------------------------------------
+> Fields valid in all RTEs:
+
+* `lateral` (bool): This flag signals to the query planner that this FROM-clause
+  entry cannot be evaluated **independently**.
+
+* inFromCl (bool): 
+* securityQuals (List<?>):

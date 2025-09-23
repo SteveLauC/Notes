@@ -118,6 +118,11 @@ This type contains information of planning a `Query`
 * init_plans (List<SubPlan>): This field contains the uncorrelated subqueries, they
   will be transferred to `Plan.initPlans` in `SS_attach_initplans(root, plan)`.
 
+  QUES: I am guessing that this field will only be set in the top-level 
+  `PlannerInfo`? Otherwise, it makes more sense to store these `SubPlan`s in 
+  `PlannerGlobal` 
+  
+
 * cte_plan_ids: It is a List of Plan ID (index of the subplan made for this CTE 
   in PlannedStmt.subplans), or -1 if Postgres decides to ignore or inline it.
 
