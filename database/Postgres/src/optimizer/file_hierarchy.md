@@ -56,7 +56,7 @@ plan/subselect.c handle sub-selects (that aren't in FROM)
 
 ## src/backend/optimizer/prep
 
-* prep/prepjointree.c: early-stage join preprocessing
+* prep/prepjointree.c: Planner preprocessing for subqueries and join tree manipulation
 * prep/prepqual.c: WHERE clause (qual) preprocessing
 * prep/preptlist.c: target list preprocessing (mostly just for 
   INSERT/UPDATE/DELETE)

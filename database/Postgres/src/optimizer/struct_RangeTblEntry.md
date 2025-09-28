@@ -287,10 +287,15 @@
 
 
 -------------------------------------------------------------------------------
+
 > Fields valid in all RTEs:
 
 * `lateral` (bool): This flag signals to the query planner that this FROM-clause
   entry cannot be evaluated **independently**.
+  
+  When it applies to `RTE_SUBQUERY`, it means that this subquery is correlated
+  
+  QUES: what does it mean when it appies to other `RTE_KIND`s
 
 * inFromCl (bool): 
 * securityQuals (List<?>):

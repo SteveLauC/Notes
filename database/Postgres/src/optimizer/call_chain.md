@@ -479,8 +479,16 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    2. Inline it, convert `RTE_CTE` to `RTE_SUBQUERY`
    3. Materialize it, plan it separately and add it to `Plan.initPlans`
 
+5. Pre-process querytree for the `MERGE` command, i.e., transform `MERGE` to a
+   join:
+   
+   1. Add a join RTE to `parse->rtable`
+   2. Create a `JoinExpr` and make it the only element in `parse->jointree->fromlist`
+   3. Additional transformations needed by execution
+   
+      QUES: I do not understand this part
 
-
+6. 
 
 
 1. `replace_empty_jointree()` adds a dummy `RTE_RESULT` range table entry if

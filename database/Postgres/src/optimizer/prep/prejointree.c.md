@@ -1,5 +1,8 @@
 1. `transform_MERGE_to_join(parse)`
 
+   1. Create a new join RTE and add it to `parse->rtable`
+   2. Create a `JoinExpr` and make it the sole element in `parse->jointree->fromlist`
+
    ```c
    // MERGE does a Join, this is the join range table entry that we will create
    RangeTblEntry *joinrte;
@@ -73,4 +76,16 @@
     joinrte->lateral = false;
     joinrte->inh = false;
     joinrte->inFromCl = true;
+    ```
+    
+    Append the RTE_JOIN to `parse->rtable`. The RT index is `parse->rtable`'s
+    length becuase RT index is 1-based.
+    
+    ```c
+    /*
+    * Add completed RTE to pstate's range table list, so that we know its
+    * index.
+    */
+    parse->rtable = lappend(parse->rtable, joinrte);
+    joinrti = list_length(parse->rtable);
     ```
