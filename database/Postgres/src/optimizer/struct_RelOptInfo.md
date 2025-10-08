@@ -79,7 +79,7 @@ is a unit in that tree.
 
 # Fields
 
-* reloptkind: every `RelOptInfo` can have the following types:
+* reloptkind: every `RelOptInfo` can be one of the following types:
 
   ```c
   typedef enum RelOptKind

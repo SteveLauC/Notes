@@ -59,7 +59,7 @@
           * `x OR true` -> `true`
           * `x AND false` -> `false`
         
-        * In-line simple SQL functions
+        * In-line simple SQL functions (RTE_FUNCTION -> RTE_SUBQUERY)
 
           > `inline_function()` in `src/backend/optimizer/util/clauses.c`
         
@@ -121,7 +121,7 @@
             on foo.a = bar.c;
             ```
 
-        * Convert IN, EXISTS sub-selects to semi-joins (Correlated subqueries)
+        * Convert ANY, EXISTS sub-selects to semi, anti-semi joins (Correlated subqueries)
 
           > Call chain:
           >

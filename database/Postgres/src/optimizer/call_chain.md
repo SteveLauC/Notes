@@ -48,6 +48,10 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
      safe
 
      > This is true if the planer is invoked from `exec_simple_query()`
+     >
+     > ```c
+     > plantree_list = pg_plan_queries(querytree_list, query_string, CURSOR_OPT_PARALLEL_OK, NULL);
+     > ```
 
    * We should have worker processes (we have them when we have postmaster)
    * This query won't modify/write anything
@@ -85,11 +89,14 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    defaults to `off`.
 
    ```c
+   // glob->parallelModeNeeded is normally set to false here and changed to
+   // true during plan creation if a Gather or Gather Merge plan is actually
+   // created (cf. create_gather_plan, create_gather_merge_plan).
    glob->parallelModeNeeded = glob->parallelModeOK &&
       (debug_parallel_query != DEBUG_PARALLEL_OFF);
    ```
 
-   Developers can force Postgres to use parallel plan by setting it to [`on`, `regress`].
+   Users can force Postgres to use parallel plan by setting it to [`on`, `regress`].
 
 3. This chunk of code initializes the `tuple_fraction` variable, which will be
    used later in `grouping_planner()`:
@@ -100,7 +107,8 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
    > QUES: when will this option be set?
    >
-   > future steve: For `exec_simple_query()`, this parameter is hardcoded to `CURSOR_OPT_PARALLEL_OK`
+   > future steve: For `exec_simple_query()`, this parameter `cursorOptions` is 
+   > hardcoded to `CURSOR_OPT_PARALLEL_OK`
    >
    > ```c
    > plantree_list = pg_plan_queries(querytree_list, query_string, CURSOR_OPT_PARALLEL_OK, NULL);
@@ -181,9 +189,9 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
    ```c
    /*
-      * If creating a plan for a scrollable cursor, make sure it can run
-      * backwards on demand.  Add a Material node at the top at need.
-      */
+    * If creating a plan for a scrollable cursor, make sure it can run
+    * backwards on demand.  Add a Material node at the top at need.
+    */
    if (cursorOptions & CURSOR_OPT_SCROLL)
    {
       if (!ExecSupportsBackwardScan(top_plan))
@@ -274,8 +282,8 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    ```
 
 7. Walk through the Plan tree, init all the Plans' `extParams` and `allParams` 
-   fields. It has to do this to the `subplans` because the values of these 2 fields 
-   in `top_plan` relies on the ones in `subplans`
+   fields. It has to do this to the `subplans` first because the values of these
+   2 fields in `top_plan` relies on the ones in `subplans`
 
    > struct Plan:
    >
@@ -488,15 +496,34 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    
       QUES: I do not understand this part
 
-6. 
+6. `preprocess_relation_rtes()`
 
+   Fetch relation metadata, then use metadata to:
+   
+   > First metadata access in the optimizer
 
-1. `replace_empty_jointree()` adds a dummy `RTE_RESULT` range table entry if
-   the range table list is empty.
+   > Note that this step does not descend into sublinks and subqueries; if we 
+   > pull up any sublinks or subqueries below, their relation RTEs are processed
+   > just before pulling them up.
+
+   1. If this relation has `RangeTblEntry.inh` set and it has no children, clear 
+      the flag
+      
+       > QUES: TOCTOU???
+    
+   2. Collect non-NULL attribute numbers
+   3. Update `Query.targetlist`, for **virtual** generated columns, replace `Var`
+      with the corresponding generation expression.
+
+7. `replace_empty_jointree()` 
+
+   1. Adds a dummy `RTE_RESULT` range table entry to `Query.rtable`
+   2. Adds a reference to this RTE in `jointree.fromlist`
+   
+   if the `jointree` is empty (`NIL`).
 
    > `RTE_RESULT` represents an empty FROM clause; such RTEs are added by the 
    > planner, they're not present during parsing or rewriting
-
 
    ```c
    /*
@@ -518,16 +545,63 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
    like an iterator. To make the evaluator compute something, it has to yield an
    element.
 
-2. `pull_up_sublinks()`
+8. `pull_up_sublinks()`
 
-   What is a sublink? Difference between sublink and subquery?
+   > What is a sublink? Difference between sublink and subquery?
+   > 
+   > There is a type `struct SubLink` in `src/include/nodes/primnodes.h`, you can 
+   > read its documentation.  Generally, a sublink is a `ANY/EXISTS/...` clause 
+   > after `WHERE/HAVING`; subquery is the clause after `FROM`.
+   >
+   > `SELECT a FROM test WHERE NULL = ANY (SELECT b FROM bar)`, `NULL = ANY (SELECT b FROM bar)`
+   > is a ANY sublink.
+   
+   Optimization, converts `ANY/[NOT] EXISTS` correlated subqueries (in `WHERE` and 
+   `JOIN/ON` clause) to semi/anti-semi joins.
+   
+   This optimization can only be applied in the following cases:
+   
+   > QUES: why? The explanation in the function comment is not that detailed
+   
+   1. It only works for top-level `WHERE` `JOIN/ON` clauses
+   2. If it appears in the `ON` clause of an outer join, the subquery only 
+      references the nullable side of join
+      
+   TODO: revisit the querytree transformation code
+   
+9. `preprocess_function_rtes()`
 
-   There is a type `struct SubLink` in `src/include/nodes/primnodes.h`, you can 
-   read its documentation.  Generally, a sublink is a `ANY/EXISTS/...` claude 
-   after `WHERE/HAVING`; subquery is the clause after `FROM`.
-
-   `SELECT a FROM test WHERE NULL = ANY (SELECT b FROM bar)`, `NULL = ANY (SELECT b FROM bar)`
-   is a ANY sublink.
+   Simplify and try to inline the function RTEs:
+  
+   ```c
+   if (rte->rtekind == RTE_FUNCTION)
+   {
+    	Query	   *funcquery;
+    
+    	/* Apply const-simplification */
+    	rte->functions = (List *)
+    		eval_const_expressions(root, (Node *) rte->functions);
+    
+    	/* Check safety of expansion, and expand if possible */
+    	funcquery = inline_set_returning_function(root, rte);
+    	if (funcquery)
+    	{
+    		/* Successful expansion, convert the RTE to a subquery */
+    		rte->rtekind = RTE_SUBQUERY;
+    		rte->subquery = funcquery;
+    		rte->security_barrier = false;
+    
+    		/*
+    		 * Clear fields that should not be set in a subquery RTE.
+    		 * However, we leave rte->functions filled in for the moment,
+    		 * in case makeWholeRowVar needs to consult it.  We'll clear
+    		 * it in setrefs.c (see add_rte_to_flat_rtable) so that this
+    		 * abuse of the data structure doesn't escape the planner.
+    		 */
+    		rte->funcordinality = false;
+    	}
+   }
+   ``` 
 
 
 2. `pull_up_subqueries()` can simplify queries like

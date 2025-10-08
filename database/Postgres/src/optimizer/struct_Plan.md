@@ -11,16 +11,21 @@
   > 3. They share the same data structure `struct SubPlan`
 
   `Plan.initPlans` will be transferred from `PlannerInfo.init_plans` in `SS_attach_initplans(root, plan)`
+  
+  
+--------------------------------------------------------------------------------
+> Information for management of parameter-change-driven rescanning
+		
 
 * extParams (bitmap containing paramId (int)): includes the paramIDs of all 
-  external PARAM_EXEC params affecting this plan node or its children.
+  **external** PARAM_EXEC params affecting this plan node or its children.
 
   > QUES: the code comment only explains what this field is, not what it is for.
 
 * allParams (bitmap containing paramId (int)): Dependency list
 
-  Includes all the extParam paramIDs, plus the IDs of local params that affect 
-  the node (i.e., the setParams of its initPlans).  These are _all_ the PARAM_EXEC 
+  Includes all the extParam (**external**) paramIDs, plus the IDs of **local** params that affect 
+  the node (i.e., the setParams of its initPlans).  These are **all** the PARAM_EXEC 
   params that affect this node.
 
   It is used to decide which nodes to reset when we need to re-scan.

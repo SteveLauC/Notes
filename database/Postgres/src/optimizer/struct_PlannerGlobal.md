@@ -96,7 +96,17 @@ be created in `standard_planner()`.
 
 * partition_directory: (could be wrong) cache for partition descriptor
 
-* rel_notnullatts_hash: A hashmap<Relation_Oid, Bitmapset_of_not_null_attribute_numbers>
+* rel_notnullatts_hash
+  
+  `hashmap<Relation_Oid, Bitmapset_of_not_null_attribute_numbers>`
+  
+  This field will be populated by 
+  
+  1. `subquery_planner()`
+  2. `preprocess_relation_rtes()`
+  3. `get_relation_notnullatts()`
+
+  
 
 
 

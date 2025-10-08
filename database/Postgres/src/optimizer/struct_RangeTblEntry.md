@@ -5,7 +5,7 @@
 
 # Fields
 
-> Fields valid in all RTEs
+> Fields valid in all kinds of RTEs
 >
 > They are put here rather than the end of the struct to make dumping legible
 
@@ -98,8 +98,8 @@
 
 * rtekind (RTEKind):
 
-  Note that everything in pg_class is of kind `RTE_RELATION`, field `RangeTblEntry.relkind`
-  (same as pg_class.relkind) can be used to distinguish the sub-classes:
+  Note that everything in `pg_class` is of kind `RTE_RELATION`, field `RangeTblEntry.relkind`
+  (same as `pg_class.relkind`) can be used to distinguish the sub-classes:
 
   * r = ordinary table 
   * i = index 
@@ -144,7 +144,23 @@
 
 > Fields for RTE_RELATION
 
-* relkind (char): See the notes in `rteKind`.
+* relid (Oid): OID of the relation
+
+* inh (bool)
+
+  * For RTE_RELATION: it is true for relations that should be expanded to include 
+    inherience children
+  * For RTE_SUBQUERY: The planner also set this to true if it contains `UNION ALL` 
+    queries that it has flattened into pulled-up subqueries (creating a structure 
+    much like the effects of inheritance)
+
+* relkind (char): See the notes in `RangeTblEntry.rteKind`.
+
+* rellockmode (int/LOCKMODE): lock level that query requires on the rel
+
+* perminfoindex (Index, i.e., uint): Index to the RTEPermissionInfo entry
+
+* tablesample (struct TableSampleClause)
 
 
 -------------------------------------------------------------------------------
@@ -255,6 +271,8 @@
 -------------------------------------------------------------------------------
 
 > Function RTE
+
+* functions (List<RangeTblFunction>)
 
 
 -------------------------------------------------------------------------------
