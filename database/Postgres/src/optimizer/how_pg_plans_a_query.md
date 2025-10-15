@@ -6,6 +6,10 @@
    > 2. Plan "Scan" and "Join"
    > 3. Query special features handling
    > 4. Postprocessing
+   >
+   > 1/2/3 happen in `subquery_planner()`, 4 in `standard_planner()`. And since
+   > `subquery_planner()` gets called recursively, we should ignore that and focus
+   > on the transformations performed to a single `Query` if we want to
 
    1. Preprocessing: Simplify query (`struct Query`) if possible, and collect 
       information such as join order restriction.
@@ -121,7 +125,7 @@
             on foo.a = bar.c;
             ```
 
-        * Convert ANY, EXISTS sub-selects to semi, anti-semi joins (Correlated subqueries)
+        * Convert `ANY`, `[NOT] EXISTS` sub-selects to semi, anti-semi joins (Correlated subqueries)
 
           > Call chain:
           >

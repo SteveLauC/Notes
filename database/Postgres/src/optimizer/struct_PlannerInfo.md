@@ -1,6 +1,8 @@
 # Overview
 
-This type contains information of planning a `Query`
+This type contains information of planning a `Query`. Since `subquery_planner()`
+plans every `Query`, every `subquery_planner()` has one associated `PlannerInfo`
+and returns it.
 
 # Fields
 
@@ -21,8 +23,8 @@ This type contains information of planning a `Query`
   should prepare for the subquery.
 
   When `subquery_planner()` plans the current plan and finds it references a 
-  variable from the parent query, it modifies its parent query's 
-  `PlannerInfo.plan_params`
+  variable from the parent query, it assigns a slot for this exec parameter,
+  and appends a `PlannerParamItem` to the parent query's `PlannerInfo.plan_params`
 
   ```c
   typedef struct PlannerParamItem
@@ -251,7 +253,11 @@ This type contains information of planning a `Query`
 * initial_rels
 
 * upper_rels (Fixed-size (UPPERREL_FINAL+1) array of List<RelOptInfo>): contains 
-  all the upper relations
+  all the upper relations. It is indexed by `UpperRelationKind`, each list contains
+  the `RelOptInfo`s of the corresponding type. 
+  
+  In the current implementation of Postgres, this List is guaranteed to have 
+  length 1.
 
 * upper_targets (Fixed-size (UPPERREL_FINAL+1) array of `PathTarget`): 
 

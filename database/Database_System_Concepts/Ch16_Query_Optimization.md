@@ -1415,11 +1415,11 @@ section 16.2.4, we should:
    part data. Left semi join would return tuples from the left table, right semi
    join would return tuples from the right table.
 
-   > NOTE: DuckDB supports the `SEMI JOIN` or `ANTI JOIN` syntaxes, but Postgres
-   > does not, so they are possibly not standard SQL.
-   >
-   > Future steve: Postgres supports semi join, it will convert IN/EXISTS sublinks
-   > to semi join.
+   > NOTE: 
+   > * DuckDB supports the `SEMI JOIN` or `ANTI JOIN` syntaxes
+   > * Postgres does not support the syntax, but these 2 joins can be expressed
+   >   using `ANY/[NOT] EXISTS`, Postgres planner will convert sublinks to 
+   >   anti/semi joins. (See `pull_up_sublinks()`)
    >
    > And, DuckDB does not support `LEFT SEMI JOIN` or `RIGHT SEMI JOIN`, the 
    > `SEMI JOIN` will return the tuple of the left table.

@@ -167,6 +167,10 @@
 
 > Fields for RTE_SUBQUERY
 
+* subquery (Query): subquery 
+
+* security_barrier (bool)
+
 
 -------------------------------------------------------------------------------
 

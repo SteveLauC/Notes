@@ -18,7 +18,8 @@
 
 ## standard_planner()
 
-Initializes `struct PlannerGlobal` and `struct PlannerInfo`
+This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  calls
+`subquery_planner()` to do the actual planning job, then does postprocessing.
 
 1. Parallel execution
 
@@ -369,6 +370,8 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
 ### subquery_planner()
 
+> Recursion happens from this function
+
 1. It is guaranteed that `subquery_planner()` returns a `PlannerInfo` containing
    the final path in its `PlannerInfo.upper_rels[UPPERREL_FINAL]`. Caller should 
    invoke `fetch_upper_rel(root, UPPERREL_FINAL, NULL)` to extract the final upper 
@@ -404,10 +407,11 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
     */
    List	   *newHaving;
    /* 
-    * If we have an outer join in RTEs, inspect every RTE and check its type.
+    * If we have an outer join in RTEs. This variable gets inited by inspecting 
+    * every RTE and checking its type.
     *
     * Why we care about outer joins:
-    * 1. We can potentially reduce it inner/anti join
+    * 1. We can potentially reduce it to an inner/anti join
     * 2. Check if we can remove useless RTE_RESULT entries 
     */
    bool		hasOuterJoins;
@@ -483,8 +487,15 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
    Iterate over all the CTEs, and plan it, Postgres has 3 options:
 
-   1. Ignore it, if it is a select and not used anywhere
+   1. Ignore it, if it is a select and not used/referenced anywhere
    2. Inline it, convert `RTE_CTE` to `RTE_SUBQUERY`
+   
+      ```sql
+      with one as (select 1) select * from one; 
+      
+      select * from (select 1);
+      ```
+      
    3. Materialize it, plan it separately and add it to `Plan.initPlans`
 
 5. Pre-process querytree for the `MERGE` command, i.e., transform `MERGE` to a
@@ -547,27 +558,105 @@ Initializes `struct PlannerGlobal` and `struct PlannerInfo`
 
 8. `pull_up_sublinks()`
 
-   > What is a sublink? Difference between sublink and subquery?
+   Optimization/query rewrite, converts sublinks correlated subqueries in
+   `WHERE <SUBLINK>` and `JOIN xxx ON <SUBLINK>` to joins, where `<SUBLINK>`
+   could be:
+
+   > This optimization can only be applied in the following cases:
    > 
-   > There is a type `struct SubLink` in `src/include/nodes/primnodes.h`, you can 
-   > read its documentation.  Generally, a sublink is a `ANY/EXISTS/...` clause 
-   > after `WHERE/HAVING`; subquery is the clause after `FROM`.
-   >
-   > `SELECT a FROM test WHERE NULL = ANY (SELECT b FROM bar)`, `NULL = ANY (SELECT b FROM bar)`
-   > is a ANY sublink.
+   > > QUES: why? The explanation in the function comment is not that detailed
+   > 
+   > 1. It only works for top-level `WHERE` `JOIN/ON` clauses
+   > 2. If it appears in the `ON` clause of an outer join, the subquery only 
+   >    references the nullable side of join
    
-   Optimization, converts `ANY/[NOT] EXISTS` correlated subqueries (in `WHERE` and 
-   `JOIN/ON` clause) to semi/anti-semi joins.
+   * `foo op ANY (sub-select)` => semi join
+   * `EXISTS (sub-select)` => semi join
+   * `NOT EXISTS (sub-select)` => anti join
    
-   This optimization can only be applied in the following cases:
+   ```sql
+   create table teacher (id int, name text);
+   create table teaches (subject text, teacher int);
    
-   > QUES: why? The explanation in the function comment is not that detailed
+   select * from teachers 
+   where exists (select * from teaches where teaches.teacher = teachers.id);
+   ```
    
-   1. It only works for top-level `WHERE` `JOIN/ON` clauses
-   2. If it appears in the `ON` clause of an outer join, the subquery only 
-      references the nullable side of join
-      
-   TODO: revisit the querytree transformation code
+   Before the rewrite:
+   
+   ```yaml
+   rtable: [(RTE_RELATION, teachers)]
+   jointree: 
+     fromlist: [RangeTblRef(1)]
+     quals: SubLink(EXISTS ...)
+   ```
+   
+   After the rewrite
+   
+   ```yaml
+   rtable: [(RTE_RELATION, teachers), (RTE_RELATION, teaches)]
+   jointree: 
+     fromlist: [
+        JoinExpr:
+          type: semi
+          larg: RangeTblRef(1)
+          rarg: RangeTblRef(2)
+          quals: teaches.teacher = teacher.id
+     ]
+     quals: NULL
+   ```
+   
+   The converted SQL will be:
+   
+   ```sql
+   select * from
+   teacher semi join teaches
+   on teacher.id = teaches.teacher;
+   ```
+   
+   `pull_up_sublinks()` does the transformations described above, it looks for 
+   sublinks in the `jointree`, then:
+   
+   1. Add new range table entries. We won't have `RTE_JOIN` entries
+   2. Replace the `jointree.fromlist` with a `JoinExpr` of `semi/anti-join`
+   
+   Implementation:
+   
+   ```c
+   /*
+    * Recurse through **jointree** nodes for pull_up_sublinks()
+    *
+    * In addition to returning the possibly-modified jointree node, we return
+    * a relids set of the contained rels into *relids.
+    */
+   static Node *
+   pull_up_sublinks_jointree_recurse(PlannerInfo *root, Node *jtnode,
+   								  Relids *relids)
+   ```
+   
+   `pull_up_sublinks()` uses this function to recursively **scans** the `jointree`
+   nodes (the jointree node itself and the nodes in `fromlist` of types
+   `FromExpr/RangeTblRef/JoinExpr`). For every `jtnode` it receives, **collects its 
+   rtindexes**, clones it (if it is going to be modified, i.e., when `jtnode` is of 
+   type `FromExpr` and `JoinExpr`. Otherwise, `jtnode` will be returned as-is) 
+   and returns the clone.
+    
+   `jtnode` can be of the following types, which are the types that could appear
+   in `Query.jointree`:
+    
+   * `FromExpr`: Iterate over the `fromlist`, call `pull_up_sublinks_jointree_recurse()`
+     on every list item, which will return the re-built version of elements, use them to
+     build a new `fromlist`
+   * `RangeTblRef`: collect rtindex
+   * `JoinExpr`: Scan `larg` and `rarg`
+   
+   TODO: revisit the `JoinExpr` branch
+   
+   `pull_up_sublinks_qual_recurse()` does the actual transformations, modifies
+   `Query.rtable` and updates `jointree.fromlist`. QUES: I don't understand all
+   the code here, but for the example SQL mentioned above, `joinexpr = convert_EXISTS_sublink_to_join()`
+   modifies the `Query.rtable` and `pull_up_sublinks_qual_recurse()` updates the
+   `jointree.fromlist`.
    
 9. `preprocess_function_rtes()`
 
