@@ -80,8 +80,19 @@
           > * pull_up_subqueries() in src/backend/optimizer/prep/prepjointree.c
 
           Sub-queries will be planned independently, it will be treated as a block box
-          during planning of the outer query. By pulling it up, we could have better
-          plans.
+          during planning of the outer query. For example:
+          
+          ```sql
+          select * from table1, (select * from table2) as sub where ... 
+          ```
+          
+          If `sub` won't be pulled up, Postgres will plan and execute it 
+          separately, which means:
+          
+          1. The planner cannot re-order the join
+          2. If the predicate involves `table2`, planner cannot pushes it down
+          
+          By pulling it up, we could have better plans.
 
         * Flatten UNION ALL, expand inheritance trees
         * Reduce join strength
@@ -125,7 +136,7 @@
             on foo.a = bar.c;
             ```
 
-        * Convert `ANY`, `[NOT] EXISTS` sub-selects to semi, anti-semi joins (Correlated subqueries)
+        * Convert `ANY`, `[NOT] EXISTS` sublinks to semi, anti-semi joins (Correlated subqueries)
 
           > Call chain:
           >

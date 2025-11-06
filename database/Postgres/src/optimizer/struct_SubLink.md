@@ -1,4 +1,4 @@
-# Supported Sublinks
+# Sublinks types
 
  *	EXISTS_SUBLINK		EXISTS(SELECT ...)
  *	ALL_SUBLINK			(lefthand) op ALL (SELECT ...)
@@ -7,7 +7,7 @@
  *	EXPR_SUBLINK		(SELECT with single targetlist item ...)
  *	MULTIEXPR_SUBLINK	(SELECT with multiple targetlist items ...)
  *	ARRAY_SUBLINK		ARRAY(SELECT with single targetlist item ...)
- *	CTE_SUBLINK			WITH query (never actually part of an expression)
+ *	CTE_SUBLINK			WITH query (never actually part of an expression), if it gets materialized (`SubPlan.subLinkType`)
 
 # Fields
 

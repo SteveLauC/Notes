@@ -123,7 +123,7 @@
         RTE_RELATION,				/* ordinary relation reference */
         RTE_SUBQUERY,				/* subquery in FROM */
         RTE_JOIN,					/* join */
-        RTE_FUNCTION,				/* function in FROM */
+        RTE_FUNCTION,				/* function in the FROM clause */
         RTE_TABLEFUNC,				/* TableFunc(.., column list) */
         RTE_VALUES,					/* VALUES (<exprlist>), (<exprlist>), ... */
         RTE_CTE,					/* common table expr (WITH list element) */
@@ -148,11 +148,21 @@
 
 * inh (bool)
 
-  * For RTE_RELATION: it is true for relations that should be expanded to include 
-    inherience children
-  * For RTE_SUBQUERY: The planner also set this to true if it contains `UNION ALL` 
-    queries that it has flattened into pulled-up subqueries (creating a structure 
-    much like the effects of inheritance)
+  2 cases are possible if this is true:
+
+  1. For RTE_RELATION: it is true for relations that should be expanded to include 
+     inherience children
+  2. Is is a top level `UNION ALL` query
+    
+     ```sql 
+     select * from foo
+     union all
+     select * from foo
+     ```
+     
+     The planner also set this to true if it contains `UNION ALL` 
+     queries that it has flattened into pulled-up subqueries (creating a structure 
+     much like the effects of inheritance)
 
 * relkind (char): See the notes in `RangeTblEntry.rteKind`.
 
@@ -278,6 +288,10 @@
 
 * functions (List<RangeTblFunction>)
 
+  Why is it a list?
+ 
+* funcordinality (bool):  
+
 
 -------------------------------------------------------------------------------
 
@@ -287,6 +301,16 @@
 -------------------------------------------------------------------------------
 
 > Values RTE
+
+```sql
+-- This is a SELECT query, whose rtable is [RTE_VALUES]
+VALUES (1, 'apple'), (2, 'banana'), (3, 'cherry');
+
+-- This query's rtable is [RTE_SUBQUERY], where subuqery's rtable is [RTE_VALUES]
+SELECT * FROM (VALUES (1, 'apple'), (2, 'banana'), (3, 'cherry'));
+```
+
+* values_lists (List<Expr>)
 
 
 -------------------------------------------------------------------------------

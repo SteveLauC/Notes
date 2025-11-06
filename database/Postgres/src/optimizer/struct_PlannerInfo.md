@@ -1,8 +1,11 @@
 # Overview
 
-This type contains information of planning a `Query`. Since `subquery_planner()`
-plans every `Query`, every `subquery_planner()` has one associated `PlannerInfo`
-and returns it.
+This type contains information of planning a `Query`, the states that we need
+as long as the planning result (paths in the final upper `RelOptInfo`). It is
+the storage for all the things needed by planning a `Query`.
+
+Since `subquery_planner()` plans every `Query`, every `subquery_planner()` has
+one associated `PlannerInfo` and returns it.
 
 # Fields
 
@@ -47,6 +50,9 @@ and returns it.
   See the notes of field `plan_params`, after the planner edits the parent 
   PlannerInfo's `plan_params`, it stores the `EState.es_param_exec_vals` slot
   number in the current PlannerInfo's `outer_params`.
+  
+  TODO: I think the procedure documented here is incomplete and needs a future 
+  update.
 
 * simple_rel_array (RelOptInfo **): an array of `RelOptInfo`s that are either:
   
@@ -253,8 +259,8 @@ and returns it.
 * initial_rels
 
 * upper_rels (Fixed-size (UPPERREL_FINAL+1) array of List<RelOptInfo>): contains 
-  all the upper relations. It is indexed by `UpperRelationKind`, each list contains
-  the `RelOptInfo`s of the corresponding type. 
+  all the upper relations. It is indexed by `UpperRelationKind`, each `List` 
+  contains the `RelOptInfo`s of the corresponding type. 
   
   In the current implementation of Postgres, this List is guaranteed to have 
   length 1.
@@ -273,15 +279,19 @@ and returns it.
 * total_table_pages
 * tuple_fraction
 * limit_tuples
-* qual_security_level
-* hasJoinRTEs
-* hasLateralRTEs
+* qual_security_level (uint): 
+
+* hasJoinRTEs (bool): Planner uses this to store if this query contains join,
+  if not, then it could skip procedures like `flatten_join_alias_vars()`
+  
+* hasLateralRTEs (bool): If any RTEs has the `lateral` field set
+
 * hasHavingQual
 * hasPseudoConstantQuals
 * hasAlternativeSubPlans
 * placeholdersFrozen
 * hasRecursion
-* group_rtindex
+* group_rtindex (rtindex): RT index of the first `RTE_GROUP` RTE 
 * agginfos
 * aggtransinfos
 * numOrderedAggs

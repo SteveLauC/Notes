@@ -13,7 +13,10 @@
   select * from table1;         -- [RangeTblRef(rtindex 1)]
   select * from table1, table2; -- [RangeTblRef(rtindex 1), RangeTblRef(rtindex 2)]
     
-  SELECT * FROM (SELECT id FROM table1) AS subquery; -- [RangeTblRef(rtindex 2, kind RTE_SUBQUERY)]
+  -- [RangeTblRef(rtindex 2, kind RTE_SUBQUERY)]
+  SELECT * FROM (SELECT id FROM table1) AS subquery;
+  -- [RangeTblRef(rtindex1, kind RTE_RELATION), RangeTblRef(rtindex 2, kind RTE_SUBQUERY)]
+  SELECT * FROM table2, (SELECT id FROM table1);
     
   -- Cases where it contains ONLY 1 JoinExpr
     

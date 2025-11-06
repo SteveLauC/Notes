@@ -570,9 +570,11 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    > 2. If it appears in the `ON` clause of an outer join, the subquery only 
    >    references the nullable side of join
    
-   * `foo op ANY (sub-select)` => semi join
+   * `lefthand op ANY (sub-select)` => semi join
    * `EXISTS (sub-select)` => semi join
    * `NOT EXISTS (sub-select)` => anti join
+   
+   Example:
    
    ```sql
    create table teacher (id int, name text);
@@ -617,7 +619,8 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    `pull_up_sublinks()` does the transformations described above, it looks for 
    sublinks in the `jointree`, then:
    
-   1. Add new range table entries. We won't have `RTE_JOIN` entries
+   1. Add new range table entries. We won't create `RTE_JOIN` entries for the 
+      created semi/anti-joins
    2. Replace the `jointree.fromlist` with a `JoinExpr` of `semi/anti-join`
    
    Implementation:
@@ -635,7 +638,7 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    ```
    
    `pull_up_sublinks()` uses this function to recursively **scans** the `jointree`
-   nodes (the jointree node itself and the nodes in `fromlist` of types
+   nodes (the jointree node itself and the nodes in `fromlist` of types, i.e.,
    `FromExpr/RangeTblRef/JoinExpr`). For every `jtnode` it receives, **collects its 
    rtindexes**, clones it (if it is going to be modified, i.e., when `jtnode` is of 
    type `FromExpr` and `JoinExpr`. Otherwise, `jtnode` will be returned as-is) 
@@ -660,52 +663,99 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    
 9. `preprocess_function_rtes()`
 
-   Simplify and try to inline the function RTEs:
+   > Should be invoked after `pull_up_sublinks()`, as it could add new function
+   > RTEs.
+
+   1. Simplify the `RangeTblFunction` nodes: constant-folding
+   
+      ```c
+      /* Apply const-simplification */
+      rte->functions = (List *)
+          eval_const_expressions(root, (Node *) rte->functions);
+      ```
+      
+   2. Inline it if 
+   
+      1. it is a **set-returning function** 
+      2. it is written in **SQL** (not C)
+      3. it is declared in the `FROM` clause
+      4. It contains a simple `SELECT`
+      
+      convert the function body to a sub-`Query` (`RTE_FUNCTION` to a `RTE_SUBQUERY`),
+      which may be further optimized by pulling it up.
   
-   ```c
-   if (rte->rtekind == RTE_FUNCTION)
-   {
-    	Query	   *funcquery;
+      ```c
+      /* Check safety of expansion, and expand if possible */
+      funcquery: Query = inline_set_returning_function(root, rte);
+      if (funcquery)
+      {
+              /* Successful expansion, convert the RTE to a subquery */
+              rte->rtekind = RTE_SUBQUERY;
+              rte->subquery = funcquery;
+              rte->security_barrier = false;
+                
+             /*
+              * Clear fields that should not be set in a subquery RTE.
+              * However, we leave rte->functions filled in for the moment,
+              * in case makeWholeRowVar needs to consult it.  We'll clear
+              * it in setrefs.c (see add_rte_to_flat_rtable) so that this
+              * abuse of the data structure doesn't escape the planner.
+              */
+              rte->funcordinality = false;
+      }
+      ``` 
+      
+      I haven't played this myself because I don't know any functions that could
+      be inlined.
+
+
+10. `pull_up_subqueries()`
+
+    A subquery will be pulled up if:
     
-    	/* Apply const-simplification */
-    	rte->functions = (List *)
-    		eval_const_expressions(root, (Node *) rte->functions);
+    1. It is a simple sub-query
     
-    	/* Check safety of expansion, and expand if possible */
-    	funcquery = inline_set_returning_function(root, rte);
-    	if (funcquery)
-    	{
-    		/* Successful expansion, convert the RTE to a subquery */
-    		rte->rtekind = RTE_SUBQUERY;
-    		rte->subquery = funcquery;
-    		rte->security_barrier = false;
+       1. 不能有集合操作 (UNION, INTERSECT 等，UNION ALL 是特例，由另一分支处理)。
+       2. 不能有聚合 (GROUP BY, HAVING, hasAggs)。
+       3. 不能有窗口函数 (hasWindowFuncs)。
+       4. 不能有排序或限制 (ORDER BY, LIMIT, OFFSET, DISTINCT)。
+       5. 不能有 WITH 子句 (cteList)。
+       6. 不能是安全屏障视图 (security_barrier)，否则会破坏行级安全。
+       7. 不能有 FOR UPDATE/SHARE 锁，否则会改变加锁的语义。
+       8. 目标列中不能包含易变函数 (VOLATILE functions)，否则拉平后可能导致函数被多次执行，产生非预期结果。
+      
+    2. It is a simple `UNION ALL` sub-query
+    3. It is a simple `VALUES` rte: RTE_VALUES -> RTE_RESULT
+    4. It is a `RTE_FUNCTION` whose `funcexpr` is a `Const`: RTE_FUNCTION -> RTE_RESULT
     
-    		/*
-    		 * Clear fields that should not be set in a subquery RTE.
-    		 * However, we leave rte->functions filled in for the moment,
-    		 * in case makeWholeRowVar needs to consult it.  We'll clear
-    		 * it in setrefs.c (see add_rte_to_flat_rtable) so that this
-    		 * abuse of the data structure doesn't escape the planner.
-    		 */
-    		rte->funcordinality = false;
-    	}
-   }
-   ``` 
+    QUES: why does this function handle cases other than sub queries
 
+11. convert `UNION ALL` to `appendrel`
 
-2. `pull_up_subqueries()` can simplify queries like
+    > QUES: this looks similar to the second case in `pull_up_subqueries()`,
+    > I didn't take a deep look at both cases.
 
-   ```sql
-   select * from (select * from table)
-   ```
-
-   ```c
-   /*
-    * Check to see if any subqueries in the jointree can be merged into this
-    * query.
+    ```c
+    /*
+    * If this is a simple UNION ALL query, flatten it into an appendrel. We
+    * do this now because it requires applying pull_up_subqueries to the leaf
+    * queries of the UNION ALL, which weren't touched above because they
+    * weren't referenced by the jointree (they will be after we do this).
     */
-   pull_up_subqueries(root);
-   ```
+    if (parse->setOperations)
+    	flatten_simple_union_all(root);
+    ```
+
+12. Scan the range table entries, check if some specific SQL features appear
+    in the query, if not, then we can skip processing them.
+    
+    1. root->hasJoinRTEs (bool): do we have any joins?
+    2. root->hasLateralRTEs (bool): if any RTEs have the `lateral` field set
+    3. root->group_rtindex (rtindex): RT index of the first RTE_GROUP
+    4. hasOuterJoins (bool): do we have outer joins?
+    5. hasResultRTEs (bool): do we have `RTE_RESULT` RTEs
+    6. root->qual_security_level (uint): Minimum security_level for quals.
+    
 
 3. I do not understand why we can still see Views in the range table list, they 
    should be expanded by the rewriter
@@ -737,6 +787,7 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
         }
    }
    ```
+   
 #### grouping_planner()
 ##### query_planner() (within grouping_planner, line 1632)
 
