@@ -152,23 +152,37 @@
 
   1. For RTE_RELATION: it is true for relations that should be expanded to include 
      inherience children
-  2. Is is a top level `UNION ALL` query
-    
-     ```sql 
-     select * from foo
-     union all
-     select * from foo
-     ```
      
-     The planner also set this to true if it contains `UNION ALL` 
-     queries that it has flattened into pulled-up subqueries (creating a structure 
-     much like the effects of inheritance)
+     * partitioning table
+     * inherience
+     
+     The parser only set this to true for RTE_RELATION entries. 
+     
+  2. Planner sets this field for `RTE_SUBQUERY` rtes
+  
+     1. pull_up_subqueries()
+     
+        The planner also set this to true if it contains `UNION ALL` 
+        queries that it has flattened into pulled-up subqueries (creating a structure 
+        much like the effects of inheritance)
+        
+     2. flatten_simple_union_all()
+     
+        Is is a top level `UNION ALL` query
+    
+        ```sql 
+        select * from foo
+        union all
+        select * from foo
+        ```
 
 * relkind (char): See the notes in `RangeTblEntry.rteKind`.
 
 * rellockmode (int/LOCKMODE): lock level that query requires on the rel
 
-* perminfoindex (Index, i.e., uint): Index to the RTEPermissionInfo entry
+* perminfoindex (Index, i.e., uint): 1-based index of the RTEPermissionInfo entry
+  in `Query.rteperminfos`.
+  
 
 * tablesample (struct TableSampleClause)
 

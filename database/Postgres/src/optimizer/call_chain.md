@@ -445,6 +445,7 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    root->eq_classes = NIL;
    root->ec_merging_done = false;
    root->last_rinfo_serial = 0;
+   // Add `Query->resultRelation` to `all_result_relids`
    root->all_result_relids =
       parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
    root->leaf_result_relids = NULL;	/* we'll find out leaf-ness later */
@@ -663,8 +664,12 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    
 9. `preprocess_function_rtes()`
 
-   > Should be invoked after `pull_up_sublinks()`, as it could add new function
-   > RTEs.
+   > Should be invoked 
+   >
+   > * After `pull_up_sublinks()` as we want to pre-process the functions in
+   >   the sublinks that just got pulled up.
+   > * Before `pull_up_subqueries()` as new subqueries could be added in this
+   >   step by Inlining functions.
 
    1. Simplify the `RangeTblFunction` nodes: constant-folding
    
@@ -705,7 +710,7 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
       }
       ``` 
       
-      I haven't played this myself because I don't know any functions that could
+      I haven't tried this myself because I don't know any functions that could
       be inlined.
 
 
@@ -732,9 +737,6 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
 
 11. convert `UNION ALL` to `appendrel`
 
-    > QUES: this looks similar to the second case in `pull_up_subqueries()`,
-    > I didn't take a deep look at both cases.
-
     ```c
     /*
     * If this is a simple UNION ALL query, flatten it into an appendrel. We
@@ -745,16 +747,59 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     if (parse->setOperations)
     	flatten_simple_union_all(root);
     ```
+    
+    ```sql
+    SELECT * FROM foo
+    UNION ALL
+    SELECT * FROM foo
+    ```
+       
+    The `Query`tree of this query contains 2 `RTE_SUBQUERY` subqueries, the 
+    top-level query is a set operation.
 
-12. Scan the range table entries, check if some specific SQL features appear
-    in the query, if not, then we can skip processing them.
+12. Scan the range table entries, collect some informations. Used for later
+    processing. Check if some specific SQL features appear in the query, if 
+    not, then we can skip processing them.
     
     1. root->hasJoinRTEs (bool): do we have any joins?
-    2. root->hasLateralRTEs (bool): if any RTEs have the `lateral` field set
-    3. root->group_rtindex (rtindex): RT index of the first RTE_GROUP
-    4. hasOuterJoins (bool): do we have outer joins?
+    2. hasOuterJoins (bool): do we have outer joins?
+    3. root->hasLateralRTEs (bool): if any RTEs have the `lateral` field set
+    4. root->group_rtindex (rtindex): RT index of the first RTE_GROUP entry
     5. hasResultRTEs (bool): do we have `RTE_RESULT` RTEs
     6. root->qual_security_level (uint): Minimum security_level for quals.
+
+13. If the `Query->resultRelation` is not `RangeTblEntry.inh`, then 
+    `root->leaf_result_relids` should be set to it.
+    
+    ```c
+	/*
+	 * If we have now verified that the query target relation is
+	 * non-inheriting, mark it as a leaf target.
+	 */
+	if (parse->resultRelation)
+	{
+		RangeTblEntry *rte = rt_fetch(parse->resultRelation, parse->rtable);
+
+		if (!rte->inh)
+			root->leaf_result_relids =
+				bms_make_singleton(parse->resultRelation);
+	}
+    ```
+
+    QUES: Why we init the `leaf_result_relids` field here? Because it relies on
+    the `RangeTblEntry.inh` field? And the proceeding routines could update this
+    field for the `RTE_RELATION` RTE entries? I only know that `pull_up_subqueries()`
+    and `flatten_simple_union_all()` set this field for `RTE_SUBQUERY` RTE entries.
+    
+14. Check permissions of `(RTE_RELATION, RELKIND_VIEW)` RTE entries
+
+    This code snippet was inroduced as a fix-up. Normally Postgres checks ACL
+    at executor-startup
+
+15. Generate needed `PlanRowMark`s and populate `PlannerInfo->rowMarks`. A row mark
+    is a lock of specific row. NOTE: this function does not lock rows, the `PlanRowMark`
+    type it constructs is more like an instruction (it is a **mark**) that tells
+    the executor how to do the actual lock job.
     
 
 3. I do not understand why we can still see Views in the range table list, they 

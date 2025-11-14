@@ -205,13 +205,18 @@ one associated `PlannerInfo` and returns it.
 -------------------------------------------------------------------------------
 
 * all_result_relids (Relids, aka Bitmapset of RT index): RT indexes of all the 
-  result relations (i.e., the relations this query will modify).
-
-  It would contains `parse->resultRelation` if this is not a `SELECT` query, the 
-  primary relation that will be modified by the query.
+  result relations (i.e., the relations this `Query` will modify).
   
-  For `UPDATE/DELETE/MERGE` across an inheritance or partitioning tree, the result
-  rel's child relids are added (by `expand_single_inheritance_child()`)
+  Empty if this is a `SELECT` query. Otherwise, it contains `Query.resultRelation`.
+  If `Query.resultRelation` is `RangeTblEntry.inh` (i.e., partition or inheritance
+  table), then its child relids are also added (by `expand_single_inheritance_child()`).
+  
+  See `RangeTblEntry.inh` notes for more information, the `RTE_RELATION` case.
+  
+  ```c
+  root->all_result_relids =
+      parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+  ```
 
 * leaf_result_relids (relids, aka bitmapset of RT index): A "leaf" relation is 
   a table in the "hierarchy" that actually stores data.
@@ -228,7 +233,7 @@ one associated `PlannerInfo` and returns it.
 
 * row_identity_vars (List<RowIdentityVarInfo>);
 
-* rowMarks;
+* rowMarks (List<PlanRowMark>): 
 
 * placeholder_list;
 
