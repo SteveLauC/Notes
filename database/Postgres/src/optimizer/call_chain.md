@@ -796,10 +796,90 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     This code snippet was inroduced as a fix-up. Normally Postgres checks ACL
     at executor-startup
 
-15. Generate needed `PlanRowMark`s and populate `PlannerInfo->rowMarks`. A row mark
-    is a lock of specific row. NOTE: this function does not lock rows, the `PlanRowMark`
-    type it constructs is more like an instruction (it is a **mark**) that tells
-    the executor how to do the actual lock job.
+15. `preprocess_rowmarks()`
+
+    ```c
+    /*
+    * Preprocess RowMark information.  We need to do this after subquery
+    * pullup, so that all base relations are present.
+    */
+    preprocess_rowmarks(root);
+    ```
+
+    For all the **non-target** **base** relations, generate one `PlanRowMark`
+    for each relation and store them in `PlannerInfo->rowMarks`:
+    
+    > target relation: here it means `Query.resultRelation`
+    
+    > base relations contain data, so that we can lock them
+
+    1. Convert the `Query.rowMarks` (`List<RowMarkClause>`) added for `RTE_RELATION`
+       entries (i.e., ignore the ones built for `RTE_SUBQUERY`) to a list of 
+       `PlanRowMark`
+       
+       `RowMarkClause` are added to relations identified by `FOR UPDATE` and 
+       `FOR SHARE`, which are not target relations in the current Implementation.
+       
+       QUES: why? From what I can tell, `PlanRowMark` contains moren information
+       than `RowMarkClause`
+    
+    2. For all the non-target base relations that are not covered in the above step,
+       create a `PlanRowMark` for it as well.
+       
+    What is a rowmark: A rowmark, the planner adds for a relation, is a mark 
+    that tells the executor how to lock its rows. NOTE: this function (the 
+    planner) does not lock rows, the executor locks them.
+    
+    This should be done after calling `pull_up_subqueries(root)`, as it could
+    add more base relations.
+    
+    QUES: 
+    
+    * Why does this function only add rowmarks for **non-target** base 
+      relations? Shouldn't the target relation (resultRelation) be locked as
+      well? 
+      
+      Gemini says that the resultRelation will be locked by the `ModifyTable`
+      node.
+      
+    * Why do we need to lock non-target base relations? I don't understand
+      Gemini's explanation, it says this is realted "EvalPlanQual"
+      
+16. Set the `root->hasHavingQual` as `preprocess_expression()` needs it
+
+    ```c
+    /*
+    * Set hasHavingQual to remember if HAVING clause is present.  Needed
+    * because preprocess_expression will reduce a constant-true condition to
+    * an empty qual list ... but "HAVING TRUE" is not a semantic no-op.
+    */
+    root->hasHavingQual = (parse->havingQual != NULL);
+    ```
+
+17. `preprocess_expression(PlannerInfo *root, Node *expr, int kind)`
+
+    Argument `expr` is a node of kind `kind`. Here is the list of expression 
+    kinds that are supported:
+    
+    ```c
+    /* Expression kind codes for preprocess_expression */
+    #define EXPRKIND_QUAL				0
+    #define EXPRKIND_TARGET				1
+    #define EXPRKIND_RTFUNC				2
+    #define EXPRKIND_RTFUNC_LATERAL		3
+    #define EXPRKIND_VALUES				4
+    #define EXPRKIND_VALUES_LATERAL		5
+    #define EXPRKIND_LIMIT				6
+    #define EXPRKIND_APPINFO			7
+    #define EXPRKIND_PHV				8
+    #define EXPRKIND_TABLESAMPLE		9
+    #define EXPRKIND_ARBITER_ELEM		10
+    #define EXPRKIND_TABLEFUNC			11
+    #define EXPRKIND_TABLEFUNC_LATERAL	12
+    #define EXPRKIND_GROUPEXPR			13
+    ```
+    
+    joinaliasvars vs targetlist
     
 
 3. I do not understand why we can still see Views in the range table list, they 

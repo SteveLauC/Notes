@@ -20,3 +20,5 @@ Alright, I just read the doc, `RangeTblEntry` stores the join result:
 They split result and expression on purpose. 
 
 QUES: Could the result of a join be referenced in `rtable`, like the `join(.., 4)` case?
+Future steve: No, rtable only contain results, the input relations of a join
+are expressed in `jointree` (JoinExpr.larg and JoinExpr.rarg)

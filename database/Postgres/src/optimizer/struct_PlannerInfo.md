@@ -291,7 +291,18 @@ one associated `PlannerInfo` and returns it.
   
 * hasLateralRTEs (bool): If any RTEs has the `lateral` field set
 
-* hasHavingQual
+* hasHavingQual (bool): If this `Query` has a `HAVING` clause, inited in 
+  `subquery_planner()`
+
+  ```c
+  /*
+   * Set hasHavingQual to remember if HAVING clause is present.  Needed
+   * because preprocess_expression will reduce a constant-true condition to
+   * an empty qual list ... but "HAVING TRUE" is not a semantic no-op.
+   */
+  root->hasHavingQual = (parse->havingQual != NULL);
+  ```
+
 * hasPseudoConstantQuals
 * hasAlternativeSubPlans
 * placeholdersFrozen

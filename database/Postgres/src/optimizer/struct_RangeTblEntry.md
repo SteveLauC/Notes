@@ -204,7 +204,8 @@
 
 * joinmergedcols (int): Number of "merged" columns. Merged columns are placed at
   the beginning of `joinaliasvars` (of type `struct CoalesceExpr`),  so this field
-  also tells you how many columns at the beginning of the join's output correspond to these merged columns.
+  also tells you how many columns at the beginning of the join's output correspond
+  to these merged columns.
   
   What does "merged columns" mean? Natural join's performs equi-join on tables with
   **matching** columns (same name, compatible data type), since these columns have
@@ -254,9 +255,9 @@
   
   * Var: when it is a simple column
   * Var with implicit type cast
-  * CoalesceExpr(Var): when it is a merged column
+  * CoalesceExpr(Var) containing 2 input columns Vars
   
-  The first `joinmergedcols` entries are `CoalesceExpr`s, the remaining are all
+  The first `joinmergedcols` entries are merged columns, the remaining are all
   `Var`s.
   
   ```text

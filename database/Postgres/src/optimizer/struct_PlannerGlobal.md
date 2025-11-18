@@ -69,7 +69,8 @@ be created in `standard_planner()`.
  
 * lastPHId: Highest PlaceHolderVar ID
 
-* lastRowMarkId: highest PlanRowMark ID
+* lastRowMarkId (Index, aka, uint): highest PlanRowMark ID allocated. Postgres
+  allocates PlanRowMark ID in `preprocess_rowmarks()`.
 
 * lastPlanNodeId: highest plan node ID
 
