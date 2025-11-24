@@ -479,9 +479,9 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
 
    ```c
    /*
-   * If there is a WITH list, process each WITH query and either convert it
-   * to RTE_SUBQUERY RTE(s) or build an initplan SubPlan structure for it.
-   */
+    * If there is a WITH list, process each WITH query and either convert it
+    * to RTE_SUBQUERY RTE(s) or build an initplan SubPlan structure for it.
+    */
    if (parse->cteList)
       SS_process_ctes(root);
    ```
@@ -498,6 +498,8 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
       ```
       
    3. Materialize it, plan it separately and add it to `Plan.initPlans`
+   
+      > For non-correlated subqueries, Postgres materializes it as well.
 
 5. Pre-process querytree for the `MERGE` command, i.e., transform `MERGE` to a
    join:
@@ -521,11 +523,15 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    1. If this relation has `RangeTblEntry.inh` set and it has no children, clear 
       the flag
       
-       > QUES: TOCTOU???
+      > QUES: TOCTOU???
+      >
+      > `Query.table` was created by analyzer, and now it is used by the planner.
     
    2. Collect non-NULL attribute numbers
-   3. Update `Query.targetlist`, for **virtual** generated columns, replace `Var`
+   3. Update `Query.targetlist`, for [**virtual** generated columns][vi_g_c], replace `Var`
       with the corresponding generation expression.
+      
+      [vi_g_c]: https://www.postgresql.org/docs/current/ddl-generated-columns.html
 
 7. `replace_empty_jointree()` 
 
@@ -669,7 +675,7 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
    > * After `pull_up_sublinks()` as we want to pre-process the functions in
    >   the sublinks that just got pulled up.
    > * Before `pull_up_subqueries()` as new subqueries could be added in this
-   >   step by Inlining functions.
+   >   step by Inlining functions (RTE_FUNCTION -> RTE_SUBQUERY).
 
    1. Simplify the `RangeTblFunction` nodes: constant-folding
    
@@ -762,6 +768,10 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     not, then we can skip processing them.
     
     1. root->hasJoinRTEs (bool): do we have any joins?
+      
+       Current usage: If we don't have joins, then in `preprocess_expression()`, 
+       we don't need to invoke `flatten_join_alias_var()`.
+      
     2. hasOuterJoins (bool): do we have outer joins?
     3. root->hasLateralRTEs (bool): if any RTEs have the `lateral` field set
     4. root->group_rtindex (rtindex): RT index of the first RTE_GROUP entry
@@ -879,7 +889,40 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     #define EXPRKIND_GROUPEXPR			13
     ```
     
-    joinaliasvars vs targetlist
+    1. flatten_join_alias_var()
+       
+       1. If A `Var` node references a column from a join result 
+          (`RangeTblEntry.joinaliasvars`), we should update it to make it point
+          to the actual table column.
+          
+          If `Var.varno` points to a `RTE_JOIN`, we need to check the 
+          `Var.varattno`'th element of `RangeTblEntry.joinaliasvars`. If this
+          element points to a table column, task is complete. If not, we need
+          to do this again.
+          
+       2. If a `Var` node references the whole row 
+       
+    2. For the sublinks that were not pulled up, make one `SubPlan` for them.
+    
+       ```c
+       /* Expand SubLinks to SubPlans */
+       if (root->parse->hasSubLinks)
+           expr = SS_process_sublinks(root, expr, (kind == EXPRKIND_QUAL));
+       ```
+         
+    
+18. preprocess_expression(target list)
+
+    ```c
+    /*
+    * Do expression preprocessing on targetlist and quals, as well as other
+    * random expressions in the querytree.  Note that we do not need to
+    * handle sort/group expressions explicitly, because they are actually
+    * part of the targetlist.
+    */
+    parse->targetList = (List *) preprocess_expression(root, (Node *) parse->targetList, EXPRKIND_TARGET);
+    ```
+    
     
 
 3. I do not understand why we can still see Views in the range table list, they 

@@ -7,7 +7,9 @@
  *	EXPR_SUBLINK		(SELECT with single targetlist item ...)
  *	MULTIEXPR_SUBLINK	(SELECT with multiple targetlist items ...)
  *	ARRAY_SUBLINK		ARRAY(SELECT with single targetlist item ...)
- *	CTE_SUBLINK			WITH query (never actually part of an expression), if it gets materialized (`SubPlan.subLinkType`)
+ *	CTE_SUBLINK			If a CTE (`WITH xxx`) gets materialized, which means it will 
+    be converted into `SubPlan` and stored in `Plan.initPlan`. The `SubPlan.subLinkType`
+    field will be set to this value.
 
 # Fields
 

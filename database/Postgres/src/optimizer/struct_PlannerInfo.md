@@ -274,7 +274,10 @@ one associated `PlannerInfo` and returns it.
 
 * processed_groupClause
 * processed_distinctClause
-* processed_tlist
+
+* processed_tlist (List<TargetEntry>): Planner normalizes `Query.targetList`
+  and store the final result here.
+  
 * update_colnos
 * grouping_map
 * minmax_aggs

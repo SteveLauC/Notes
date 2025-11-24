@@ -253,7 +253,7 @@
 * joinaliasvars (List<Node>): A list of nodes representing the output columns
   of this join, where node can be of type:
   
-  * Var: when it is a simple column
+  * Var: when it is a column
   * Var with implicit type cast
   * CoalesceExpr(Var) containing 2 input columns Vars
   

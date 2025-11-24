@@ -265,7 +265,7 @@
    1. Postgres uses `sigsetjmp()` and `siglongjmp()` in error handling, `siglongjmp()`
       restores the register values.  
    2. When we modify a non-volatile C variable (it is stored in stack), compiler could 
-      be lazy and just update the values stored in  the registers.  
+      be lazy and just update the values stored in the registers.  
       
    That is, lost updates could happen to non-volatile variables.  Marking a variable 
    volatile forces the compiler to not cache the value in register and read/write it
