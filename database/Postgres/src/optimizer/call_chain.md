@@ -873,23 +873,23 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     
     ```c
     /* Expression kind codes for preprocess_expression */
-    #define EXPRKIND_QUAL				0
-    #define EXPRKIND_TARGET				1
-    #define EXPRKIND_RTFUNC				2
-    #define EXPRKIND_RTFUNC_LATERAL		3
-    #define EXPRKIND_VALUES				4
-    #define EXPRKIND_VALUES_LATERAL		5
-    #define EXPRKIND_LIMIT				6
-    #define EXPRKIND_APPINFO			7
-    #define EXPRKIND_PHV				8
-    #define EXPRKIND_TABLESAMPLE		9
-    #define EXPRKIND_ARBITER_ELEM		10
-    #define EXPRKIND_TABLEFUNC			11
-    #define EXPRKIND_TABLEFUNC_LATERAL	12
-    #define EXPRKIND_GROUPEXPR			13
+    EXPRKIND_QUAL				0
+    EXPRKIND_TARGET				1
+    EXPRKIND_RTFUNC				2
+    EXPRKIND_RTFUNC_LATERAL		3
+    EXPRKIND_VALUES				4
+    EXPRKIND_VALUES_LATERAL		5
+    EXPRKIND_LIMIT				6
+    EXPRKIND_APPINFO			7
+    EXPRKIND_PHV				8
+    EXPRKIND_TABLESAMPLE		9
+    EXPRKIND_ARBITER_ELEM		10
+    EXPRKIND_TABLEFUNC			11
+    EXPRKIND_TABLEFUNC_LATERAL	12
+    EXPRKIND_GROUPEXPR			13
     ```
     
-    1. flatten_join_alias_var()
+    1. flatten_join_alias_vars()
        
        1. If A `Var` node references a column from a join result 
           (`RangeTblEntry.joinaliasvars`), we should update it to make it point
@@ -901,6 +901,32 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
           to do this again.
           
        2. If a `Var` node references the whole row 
+       
+       ```c
+       /*
+        * If the query has any join RTEs, replace join alias variables with
+        * base-relation variables.  We must do this first, since any expressions
+        * we may extract from the joinaliasvars lists have not been preprocessed.
+        * For example, if we did this after sublink processing, sublinks expanded
+        * out from join aliases would not get processed.  But we can skip this in
+        * non-lateral RTE functions, VALUES lists, and TABLESAMPLE clauses, since
+        * they can't contain any Vars of the current query level.
+        */
+       if (root->hasJoinRTEs &&
+           !(kind == EXPRKIND_RTFUNC ||
+     	     kind == EXPRKIND_VALUES ||
+     	     kind == EXPRKIND_TABLESAMPLE ||
+     	     kind == EXPRKIND_TABLEFUNC))
+           expr = flatten_join_alias_vars(root, root->parse, expr);
+       ```
+       
+       non-lateral RTE functions, VALUES list, TABLESAMPLE and table function
+       nodes cannot reference other RTEs, which means they won't contain any 
+       `Var` nodes, so we don't need to call `flatten_join_alias_vars()` on them.
+       
+       QUES: what expressions nodes can reference other (join) RTEs?
+       
+       
        
     2. For the sublinks that were not pulled up, make one `SubPlan` for them.
     
@@ -925,37 +951,6 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     
     
 
-3. I do not understand why we can still see Views in the range table list, they 
-   should be expanded by the rewriter
-
-   ```c
-    * Note, however, that we do need to check access permissions for any view
-    * relations mentioned in the query, in order to prevent information being
-    * leaked by selectivity estimation functions, which only check view owner
-    * permissions on underlying tables (see all_rows_selectable() and its
-    * callers).  This is a little ugly, because it means that access
-    * permissions for views will be checked twice, which is another reason
-    * why it would be better to do all the ACL checks here.
-    */
-   foreach(l, parse->rtable)
-   {
-        RangeTblEntry *rte = lfirst_node(RangeTblEntry, l);
-
-        if (rte->perminfoindex != 0 &&
-            rte->relkind == RELKIND_VIEW)
-        {
-            RTEPermissionInfo *perminfo;
-            bool		result;
-
-            perminfo = getRTEPermissionInfo(parse->rteperminfos, rte);
-            result = ExecCheckOneRelPerms(perminfo);
-            if (!result)
-                aclcheck_error(ACLCHECK_NO_PRIV, OBJECT_VIEW,
-                                get_rel_name(perminfo->relid));
-        }
-   }
-   ```
-   
 #### grouping_planner()
 ##### query_planner() (within grouping_planner, line 1632)
 

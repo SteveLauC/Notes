@@ -278,7 +278,25 @@ one associated `PlannerInfo` and returns it.
 * processed_tlist (List<TargetEntry>): Planner normalizes `Query.targetList`
   and store the final result here.
   
-* update_colnos
+  The fully-processed targetlist is kept here.  It differs from `Query.targetList`
+  in that (for `INSERT`) it's been reordered to match the target table, and defaults
+  have been filled in.  Also, additional resjunk targets may be present.  
+  `preprocess_targetlist()` does most of that work, but note that more resjunk 
+  targets can get added during appendrel expansion.  (Hence, upper_targets mustn't
+  get set up till after that.)
+  
+  > preprocess_targetlist()
+  
+* update_colnos (List<int>): For `UPDATE` only.
+
+  The planner extracts the `Query.targetList` `resno` numbers and store them there.
+  
+  The first len(update_colnos) entries in `PlannerInfo.processed_tlist` have these
+  attribute numbers, other `TargetEntry`s in `PlannerInfo.processed_tlist` are 
+  `resjunk` (TargetEntry.resjunk).
+  
+  > preprocess_targetlist()
+  
 * grouping_map
 * minmax_aggs
 

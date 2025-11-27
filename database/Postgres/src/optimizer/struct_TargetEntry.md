@@ -87,117 +87,41 @@
     create table with_array (arr text[]);
     update with_array set arr[1]='a', arr[2]='b';
     
+    -- Before rewriter merges TargetEntries with the same resno
     -- resno values:  1 1
+    DETAIL:  (
+       {TARGETENTRY 
+       :expr { omitted }
+       :resno 1 
+       :resname arr 
+       :ressortgroupref 0 
+       :resorigtbl 0 
+       :resorigcol 0 
+       :resjunk false
+       }
+       {TARGETENTRY 
+       :expr { omitted }
+       :resno 1 
+       :resname arr 
+       :ressortgroupref 0 
+       :resorigtbl 0 
+       :resorigcol 0 
+       :resjunk false
+       }
+    )
+   
     
-    :targetList (
-        {TARGETENTRY 
-        :expr 
-            {SUBSCRIPTINGREF 
-            :refcontainertype 1009 
-            :refelemtype 25 
-            :refrestype 1009 
-            :reftypmod -1 
-            :refcollid 100 
-            :refupperindexpr (
-            {CONST 
-            :consttype 23 
-            :consttypmod -1 
-            :constcollid 0 
-            :constlen 4 
-            :constbyval true 
-            :constisnull false 
-            :location 26 
-            :constvalue 4 [ 1 0 0 0 0 0 0 0 ]
-            }
-            )
-            :reflowerindexpr <> 
-            :refexpr 
-            {VAR 
-            :varno 1 
-            :varattno 1 
-            :vartype 1009 
-            :vartypmod -1 
-            :varcollid 100 
-            :varnullingrels (b)
-            :varlevelsup 0 
-            :varreturningtype 0 
-            :varnosyn 1 
-            :varattnosyn 1 
-            :location 22
-            }
-            :refassgnexpr 
-            {CONST 
-            :consttype 25 
-            :consttypmod -1 
-            :constcollid 100 
-            :constlen -1 
-            :constbyval false 
-            :constisnull false 
-            :location 29 
-            :constvalue 5 [ 20 0 0 0 97 ]
-            }
-            }
-        :resno 1 
-        :resname arr 
-        :ressortgroupref 0 
-        :resorigtbl 0 
-        :resorigcol 0 
-        :resjunk false
-        }
-        {TARGETENTRY 
-        :expr 
-            {SUBSCRIPTINGREF 
-            :refcontainertype 1009 
-            :refelemtype 25 
-            :refrestype 1009 
-            :reftypmod -1 
-            :refcollid 100 
-            :refupperindexpr (
-            {CONST 
-            :consttype 23 
-            :consttypmod -1 
-            :constcollid 0 
-            :constlen 4 
-            :constbyval true 
-            :constisnull false 
-            :location 38 
-            :constvalue 4 [ 2 0 0 0 0 0 0 0 ]
-            }
-            )
-            :reflowerindexpr <> 
-            :refexpr 
-            {VAR 
-            :varno 1 
-            :varattno 1 
-            :vartype 1009 
-            :vartypmod -1 
-            :varcollid 100 
-            :varnullingrels (b)
-            :varlevelsup 0 
-            :varreturningtype 0 
-            :varnosyn 1 
-            :varattnosyn 1 
-            :location 34
-            }
-            :refassgnexpr 
-            {CONST 
-            :consttype 25 
-            :consttypmod -1 
-            :constcollid 100 
-            :constlen -1 
-            :constbyval false 
-            :constisnull false 
-            :location 41 
-            :constvalue 5 [ 20 0 0 0 98 ]
-            }
-            }
-        :resno 1 
-        :resname arr 
-        :ressortgroupref 0 
-        :resorigtbl 0 
-        :resorigcol 0 
-        :resjunk false
-        }
+    -- after rewriter merges TargetEntries with the same `resno`
+    DETAIL:  (
+       {TARGETENTRY 
+       :expr { omitted }
+       :resno 1 
+       :resname arr 
+       :ressortgroupref 0 
+       :resorigtbl 0 
+       :resorigcol 0 
+       :resjunk false
+       }
     )
     ```
   
@@ -207,9 +131,13 @@
   `ORDER BY, GROUP BY, PARTITION BY, DISTINCT, DISTINCT ON`. Otherwise, it is the
   index to the `SortGroupClause` entry stored in `Query.sortClause`.
   
-* `resorigtbl` (Oid): OID of column's source table
+  For statements other than `SELECT`, this column is 0 as well.
+  
+* `resorigtbl` (Oid): OID of column's source table, if `expr` is a simple `Var`
+  that represents a table column. Otherwise, it is 0.
 
-* `resorigcol`(AttNumber, aka, int16): column number in the source table
+* `resorigcol`(AttNumber, aka, int16): column number in the source table, if 
+  `expr` is a simple `Var` that represents a table column. Otherwise, it is 0.
   
 * `resjunk` (bool): true means this is a junk column, should be removed from the
   final target list.

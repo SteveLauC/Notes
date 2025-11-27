@@ -124,7 +124,19 @@
         RTE_SUBQUERY,				/* subquery in FROM */
         RTE_JOIN,					/* join */
         RTE_FUNCTION,				/* function in the FROM clause */
-        RTE_TABLEFUNC,				/* TableFunc(.., column list) */
+		/* 
+		 * TableFunc(.., column list)
+         *
+		 * It is used to represent SQL-Standard table functions that have a complex 
+         * internal structure, specifically allowing the user to define the output 
+         * schema (columns and types) and the mapping logic dynamically within the 
+         * query itself.
+         *
+         * Examples:
+         * 1. XMLTABLE()
+         * 2. JSON_TABLE()
+		 */
+        RTE_TABLEFUNC,
         RTE_VALUES,					/* VALUES (<exprlist>), (<exprlist>), ... */
         RTE_CTE,					/* common table expr (WITH list element) */
         RTE_NAMEDTUPLESTORE,		/* tuplestore, e.g. for AFTER triggers */
@@ -311,6 +323,8 @@
 -------------------------------------------------------------------------------
 
 > Table function RTE
+
+* tablefunc (TableFunc): TableFunc node if this is a `RTE_TABLEFUNC`
 
 
 -------------------------------------------------------------------------------
