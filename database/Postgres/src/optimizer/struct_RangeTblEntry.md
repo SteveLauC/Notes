@@ -360,6 +360,27 @@ SELECT * FROM (VALUES (1, 'apple'), (2, 'banana'), (3, 'cherry'));
 
 * self_reference (bool)
 
+-------------------------------------------------------------------------------
+
+> Fields valid for CTE/VALUES/ENR(EphemeralNamedRelation)/TabelFunc rtes
+
+* coltypes
+* coltypmods
+* colcollations
+
+-------------------------------------------------------------------------------
+
+> Fields valid for ENR(EphemeralNamedRelation)
+
+
+* enrname
+* enrtuples
+
+-------------------------------------------------------------------------------
+
+> Fields valid for a GROUP RTE (else NIL):
+
+* groupexprs
 
 -------------------------------------------------------------------------------
 

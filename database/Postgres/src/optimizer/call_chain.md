@@ -874,33 +874,58 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     ```c
     /* Expression kind codes for preprocess_expression */
     EXPRKIND_QUAL				0
-    EXPRKIND_TARGET				1
+      1. Query.havingQual
+    EXPRKIND_TARGET:
+      1. Query.targetList
+      2. Query.returningList
+      3. Query.onConflict->onConflictSet
+      4. MergeAction.targetList
+      
     EXPRKIND_RTFUNC				2
     EXPRKIND_RTFUNC_LATERAL		3
+      1. RTE_FUNCTION `RangeTblEntry.functions` (List<RangeTblFunction>)
+    
     EXPRKIND_VALUES				4
     EXPRKIND_VALUES_LATERAL		5
+      1. RTE_VALUES `RangeTblEntry.values_list` (List<Expr>)
     EXPRKIND_LIMIT				6
+      1. Query.limitOffset
+      2. Query.limitCount
+      3. WindowClause.startOffset
+      4. WindowClause.endOffset
     EXPRKIND_APPINFO			7
+      1. PlannerInfo.append_rel_list
     EXPRKIND_PHV				8
+      1. PlaceHolderVer.phexpr
     EXPRKIND_TABLESAMPLE		9
+      1. RTE_RELATION `RangeTblEntry.tablesample`
     EXPRKIND_ARBITER_ELEM		10
+    
     EXPRKIND_TABLEFUNC			11
     EXPRKIND_TABLEFUNC_LATERAL	12
+      1. RTE_TABLEFUNC `RangeTblEntry.tablefunc`
+    
     EXPRKIND_GROUPEXPR			13
+      1. RTE_GROUP `RangeTblEntry.groupexprs` 
     ```
     
     1. flatten_join_alias_vars()
        
        1. If A `Var` node references a column from a join result 
           (`RangeTblEntry.joinaliasvars`), we should update it to make it point
-          to the actual table column.
+          to the actual table column. Why do we do this? If there is a qual on
+          this Var, we can push the qual down to the table.
           
           If `Var.varno` points to a `RTE_JOIN`, we need to check the 
           `Var.varattno`'th element of `RangeTblEntry.joinaliasvars`. If this
           element points to a table column, task is complete. If not, we need
           to do this again.
           
-       2. If a `Var` node references the whole row 
+       2. Whole-row `Var`s (`var->varattno == InvalidAttrNumber`) that reference
+          JOIN relations are expanded into `RowExpr` constructs that name the 
+          individual output Vars.  This is necessary since we will not scan 
+          the JOIN as a base relation, which is the only way that the executor 
+          can directly handle whole-row Vars.
        
        ```c
        /*
@@ -920,12 +945,27 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
            expr = flatten_join_alias_vars(root, root->parse, expr);
        ```
        
+       ```c
+       if (IsA(node, Var))
+       {
+      		Var		   *var = (Var *) node;
+      		RangeTblEntry *rte;
+      		Node	   *newvar;
+        
+      		/* No change unless Var belongs to a JOIN of the target level */
+      		if (var->varlevelsup != context->sublevels_up)
+     			return node;		/* no need to copy, really */
+      		rte = rt_fetch(var->varno, context->query->rtable);
+      		if (rte->rtekind != RTE_JOIN)
+     			return node;
+      		if (var->varattno == InvalidAttrNumber)
+      		{
+     			/* Must expand whole-row reference */
+       ```
+       
        non-lateral RTE functions, VALUES list, TABLESAMPLE and table function
        nodes cannot reference other RTEs, which means they won't contain any 
        `Var` nodes, so we don't need to call `flatten_join_alias_vars()` on them.
-       
-       QUES: what expressions nodes can reference other (join) RTEs?
-       
        
        
     2. For the sublinks that were not pulled up, make one `SubPlan` for them.
