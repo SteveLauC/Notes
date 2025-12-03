@@ -96,60 +96,40 @@
 
         * Flatten UNION ALL, expand inheritance trees
         * Reduce join strength
-
-          > Call chain:
-          > 
-          > * `subquery_planner()` in `src/backend/optimizer/plan/planner.c` 
-          > * `reduce_outer_joins()` in `src/backend/optimizer/prep/prepjointree.c`
           
           * Reduce outer join to inner join
+          
+            > * `reduce_outer_joins()` in `src/backend/optimizer/prep/prepjointree.c`
         
             > This has a more popular name: NULL rejection
             >
             > See also: database/Database_System_Concepts/Ch16_Query_Optimization.md
 
-            If there is a strict qualification above the outer join that constricts a Var
+            If there is a strict qualification above the outer join that constricts a `Var`
             from the nullable side of the join to be non-null, then this outer join can
             be converted into inner join.
 
           * Reduce outer join to anti joins
+          
+            > * `reduce_outer_joins()` in `src/backend/optimizer/prep/prepjointree.c`
 
-            > QUES: I do not understand this. Transforming outer join to inner join makes
-            > sense to me as outer join needs the executor to perform some extra steps
-            > after finishing the inner join part.
-            >
-            > I do not know if anti join is easier to execute.
-           
-            If the outer join's own qualifications are strict for any nullable 
-            Var that was forced NULL by higher qualification levels
+            If the outer join's qual (`JoinExpr.qual`) are strict for any nullable
+            `Var` that was forced NULL by higher qual (WHERE, `FromExpr.qual`), 
+            then this outer join only returns the rows that are null-extended.
 
             ```sql
-            SELECT * FROM
-            foo LEFT JOIN bar
+            SELECT * FROM foo LEFT JOIN bar
             ON foo.a = bar.c
             WHERE bar.c IS NULL;
-
-            -- Can be transformed to
-
-            SELECT * FROM
-            foo ANTI JOIN bar
-            on foo.a = bar.c;
             ```
+            
+            > See database/Postgres/src/optimizer/call_chain.md for detailed
+            > explanation on why this rule works.
+            
 
         * Convert `ANY`, `[NOT] EXISTS` sublinks to semi, anti-semi joins (Correlated subqueries)
-
-          > Call chain:
-          >
-          > 1. subquery_planner()
-          > 2. pull_up_sublinks()
-          > 3. pull_up_sublinks_jointree_recurse
-          > 4. pull_up_sublinks_qual_recurse
-          > 5. `convert_ANY_sublink_to_join()` and `convert_EXISTS_sublink_to_join()` 
-          >    in `src/backend/optimizer/plan/subselect.c`
-
-        * Identify anti-joins
-
-          TODO: check if this is same as "Reduce outer join to anti joins"
+        
+          > pull_up_sublinks()
 
       * Later preprocessing
 

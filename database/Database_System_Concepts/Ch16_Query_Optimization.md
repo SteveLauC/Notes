@@ -28,7 +28,7 @@
 >   * 16.4.1 Cost-Based Join-Order Selection
 >   * 16.4.2 Cost-Based Optimization with Equivalence Rules
 >   * 16.4.3 Heuristics in Optimization
->   * 16.4.4 Optimizing Nested Subqueries (correlated subqueries/semi-join/anti-join)
+>   * 16.4.4 Optimizing Nested Subqueries (correlated subqueries/semi-join/anti-semijoin (or anti-join, in short))
 > * 16.5 Materialized Views
 >   > 1. How to maintain (keep it update-to-date) it
 >   > 2. How to do queries on materialized views
@@ -421,8 +421,9 @@
 
        > More info:
        >
-       > * [DataFusion: convert outer join to inner join to improve performance](https://github.com/apache/arrow-datafusion/issues/1585)
+       > * [DataFusion: convert outer join to inner join to improve performance](https://docs.rs/datafusion/51.0.0/datafusion/optimizer/eliminate_outer_join/struct.EliminateOuterJoin.html)
        > * [NULL rejection in mysql](https://stackoverflow.com/q/16982845/14092446)
+       > * [Postgres `reduce_outer_join()`](https://github.com/SteveLauC/postgres/blob/9e8fa05d3412d6adea453a8ec24d9a794498f4cf/src/backend/optimizer/plan/planner.c#L1231-L1237)
 
 
 ## 16.2.2 Examples of Transformations

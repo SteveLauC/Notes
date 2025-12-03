@@ -371,6 +371,17 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
 ### subquery_planner()
 
 > Recursion happens from this function
+>
+> Call stack
+>
+> 1. subquery_planner
+> 2. grouping_planner
+> 3. query_planner
+> 4. make_one_rel
+> 5. set_base_rel_sizes
+> 6. set_rel_size
+> 7. set_subquery_pathlist
+> 8. subquery_planner
 
 1. It is guaranteed that `subquery_planner()` returns a `PlannerInfo` containing
    the final path in its `PlannerInfo.upper_rels[UPPERREL_FINAL]`. Caller should 
@@ -867,6 +878,13 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     ```
 
 17. `preprocess_expression(PlannerInfo *root, Node *expr, int kind)`
+ 
+    1. Constant-fold `expr` 
+    2. Simplify qualifications
+    3. Create `SubPlan` for sublinks
+    4. Create Param nodes for inter-plan communication
+    
+    > The semantics of this function is not clear
 
     Argument `expr` is a node of kind `kind`. Here is the list of expression 
     kinds that are supported:
@@ -909,7 +927,8 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
       1. RTE_GROUP `RangeTblEntry.groupexprs` 
     ```
     
-    1. flatten_join_alias_vars()
+    1. flatten_join_alias_vars(), we do this first because `Var`s extracted by 
+       this step need to be `preprocess_expression()`ed.
        
        1. If A `Var` node references a column from a join result 
           (`RangeTblEntry.joinaliasvars`), we should update it to make it point
@@ -967,28 +986,349 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
        nodes cannot reference other RTEs, which means they won't contain any 
        `Var` nodes, so we don't need to call `flatten_join_alias_vars()` on them.
        
+    2. Evaluate const expressions. `RangeTblEntry.functions` has been processed
+       in `preprocess_function_rtes`
        
-    2. For the sublinks that were not pulled up, make one `SubPlan` for them.
+       ```c
+       /* Apply const-simplification */
+       rte->functions = (List *)
+           eval_const_expressions(root, (Node *) rte->functions);
+       ```
+       
+       But if this RTE is lateral, it may have new `Var`s extracted by 
+       `flatten_join_alias_vars()`, so we need to do it again, which means,
+       if `kind == EXPRKIND_RTFUNC`, we can skip this step:
+       
+       ```c
+       if (kind != EXPRKIND_RTFUNC)
+           expr = eval_const_expressions(root, expr);
+       ```
+       
+    3. Canoncalize qualifications, "convert them to the most useful form".
+       Previously, this function converted qual to "AND of ORs" or "OR of ANDs",
+       which was not that useful, so the routine got changed the function name 
+       stayed.
+    
+       ```c
+       /*
+        * If it's a qual or havingQual, canonicalize it.
+        */
+       if (kind == EXPRKIND_QUAL)
+           expr = (Node *) canonicalize_qual((Expr *) expr, false);
+       ```
+       
+    4. For the sublinks that were not pulled up, make one `SubPlan` for them.
     
        ```c
        /* Expand SubLinks to SubPlans */
        if (root->parse->hasSubLinks)
            expr = SS_process_sublinks(root, expr, (kind == EXPRKIND_QUAL));
        ```
-         
+       
+    5. Since we have sub-plans, create Param nodes for inter-plan communication
+
+       ```c
+       /* Replace uplevel vars with Param nodes (this IS possible in VALUES) */
+       if (root->query_level > 1)
+           expr = SS_replace_correlation_vars(root, expr);
+       ```
+
+18. preprocess_expression():
+
+    1. Query.targetList
+    2. Quals in `Query.withCheckOptions`
+    3. Quals in `Query.returningList`
+    4. Quals in `JoinExpr.qual`
+    5. Quals in `Query.havingClause`
+    6. LIMIT clauses in `Query.WindowClause`
+    7. LIMIT clauses in `Query.limitOffset` and `Query.limitCount`
+    8. `Query.onConflict`
+    9. targetList and qual in `Query.mergeActionList`
+    10. Qual in `Query.mergeJoinCondition`
+    11. `PlannerInfo.append_rel_list`
+    12. RTE_RELATION `RangeTblEntry.tablesample`
+    13. **Partial** preprocessing RTE_SUBQUERY `RangeTblEntry.subquery`
+
+        ```c
+        /*
+        * We don't want to do all preprocessing yet on the subquery's
+        * expressions, since that will happen when we plan it.  But if it
+        * contains any join aliases of our level, those have to get
+        * expanded now, because planning of the subquery won't do it.
+        * That's only possible if the subquery is LATERAL.
+        */
+        if (rte->lateral && root->hasJoinRTEs)
+            rte->subquery = (Query *) flatten_join_alias_vars(root, root->parse, (Node *) rte->subquery);
+        ```
+        
+        QUES: why?
+        
+    14. RTE_FUNCTION `RangeTblEntry.functions`
+    15. RTE_TABLEFUNC `RnageTblEntry.tablefunc`
+    16. RTE_VALUES `RnageTblEntry.tablefunc`
+    17. RTE_GROUP `RangeTblEntry.groupexprs`
     
-18. preprocess_expression(target list)
+19. Set `RangeTblEntry.joinaliasvars` to `NIL` as they are no longer needed, all
+    the references to it have been flattened by `flatten_join_alias_vars()`.
+    
+20. Similar to `flatten_join_alias_vars()`, replace the `Var`s in `targetList`
+    and `havingClause` that reference group outputs with underlying expressions
+    
+    ```c
+    /*
+    * Replace any Vars in the subquery's targetlist and havingQual that
+    * reference GROUP outputs with the underlying grouping expressions.
+    *
+    * Note that we need to perform this replacement after we've preprocessed
+    * the grouping expressions.  This is to ensure that there is only one
+    * instance of SubPlan for each SubLink contained within the grouping
+    * expressions.
+    */
+    if (parse->hasGroupRTE)
+    {
+        parse->targetList = (List *)
+            flatten_group_exprs(root, root->parse, (Node *) parse->targetList);
+        parse->havingQual =
+            group_exprs(root, root->parse, parse->havingQual);
+    }
+    ```
+    
+21. re-check if we have SRFs in `targetList` as `preprocess_expression(targetList)`
+    might remove all SRFs
+
+    ```c
+    /* Constant-folding might have removed all set-returning functions */
+    if (parse->hasTargetSRFs)
+    	parse->hasTargetSRFs = expression_returns_set((Node *) parse->targetList);
+    ```
+    
+22. Flatten nested `GROUPING SETS` clauses, needed by the next optimization, 
+    move or copy qual from `HAVING` to `WHERE`.
+
+    > See database/Postgres/pg_docs/Ch7_Queries/7.2_Table_Expressions.md
+    
+    ```c
+    /*
+    * If we have grouping sets, expand the groupingSets tree of this query to
+    * a flat list of grouping sets.  We need to do this before optimizing
+    * HAVING, since we can't easily tell if there's an empty grouping set
+    * until we have this representation.
+    */
+    if (parse->groupingSets)
+    {
+        parse->groupingSets =
+            expand_grouping_sets(parse->groupingSets, parse->groupDistinct, -1);
+    }
+    ```
+    
+23. **Move** or **copy** qualifications from `HAVING <qual>` to `WHERE <qual>` so that we could
+    have tuples to aggregate.
+    
+    Cases where we cannot do this optimization:
+    
+    1. The qual contains aggregate functions, which is only available to 
+       groups, not tuples
+    2. The qual contains volatile functions, which will be executed once per
+       group, not once per row.
+    3. The qual references NULL columns generated by `GROUPING SETS`
+       
+       ```SQL
+       select brand, segment
+       from sales
+       group by cube(brand, segment)
+       HAVING segment IS NULL
+       ```
+       
+       `segment IS NULL` should be applied to the groups created by grouping set
+       `(brand)`, not tuples.
+       
+     4. If the qual is expensive to be executed once per row, estimating cost
+        is hard, PG uses a heuristic rule here: clauses containing subplans are
+        kept in `HAVING`
+       
+    Move or Copy, rules to follow:
+    
+    1. If this query has no empty GROUPING SETS, move the quals. Let me explain
+       why we need to copy quals (i.e., qual still needs to be evaluated 
+       against aggregation results) if we have an empty GROUPING SET, it is 
+       because of an edge case: an empty GROUPING SET, creates a group that 
+       contains all the rows of the table, even though this table is empty, 
+       i.e., group is empty, the aggregation expressions still will emit 1 row, 
+       which can be discarded by qual in `HAVING`, if we move the qual to `WHERE`, 
+       this row will not be removed:
+       
+       ```SQL
+       create table foo (id int);    -- an empty table
+       
+       postgres=# select count(*) from foo group by ();
+        count 
+       -------
+           0
+       (1 row)
+       
+       postgres=# select count(*) from foo group by () having false;
+        count 
+       -------
+       (0 rows)
+       
+       postgres=# select count(*) from foo where false group by ();
+        count 
+       -------
+           0
+       (1 row)
+       ```
+
+24. Reduce join length
+
+    1. outer join to plain inner join
+    
+       ```sql
+       SELECT ... FROM a LEFT JOIN b ON (...) WHERE b.<ANY COLUMN> = 42;
+       ```
+
+    2. outer join to anti join
+    
+       If the outer join's qual (`JoinExpr.qual`) are strict for any nullable
+       `Var` that was forced NULL by higher qual (WHERE, `FromExpr.qual`), 
+       then this outer join only returns the rows that are null-extended.
+       
+       This optimization is different from 1, it has 2 conditions
+       on the query tree:
+       
+       1. outer join `JoinExpr.qual` should be strict for "any column" from 
+          the nullable table (if this is a left outer join, nullable table 
+          is the right table)
+       2. Where qual `FromExpr.qual` filters out rows whose that column ("any 
+          column" mentioned in 1) is NOT NULL
+      
+       As long as the optimizer finds 1 such "any column" exists, it can perform
+       this optimization.
+       
+       Why the optimizer can do this transformation, let's use the below query
+       as an example. `foo.<Whatever> = bar.column`, operator `=` is strict for
+       `bar.column`, which means if `bar.column` is NULL, the whole qual is NULL,
+       which behaves similarly to `false`, which means the join operation won't 
+       match, as long as `bar.column` is NULL. The join result of an outer join
+       contains 2 kinds of rows:
+       
+       1. matched
+       2. NULL-extened, i.e., not matched
+       
+       Since if `bar.column` is NULL, the join qual evaluates to false, then the
+       rows of the matched kind won't have rows whose `bar.column` is NULL. Rows
+       with `bar.column = NULL` only exists in NULL-extended rows.
+       
+       And, condition 2 only wants rows whose `bar.column` is NULL, i.e., the 
+       NULL-extended rows, the rows that do not have a match. This is exactly what
+       anti-join does.
+       
+       ```sql
+       SELECT * FROM foo LEFT JOIN bar
+       ON foo.<Whatever> = bar.column
+       WHERE bar.column IS NULL;
+       ```
+      
+       > NOTE: by definition, anti-join only returns columns from the left table,
+       > a query like:
+       >
+       > select * from foo left join bar on foo.id=bar.id where bar.id IS NULL
+       >
+       > returns columns from both table foo and bar, but PG still does the 
+       > optimization.
+      
+    3. Flip right outer join to left outer join
+    
+       This saves some code here and in some later planner routines; The main 
+       benefit is to reduce the number of jointypes that can appear in SpecialJoinInfo
+       nodes.
 
     ```c
     /*
-    * Do expression preprocessing on targetlist and quals, as well as other
-    * random expressions in the querytree.  Note that we do not need to
-    * handle sort/group expressions explicitly, because they are actually
-    * part of the targetlist.
+    * If we have any outer joins, try to reduce them to plain inner joins.
+    * This step is most easily done after we've done expression
+    * preprocessing.
     */
-    parse->targetList = (List *) preprocess_expression(root, (Node *) parse->targetList, EXPRKIND_TARGET);
+    if (hasOuterJoins)
+        reduce_outer_joins(root);
     ```
     
+    This should be done after preprocess_expression(), to make find **strict**
+    qual easier.
+    
+    QUES: why does it check operator/function stictness rather than evaluating
+    the qual (`qual(NULL) == false`)
+
+    ```sql
+    create table foo (id int);
+    create table bar (id int);
+    create table buzz (id int);
+    
+    select * from
+    foo join bar on foo.id = bar.id left join buzz on bar.id = buzz.id
+    where buzz.id IS NOT NULL;
+    ```
+    
+    rtable: 
+    
+    ```yaml
+    1: foo
+    2: bar
+    3: foo join bar 
+    4: buzz 
+    5: foo join bar left join buzz
+    ```
+    
+    jointree: 
+    
+    ```yaml
+    FromExpr:
+      fromlist": [
+        JoinExpr:
+          larg: 
+            JoinExpr:
+              larg: RangeTblRef(1)
+              rarg: RangeTblRef(2)
+          rarg: RangeTblRef(4)
+      ],
+      qual: 
+        NullTest:
+          arg:
+            Var:
+              varno: 4
+              varattno: 1
+    ```
+    
+    pass1 state:
+
+    ```json
+    {
+        "relids": [1, 2, 4],
+        "contains_outer": true,
+        "sub_states": [
+            {
+                "relids": [1, 2, 4],
+                "contains_outer": true,
+                "sub_states": [
+                    {
+                        "relids": [1, 2],
+                        "contains_outer": false,
+                        "sub_states": [
+                            {"relids": [1], "contains_outer": false, "sub_states": [] },
+                            {"relids": [2], "contains_outer": false, "sub_states": [] }
+                        ]
+                    },
+                    {
+                        "relids": [4],
+                        "contains_outer": false,
+                        "sub_states": []
+                    }
+                ]
+            }
+        ]
+    }
+    ```
+    
+25. 
     
 
 #### grouping_planner()

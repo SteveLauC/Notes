@@ -2,13 +2,15 @@
   only 1 column) subquery. initPlans will be executed only once before executing
   the main plan, then the query result will be stored in `EState.es_param_exec_vals[paramID]`
   
-  > Difference between initPlan and SubPlans
+  > Difference between `Plan.initPlan` and other `SubPlan` nodes that are stored
+  > in expression nodes
   > 
   > 1. They are both subqueries, but different kinds of subqueries: initPlan 
   >    is uncorrelated, subPlan could be correlated
   > 2. initPlan will be executed only once, before the executor executes the 
   >    main plan
   > 3. They share the same data structure `struct SubPlan`
+  > 4. Their sub `struct Plan` nodes are both stored in `PlannedStmt.subplans`
 
   `Plan.initPlans` will be transferred from `PlannerInfo.init_plans` in `SS_attach_initplans(root, plan)`
   

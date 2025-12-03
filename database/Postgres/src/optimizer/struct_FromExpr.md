@@ -4,8 +4,10 @@
 
   List<Node>, `Node` could be of type:
   
-  * `RangeTblRef`
+  * `RangeTblRef`: points to **base** relation
   * `JoinExpr`
+    
+    > `larg` and `rarg` can be of type `RangeTblRef` and `JoinExpr`
   
   ```sql
   -- Cases where it only contains RangeTblRef
