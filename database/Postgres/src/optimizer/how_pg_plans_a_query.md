@@ -105,16 +105,16 @@
             >
             > See also: database/Database_System_Concepts/Ch16_Query_Optimization.md
 
-            If there is a strict qualification above the outer join that constricts a `Var`
-            from the nullable side of the join to be non-null, then this outer join can
-            be converted into inner join.
+            If there is a strict qualification above the outer join that constricts
+            a `Var` from the nullable side of the join to be non-null, then this 
+            outer join can be converted into inner join.
 
           * Reduce outer join to anti joins
           
             > * `reduce_outer_joins()` in `src/backend/optimizer/prep/prepjointree.c`
 
             If the outer join's qual (`JoinExpr.qual`) are strict for any nullable
-            `Var` that was forced NULL by higher qual (WHERE, `FromExpr.qual`), 
+            `Var` that was forced NULL by higher qual (e.g., WHERE, `FromExpr.qual`), 
             then this outer join only returns the rows that are null-extended.
 
             ```sql

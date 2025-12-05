@@ -1180,17 +1180,78 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
 
 24. Reduce join length
 
-    1. outer join to plain inner join
+    ```c
+    /*
+    * If we have any outer joins, try to reduce them to plain inner joins.
+    * This step is most easily done after we've done expression
+    * preprocessing.
+    */
+    if (hasOuterJoins)
+        reduce_outer_joins(root);
+    ```
+
+    1. outer join to inner join
+    
+       > * left outer join -> inner join
+       > * right outer join -> inner join
+       > * full outer join -> left outer join
+       > * full outer join -> right outer join
+       > * full outer join -> inner join
     
        ```sql
        SELECT ... FROM a LEFT JOIN b ON (...) WHERE b.<ANY COLUMN> = 42;
+       
+       -- or 
+       
+       SELECT * FROM 
+       foo LEFT JOIN bar ON (...)
+       JOIN buzz ON bar.id = buzz.id;          -- The Upper Inner Join
        ```
+       
+       If there is a strict qualification **above** the outer join that 
+       constricts a `Var` from the nullable side of the join to be 
+       non-null (equivalent to `qual(NULL) = NULL or false`), then this 
+       outer join can be converted into inner join. 
+       
+       This is because the result of an outer join contains 2 kinds of
+       rows: 1. matched (inner join) 2. NULL-extended. Requiring the a
+       `Var` from the nullable side of join effectively filters out the 
+       NULL-extended rows, making it a inner join.
+       
+       Postgres's impl
+       * checks strictness when the qual is not in the top level, i.e., 
+         `qual(NULL) = NULL`
+       * otherwise, it checks both `qual(NULL) = NULL` and `qual(NULL)=false`
+       
+       And this upper qual cannot be removed, the conversion only filter 
+       out the NULL-extended rows, the matched rows still need to be 
+       filtered by it.
+      
+       > qual above the outer join can exist in 2 places:
+       >
+       > 1. FromExpr.qual (This should be the uppermost qual, I guess?)
+       > 2. JoinExpr.qual from other joins that are above the current join
+      
+       `b.<ANY COLUMN> = 42` forces `<ANY COLUMN>` to be non-NULL, which is
+       obvious; `on bar.id = buzz.id`, when `bar.is = NULL`, evaluates to
+       `NULL`, which lets the inner join discard the row, so the join results
+       should have non-NULL `bar.id`. So, inner join acts like a filter.
+      
+    2. Flip right outer join to left outer join
+    
+       1. With this, we don't need to convert right outer join -> right anti-join
+       2. Reduces the number of jointypes that can appear in SpecialJoinInfo nodes.
 
-    2. outer join to anti join
+    3. outer join to anti join
+    
+       > * left outer join -> anti-join
+       > * rigth outer join -> right anti-join (via flip to left join)
     
        If the outer join's qual (`JoinExpr.qual`) are strict for any nullable
-       `Var` that was forced NULL by higher qual (WHERE, `FromExpr.qual`), 
-       then this outer join only returns the rows that are null-extended.
+       `Var` that was forced NULL by higher qual (WHERE `FromExpr.qual`, or 
+       upper JoinExpr.qual), then this outer join only returns the rows that 
+       are null-extended. And this qual can be possibily removed from the 
+       query tree since it is no longer needed.
        
        This optimization is different from 1, it has 2 conditions
        on the query tree:
@@ -1198,13 +1259,13 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
        1. outer join `JoinExpr.qual` should be strict for "any column" from 
           the nullable table (if this is a left outer join, nullable table 
           is the right table)
-       2. Where qual `FromExpr.qual` filters out rows whose that column ("any 
+       2. An upper qual filters out rows whose that column ("any 
           column" mentioned in 1) is NOT NULL
-      
+          
        As long as the optimizer finds 1 such "any column" exists, it can perform
        this optimization.
        
-       Why the optimizer can do this transformation, let's use the below query
+       Why does the optimizer can do this transformation, let's use the below query
        as an example. `foo.<Whatever> = bar.column`, operator `=` is strict for
        `bar.column`, which means if `bar.column` is NULL, the whole qual is NULL,
        which behaves similarly to `false`, which means the join operation won't 
@@ -1227,6 +1288,9 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
        ON foo.<Whatever> = bar.column
        WHERE bar.column IS NULL;
        ```
+       
+       after transformation, `WHERE bar.column IS NULL` can be removed as all
+       the rows guarantee to have NULL `bar.column`.
       
        > NOTE: by definition, anti-join only returns columns from the left table,
        > a query like:
@@ -1235,29 +1299,30 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
        >
        > returns columns from both table foo and bar, but PG still does the 
        > optimization.
-      
-    3. Flip right outer join to left outer join
-    
-       This saves some code here and in some later planner routines; The main 
-       benefit is to reduce the number of jointypes that can appear in SpecialJoinInfo
-       nodes.
+       
+       Another example
+       
+       ```sql
+       SELECT * FROM foo 
+       LEFT JOIN bar ON foo.<Whatever> = bar.column
+       JOIN buzz ON bar.column IS NOT DISTINCT FROM NULL
+       -- or
+       JOIN buzz ON bar.column IS NULL
+       ```
 
-    ```c
-    /*
-    * If we have any outer joins, try to reduce them to plain inner joins.
-    * This step is most easily done after we've done expression
-    * preprocessing.
-    */
-    if (hasOuterJoins)
-        reduce_outer_joins(root);
-    ```
-    
     This should be done after preprocess_expression(), to make find **strict**
     qual easier.
     
-    QUES: why does it check operator/function stictness rather than evaluating
-    the qual (`qual(NULL) == false`)
+    Here is a case to deep-dive: 
+    
+    How to implement this optimization? First, we look for outer joins, then
+    we check if there is any `Var` that satify the condition required by these
+    2 rules. In order to stop descend the jointree in cases where there are
+    no outer joins below the current jtnode, PG first traverses the jointree
+    to collect outer join information (phase 1). Then in phase 2, if PG knows
+    there is no outer joins, it stops the tree traversal.
 
+    
     ```sql
     create table foo (id int);
     create table bar (id int);
@@ -1275,7 +1340,7 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     2: bar
     3: foo join bar 
     4: buzz 
-    5: foo join bar left join buzz
+    5: (foo join bar) left join buzz
     ```
     
     jointree: 
@@ -1288,7 +1353,9 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
             JoinExpr:
               larg: RangeTblRef(1)
               rarg: RangeTblRef(2)
+              qual: <omitted>
           rarg: RangeTblRef(4)
+          qual: <omitted>
       ],
       qual: 
         NullTest:
@@ -1301,23 +1368,25 @@ This function initializes `struct PlannerGlobal` and `struct PlannerInfo`,  call
     pass1 state:
 
     ```json
-    {
+    { # FromExpr
         "relids": [1, 2, 4],
         "contains_outer": true,
-        "sub_states": [
-            {
+        "sub_states": [ # FromExpr.fromlist
+            { # JoinExpr
                 "relids": [1, 2, 4],
                 "contains_outer": true,
-                "sub_states": [
-                    {
+                "sub_states": [ # JoinExpr [larg, rarg]
+                    { # JoinExpr.larg -> JoinExpr
                         "relids": [1, 2],
                         "contains_outer": false,
-                        "sub_states": [
+                        "sub_states": [ # JoinExpr [larg, rarg]
+                            # RangeTblRef
                             {"relids": [1], "contains_outer": false, "sub_states": [] },
+                            # RangeTblRef
                             {"relids": [2], "contains_outer": false, "sub_states": [] }
                         ]
                     },
-                    {
+                    { # JoinExpr.rarg -> RangeTblRef
                         "relids": [4],
                         "contains_outer": false,
                         "sub_states": []
